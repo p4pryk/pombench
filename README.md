@@ -8,7 +8,7 @@ PomBench gives every model the same creative challenge: bring a Pomeranian to li
 as it runs into a backyard doghouse, retrieves a bone, and turns toward you.
 The scene stays the same. The interpretations are anything but.
 
-![Explore the PomBench animation gallery](docs/preview.png)
+![The PomBench Pomeranian with a bone beside its doghouse](public/assets/pomeranian-hero.webp)
 
 ## Watch the differences
 
