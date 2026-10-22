@@ -1,0 +1,23 @@
+{
+  "at": "2026-10-22T11:06:32.160062+00:00",
+  "eligibleModels": [
+    "Kimi-K2.7-Code",
+    "claude-fable-5-1",
+    "gpt-5.4-pro",
+    "FW-GLM-5.3"
+  ],
+  "eligibility": "Any candidate still failing because the 32768-token reply was truncated; apply this same rescue policy rather than aesthetic feedback. Currently Kimi K2.7 Code and Claude Fable 5.1 qualify.",
+  "extraResponsesPerModel": 1,
+  "standardMaxOutputTokens": 32768,
+  "maxOutputTokens": 65536,
+  "generationDeadlineSeconds": 1200,
+  "captureDeadlineSeconds": 480,
+  "policy": "User-authorized diagnostic completion rescue with twice the total output allowance and a longer generation deadline. Same scene, no aesthetic hints or manual code edits. All actual usage is charged, including earlier failures. Results explicitly labelled Extended budget; do not describe as identical-budget comparison. Preserve every prior source, response and usage receipt. Final response only, no best-of.",
+  "scriptHash": "2a94d21eb6e56cd29db80d16a2c230144ed3df1f2277e1f1ed5090f14febfd30",
+  "wave3Extension": {
+    "at": "2026-10-22T13:17:29.080248+00:00",
+    "scriptHash": "28f04c6e40cfa77a17a20ae38d09c1346802a7725f42383bbe03bd051c057dbf",
+    "scriptPath": "scripts/complete-animation-wave3.py",
+    "reason": "Same existing one-response 65536-token rescue extended to the new model after two capped replies. Reasoning setting unchanged from its execution repair. Earlier replies and usage retained; no quality selection."
+  }
+}

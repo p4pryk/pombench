@@ -1,0 +1,56 @@
+{
+  "at": "2026-10-22T12:46:38.966185+00:00",
+  "models": [
+    {
+      "modelId": "gpt-5.5",
+      "model": "GPT-5.5",
+      "label": "gpt-5-5",
+      "version": "2026-04-24",
+      "provider": "OpenAI via Microsoft Foundry",
+      "api": "responses",
+      "maxOutputTokens": 32768,
+      "reasoningEffort": "low",
+      "deploymentState": "Succeeded",
+      "probeState": "accepted"
+    },
+    {
+      "modelId": "gpt-5.4-pro",
+      "model": "GPT-5.4 Pro",
+      "label": "gpt-5-4-pro",
+      "version": "2026-03-05",
+      "provider": "OpenAI via Microsoft Foundry",
+      "api": "responses",
+      "maxOutputTokens": 32768,
+      "reasoningEffort": "medium",
+      "deploymentState": "Succeeded",
+      "probeState": "accepted"
+    },
+    {
+      "modelId": "FW-GLM-5.3",
+      "model": "GLM 5.3",
+      "label": "fw-glm-5-3",
+      "version": "2",
+      "provider": "Fireworks via Microsoft Foundry",
+      "api": "foundry-chat",
+      "maxOutputTokens": 32768,
+      "reasoningEffort": "Provider default",
+      "deploymentState": "Succeeded",
+      "probeState": "accepted"
+    },
+    {
+      "modelId": "FW-Kimi-K3",
+      "model": "Kimi K3",
+      "label": "fw-kimi-k3",
+      "version": "1",
+      "provider": "Fireworks via Microsoft Foundry",
+      "api": "foundry-chat",
+      "maxOutputTokens": 32768,
+      "reasoningEffort": "Provider default",
+      "deploymentState": "Succeeded",
+      "probeState": "accepted"
+    }
+  ],
+  "parentCampaign": "pom-motion-v3-wave2-20261022",
+  "policy": "All prior final recordings, source and usage cloned unchanged. Only four approved additions receive identical original prompt. Same standard 32768 total output allowance, or a lower ceiling verified by actual endpoint. Same two conditional execution repairs; final response only. GPT-5.4 Pro uses its minimum supported medium reasoning; other Responses models use low. Small compatibility probes excluded from animation comparison and retained separately. Only recorded results are shown in gallery.",
+  "scriptHash": "a48aa3feaa2b0454523a36c5ab2a8dc45e1d0b6bc9b6bb96f89a1f2db04cd0c7"
+}

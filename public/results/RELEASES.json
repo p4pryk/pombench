@@ -1,0 +1,206 @@
+{
+  "checkedAt": "2026-10-22",
+  "definition": "First public API release of the named model family/version, excluding later serving tiers, benchmark runs and preview announcements without API availability.",
+  "models": {
+    "gpt-6.1-sol": {
+      "date": "2026-09-29",
+      "source": "https://developers.openai.com/api/docs/changelog",
+      "basis": "Public API model release"
+    },
+    "gpt-6-sol": {
+      "date": "2026-09-22",
+      "source": "https://developers.openai.com/api/docs/changelog",
+      "basis": "Public API model release"
+    },
+    "gpt-6-luna": {
+      "date": "2026-09-22",
+      "source": "https://developers.openai.com/api/docs/changelog",
+      "basis": "Public API model release"
+    },
+    "gpt-6-astra": {
+      "date": "2026-09-03",
+      "source": "https://developers.openai.com/api/docs/changelog",
+      "basis": "Public API model release"
+    },
+    "gpt-5.6-sol": {
+      "date": "2026-07-09",
+      "source": "https://developers.openai.com/api/docs/changelog",
+      "basis": "Public API model release"
+    },
+    "gpt-5.6-terra": {
+      "date": "2026-07-09",
+      "source": "https://developers.openai.com/api/docs/changelog",
+      "basis": "Public API model release"
+    },
+    "gpt-5.6-luna": {
+      "date": "2026-07-09",
+      "source": "https://developers.openai.com/api/docs/changelog",
+      "basis": "Public API model release"
+    },
+    "gpt-5.4": {
+      "date": "2026-03-05",
+      "source": "https://developers.openai.com/api/docs/changelog",
+      "basis": "Public API model release"
+    },
+    "gpt-5.4-nano": {
+      "date": "2026-03-17",
+      "source": "https://developers.openai.com/api/docs/changelog",
+      "basis": "Public API model release"
+    },
+    "gpt-5-mini": {
+      "date": "2025-08-07",
+      "source": "https://developers.openai.com/api/docs/changelog",
+      "basis": "Public API model release"
+    },
+    "gpt-5-nano": {
+      "date": "2025-08-07",
+      "source": "https://developers.openai.com/api/docs/changelog",
+      "basis": "Public API model release"
+    },
+    "gpt-4.1-mini": {
+      "date": "2025-04-14",
+      "source": "https://developers.openai.com/api/docs/changelog",
+      "basis": "Public API model release"
+    },
+    "gpt-4.1-nano": {
+      "date": "2025-04-14",
+      "source": "https://developers.openai.com/api/docs/changelog",
+      "basis": "Public API model release"
+    },
+    "gpt-4o-mini": {
+      "date": "2024-07-18",
+      "source": "https://developers.openai.com/api/docs/changelog",
+      "basis": "Public API model release"
+    },
+    "claude-haiku-5-5": {
+      "date": "2026-10-07",
+      "source": "https://platform.claude.com/docs/en/models/haiku-5-5/overview",
+      "basis": "Provider model availability / Released field"
+    },
+    "claude-sonnet-5-5": {
+      "date": "2026-09-28",
+      "source": "https://platform.claude.com/docs/en/models/sonnet-5-5/overview",
+      "basis": "Provider model availability / Released field"
+    },
+    "claude-opus-5-5": {
+      "date": "2026-09-22",
+      "source": "https://platform.claude.com/docs/en/models/opus-5-5/overview",
+      "basis": "Provider model availability / Released field"
+    },
+    "claude-opus-5": {
+      "date": "2026-07-24",
+      "source": "https://platform.claude.com/docs/en/models/opus-5/overview",
+      "basis": "Provider model availability / Released field"
+    },
+    "claude-sonnet-5": {
+      "date": "2026-06-30",
+      "source": "https://platform.claude.com/docs/en/models/sonnet-5/overview",
+      "basis": "Provider model availability / Released field"
+    },
+    "claude-opus-4-8": {
+      "date": "2026-05-28",
+      "source": "https://platform.claude.com/docs/en/models/opus-4-8/overview",
+      "basis": "Provider model availability / Released field"
+    },
+    "claude-haiku-4-5": {
+      "date": "2025-10-15",
+      "source": "https://platform.claude.com/docs/en/models/haiku-4-5/overview",
+      "basis": "Provider model availability / Released field"
+    },
+    "MAI-Thinking-1": {
+      "date": "2026-08-12",
+      "source": "https://microsoft.ai/news/introducing-mai-thinking-1/",
+      "basis": "Public preview launch; not model-version/training date"
+    },
+    "grok-4.7": {
+      "date": "2026-09-21",
+      "source": "https://x.ai/news/grok-4-7",
+      "basis": "Public API release of this named version"
+    },
+    "DeepSeek-V4-Pro-0813": {
+      "date": "2026-08-13",
+      "source": "https://api-docs.deepseek.com/news/news260813/",
+      "basis": "Public API release of this named version"
+    },
+    "DeepSeek-V4.1-Flash": {
+      "date": "2026-09-10",
+      "source": "https://www.deepseek.com/en/news/deepseek-v4-1-flash/",
+      "basis": "Public API release of this named version"
+    },
+    "Mistral-Large-3": {
+      "date": "2025-12-02",
+      "source": "https://docs.mistral.ai/models/mistral-large-3-25-12",
+      "basis": "Public API release of this named version"
+    },
+    "claude-fable-5-1": {
+      "date": "2026-09-01",
+      "source": "https://platform.claude.com/docs/en/models/fable-5-1/overview",
+      "basis": "Public API release of this named version"
+    },
+    "gpt-5.3-codex": {
+      "date": "2026-02-24",
+      "source": "https://developers.openai.com/api/docs/changelog",
+      "basis": "Public API release of this named version"
+    },
+    "gpt-oss-120b": {
+      "date": "2025-08-05",
+      "source": "https://openai.com/index/introducing-gpt-oss/",
+      "basis": "Public open-weight model launch with hosted inference availability"
+    },
+    "Kimi-K2.7-Code": {
+      "date": "2026-06-12",
+      "source": "https://ai.azure.com/catalog/models/Kimi-K2.7-Code",
+      "basis": "Dated public model version in official Foundry model card, corroborated by the publisher model release."
+    },
+    "Llama-4-Maverick-17B-128E-Instruct-FP8": {
+      "date": "2025-04-05",
+      "source": "https://azure.microsoft.com/en-us/blog/introducing-the-llama-4-herd-in-azure-ai-foundry-and-azure-databricks/",
+      "basis": "Public API release of named model/version; pinned deployment version retained separately."
+    },
+    "Llama-4-Scout-17B-16E-Instruct": {
+      "date": "2025-04-05",
+      "source": "https://azure.microsoft.com/en-us/blog/introducing-the-llama-4-herd-in-azure-ai-foundry-and-azure-databricks/",
+      "basis": "Public API release of named model/version; pinned deployment version retained separately."
+    },
+    "mistral-medium-3-5": {
+      "date": "2026-04-28",
+      "source": "https://docs.mistral.ai/resources/changelogs",
+      "basis": "Public API release of named model/version; pinned deployment version retained separately."
+    },
+    "Codestral-2501": {
+      "date": "2025-01-13",
+      "source": "https://docs.mistral.ai/models/codestral-25-01",
+      "basis": "Public API release of named model/version; pinned deployment version retained separately."
+    },
+    "gpt-5.4-mini": {
+      "date": "2026-03-17",
+      "source": "https://developers.openai.com/api/docs/changelog",
+      "basis": "Public API release of named model/version; pinned deployment version retained separately."
+    },
+    "DeepSeek-V4-Pro": {
+      "date": "2026-04-24",
+      "source": "https://api-docs.deepseek.com/updates/",
+      "basis": "Public API release of named model/version; pinned deployment version retained separately."
+    },
+    "gpt-5.5": {
+      "date": "2026-04-24",
+      "source": "https://openai.com/index/introducing-gpt-5-5/",
+      "basis": "First public API release; deployment version retained separately."
+    },
+    "gpt-5.4-pro": {
+      "date": "2026-03-05",
+      "source": "https://openai.com/index/introducing-gpt-5-4/",
+      "basis": "First public API release; deployment version retained separately."
+    },
+    "FW-Kimi-K3": {
+      "date": "2026-07-16",
+      "source": "https://www.moonshot.ai/en",
+      "basis": "First public API release; deployment version retained separately."
+    },
+    "FW-GLM-5.3": {
+      "date": "2026-08-18",
+      "source": "https://docs.z.ai/release-notes/new-released",
+      "basis": "Publisher dated API/model platform release, excluding earlier announcements."
+    }
+  }
+}

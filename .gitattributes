@@ -1,0 +1,7 @@
+* text=auto eol=lf
+# Published evidence must preserve its original bytes and SHA-256 hashes.
+/public/results/** -text
+*.mp4 binary
+*.png binary
+*.jpg binary
+*.webp binary

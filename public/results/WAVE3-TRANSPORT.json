@@ -1,0 +1,14 @@
+{
+  "at": "2026-10-22T12:56:17.250673+00:00",
+  "models": [
+    "gpt-5.5",
+    "gpt-5.4-pro",
+    "FW-GLM-5.3",
+    "FW-Kimi-K3"
+  ],
+  "originalDeadlineSeconds": 480,
+  "generationDeadlineSeconds": 1200,
+  "maxOutputTokens": 32768,
+  "scriptHash": "b3bedcdd68352be859c15e7a2f7cec2f2e7f5635b85788f84288b5a5572b1a79",
+  "policy": "Wait for already-active API replies without cancelling or resampling them. Three new reasoning models exceeded ordinary wall-clock expectations. Retain same prompt, pinned version, reasoning settings and output allowance. Subsequent infrastructure recovery and execution repairs use the same longer bound. Recorder unchanged. Every known usage retained; any transport without final receipt remains explicitly unknown."
+}

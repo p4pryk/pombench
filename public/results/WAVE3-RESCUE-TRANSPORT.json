@@ -1,0 +1,6 @@
+{
+  "at": "2026-10-22T13:20:48.273104+00:00",
+  "modelId": "FW-GLM-5.3",
+  "scriptHash": "ec6065bea9f2075a756ac169e2c475576ba43c5873d451a72d7a765842802c7f",
+  "policy": "Exactly one unchanged infrastructure retry after missing terminal receipt. Preserve interrupted stream, mark its unknown cost, keep same model/version/prompt/output cap/reasoning. No completed reply discarded."
+}

@@ -1,0 +1,14 @@
+{
+  "modelId": "mistral-medium-3-5",
+  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
+  "sourceHash": "c46eb734cabe3bb626e0d251441c4f516af5d66dcb3a8fedcc8c9f8d92a93e1a",
+  "responseHash": "3d6735545c4e2c451a29e4954143e4207fe9127981e36a99a4c61320f2e50037",
+  "requestHash": "726fc68d89aefd237342df01e7fbc42fee43f5c5ab5a43a645ba4d74db17f2b9",
+  "streamHash": "adf1db9d24fd663f252c4e0df8b5aae24c66fbee5d55a86cc808db09e5dcb1d4",
+  "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
+  "submission": 1,
+  "tools": [],
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+}

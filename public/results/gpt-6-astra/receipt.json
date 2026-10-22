@@ -1,0 +1,14 @@
+{
+  "modelId": "gpt-6-astra",
+  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
+  "sourceHash": "87991eb9e54777fa4c32e588a9f79652603871a16bbb000c3087f013d9e5ef08",
+  "responseHash": "026b7e538407d5cb8f19360e377d20f66f87a5d4d0c01d30afd78dfe6c9db9fb",
+  "requestHash": "5bc338e915dc26d37e19f962bae3d49df409de982aed6ab731bb907c834f490d",
+  "streamHash": "9c6e5a6126b63134e088b7550974ca2686b71485c894395954bcf14d4148e35f",
+  "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
+  "submission": 1,
+  "tools": [],
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+}

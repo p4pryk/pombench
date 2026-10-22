@@ -1,0 +1,14 @@
+{
+  "modelId": "claude-opus-5",
+  "promptHash": "f8268b1399465a482799f553ee3114c77c585838349efc4aaa54b034afa3464c",
+  "sourceHash": "c208ee6a0379e54a64ccb3c46e9caceda3383c32aabb09f731f75acf93174a4e",
+  "responseHash": "5f484f630b81057645ad8b5727e519e4e01e017ed965efaa9e5fd095486da38a",
+  "requestHash": "10e11fc0a934141a2344bb0402877b39446a20931f62b57566bf96ff9e969703",
+  "streamHash": "bbedf03e19e58f65a38a1e76f23a4f251d085784cb25125410a39f97e8152cc2",
+  "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
+  "submission": 1,
+  "tools": [],
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+}

@@ -1,0 +1,14 @@
+{
+  "modelId": "FW-Kimi-K3",
+  "promptHash": "fb3f6ca5af83d44bec1ee72b6fc1fe0da4ecc0e93241e80ac4463d81e2fb3a99",
+  "sourceHash": "d47efe5674db5ea12b126a7d5812fc9f476dacc464f732205f4079568d1f1055",
+  "responseHash": "f155d9eab6904ff0a8ac1973e636ad17e6ea88752b0eb10ff8e0e976b4aa7c9a",
+  "requestHash": "e6d52d15a3dd59da73d723dab92ee3307a15a810ba7dd82d6f711cf394dbb38d",
+  "streamHash": "c5bbefac71318ea47bfb73166acdb4a329053288488a27fb6ba4720ccb9af84a",
+  "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
+  "submission": 1,
+  "tools": [],
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+}

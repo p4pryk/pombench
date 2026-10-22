@@ -1,0 +1,14 @@
+{
+  "modelId": "gpt-4.1-mini",
+  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
+  "sourceHash": "e1c9139ee3d28b345deb66d0216e755297613450c5b2ac0327deccc08ef9a7d6",
+  "responseHash": "d73409f09699ee2bf973fa407048ae1af230ac5a3c9b9fbe413da2c83d3b8867",
+  "requestHash": "ae5a06cf79d950c8dade056d62f97725e68e6232359d5c32b3346d07534ea1af",
+  "streamHash": null,
+  "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
+  "submission": 1,
+  "tools": [],
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+}

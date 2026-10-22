@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+html,body{margin:0;padding:0;background:#111}
+canvas{display:block;margin:0 auto}
+</style></head>
+<body>
+<canvas id="stage" width="960" height="540"></canvas>
+<script>
+const cv=document.getElementById('stage');
+const ctx=cv.getContext('2d');
+const W=960,H=540,GROUND=420;
+
+function lerp(a,b,t){return a+(b-a)*t;}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function smooth(t){t=clamp(t,0,1);return t*t*(3-2*t);}
+function hash(i){let x=Math.sin(i*12.9898+4.1414)*43758.5453;return x-Math.floor(x);}
+
+function drawBackground(t){
+  // sky
+  let g=ctx.createLinearGradient(0,0,0,GROUND);
+  g.addColorStop(0,'#aed6ec');
+  g.addColorStop(1,'#dff0e0');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,GROUND);
+  // ground
+  let gg=ctx.createLinearGradient(0,GROUND,0,H);
+  gg.addColorStop(0,'#6f9a4a');
+  gg.addColorStop(1,'#4d7a34');
+  ctx.fillStyle=gg;ctx.fillRect(0,GROUND,W,H-GROUND);
+  // grass texture
+  for(let i=0;i<140;i++){
+    let x=hash(i*3.1)*W;
+    let y=GROUND+hash(i*7.7)*(H-GROUND);
+    ctx.strokeStyle='rgba(30,60,20,0.25)';
+    ctx.lineWidth=1.5;
+    ctx.beginPath();
+    ctx.moveTo(x,y);
+    ctx.lineTo(x+hash(i*2)*4-2,y-6-hash(i)*5);
+    ctx.stroke();
+  }
+}
+
+// doghouse geometry
+const HX0=650,HX1=900,HY0=260,HY1=420;
+const DOORX0=742,DOORX1=820,DOORY0=300,DOORY1=420;
+
+function drawHouseBack(){
+  // interior dark
+  ctx.fillStyle='#1b140f';
+  ctx.fillRect(DOORX0-4,DOORY0-4,DOORX1-DOORX0+8,DOORY1-DOORY0+8);
+  // back wall inside
+  ctx.fillStyle='#2a1d14';
+  ctx.fillRect(HX0+10,HY0+10,HX1-HX0-20,HY1-HY0-10);
+}
+
+function drawHouseFrontWithHole(){
+  ctx.fillStyle='#9a5a34';
+  // left pillar
+  ctx.fillRect(HX0,HY0,DOORX0-HX0,HY1-HY0);
+  // right pillar
+  ctx.fillRect(DOORX1,HY0,HX1-DOORX1,HY1-HY0);
+  // lintel
+  ctx.fillRect(DOORX0,HY0,DOORX1-DOORX0,DOORY0-HY0);
+  // wood plank lines
+  ctx.strokeStyle='rgba(0,0,0,0.15)';
+  for(let x=HX0;x<HX1;x+=14){
+    ctx.beginPath();ctx.moveTo(x,HY0);ctx.lineTo(x,HY1);ctx.stroke();
+  }
+  // roof
+  ctx.fillStyle='#7a2e22';
+  ctx.beginPath();
+  ctx.moveTo(HX0-20,HY0);
+  ctx.lineTo((HX0+HX1)/2,170);
+  ctx.lineTo(HX1+20,HY0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.2)';
+  for(let i=-6;i<=6;i++){
+    ctx.beginPath();
+    ctx.moveTo((HX0+HX1)/2+i*18,170+Math.abs(i)*7);
+    ctx.lineTo((HX0+HX1)/2+i*18,HY0);
+    ctx.stroke();
+  }
+}
+
+function houseShadow(){
+  ctx.fillStyle='rgba(0,0,0,0.2)';
+  ctx.beginPath();
+  ctx.ellipse(HX0+(HX1-HX0)/2+40,HY1+8,180,20,0,0,Math.PI*2);
+  ctx.fill();
+}
+
+// bone resting position (inside house, visible in doorway)
+const BONE_REST={x:800,y:400};
+
+function drawBone(x,y,ang,scale){
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.rotate(ang);
+  ctx.scale(scale,scale);
+  ctx.fillStyle='#ece3cf';
+  ctx.strokeStyle='#c9bb9a';
+  ctx.lineWidth=1.5;
+  // middle shaft
+  ctx.beginPath();
+  ctx.rect(-16,-3,32,6);
+  ctx.fill();ctx.stroke();
+  // knobs
+  for(let sx of [-16,16]){
+    for(let dy of [-5,5]){
+      ctx.beginPath();
+      ctx.ellipse(sx,dy,6,5,0,0,Math.PI*2);
+      ctx.fill();ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+// ---------- DOG -----------
+function drawDog(cx,cy,facing,o,legPhase,headPitch,mouthOpen,boneHeld,breathe,moveState,earTwitch,tailWag){
+  // moveState: 0 idle,1 run,2 backing,3 turning-step
+  const sx=lerp(1,0.6,o);
+  const bodyW=96*sx, bodyH=50*(1+breathe*0.02);
+  const bodyX=cx, bodyY=cy-46;
+  const furBase='#d98a3d', furDark='#b06a28', furLight='#f0b26a';
+
+  // --- legs (draw before body for back legs, after for front legs) ---
+  function legGeom(hipX,phaseOff,isFront,swingAmp,liftAmp){
+    let ph=(legPhase+phaseOff);
+    let sw=Math.sin(ph*2*Math.PI)*swingAmp;
+    let lift=Math.max(0,Math.sin(ph*2*Math.PI))*liftAmp;
+    let hipY=cy-6;
+    let footX=hipX+sw;
+    let footY=GROUND-lift;
+    let kneeX=hipX+sw*0.4;
+    let kneeY=hipY+(footY-hipY)*0.55;
+    return {hipX,hipY,kneeX,kneeY,footX,footY};
+  }
+  const Hf=facing*40, Hb=-facing*40;
+  const spreadF=26, spreadB=18;
+  let legFLx=lerp(Hf-8,-spreadF,o);
+  let legFRx=lerp(Hf+8, spreadF,o);
+  let legBLx=lerp(Hb-8,-spreadB,o);
+  let legBRx=lerp(Hb+8, spreadB,o);
+
+  let swingAmp=moveState===1?16:moveState===2?-10:moveState===3?6:2;
+  let liftAmp=moveState===1?14:moveState===2?8:moveState===3?6:1;
+
+  const legFL=legGeom(legFLx,0.0,true,swingAmp,liftAmp);
+  const legBR=legGeom(legBRx,0.0,false,swingAmp,liftAmp);
+  const legFR=legGeom(legFRx,0.5,true,swingAmp,liftAmp);
+  const legBL=legGeom(legBLx,0.5,false,swingAmp,liftAmp);
+
+  function drawLeg(l,shade){
+    ctx.strokeStyle=shade;
+    ctx.lineWidth=13;
+    ctx.lineCap='round';
+    ctx.beginPath();
+    ctx.moveTo(l.hipX+cx-cx+ (l===l?0:0), l.hipY);
+    ctx.moveTo(cx+l.hipX-l.hipX+l.hipX,l.hipY); // keep hipX already absolute offset added below
+    ctx.stroke();
+  }
+  // simpler leg draw using absolute coords (hipX is offset, add to cx)
+  function leg(l,shade){
+    const hx=cx+l.hipX, hy=l.hipY, kx=cx+l.kneeX, ky=l.kneeY, fx=cx+l.footX, fy=l.footY;
+    ctx.strokeStyle=shade;
+    ctx.lineWidth=12;
+    ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(hx,hy);ctx.lineTo(kx,ky);ctx.stroke();
+    ctx.lineWidth=10;
+    ctx.beginPath();ctx.moveTo(kx,ky);ctx.lineTo(fx,fy);ctx.stroke();
+    // paw
+    ctx.fillStyle='#f3e4c6';
+    ctx.beginPath();ctx.ellipse(fx,fy+2,7,5,0,0,Math.PI*2);ctx.fill();
+    // contact shadow
+    ctx.fillStyle='rgba(0,0,0,0.25)';
+    ctx.beginPath();ctx.ellipse(fx,GROUND+4,8,3,0,0,Math.PI*2);ctx.fill();
+  }
+
+  // back legs first (behind body)
+  leg(legBL,furDark);
+  leg(legBR,furDark);
+
+  // tail - curled plume over back
+  const rumpX=cx-facing*44*(1-o)*1 - o*2;
+  const rumpY=cy-50;
+  ctx.save();
+  ctx.translate(rumpX,rumpY);
+  let tailBase=lerp(-facing*0.9,0.2,o)+Math.sin(tailWag)*0.05;
+  ctx.rotate(tailBase);
+  for(let i=0;i<7;i++){
+    let a=i/6;
+    let px=lerp(0,-18,a)*sx- a*a*10*facing*(1-o);
+    let py=-a*34- Math.sin(a*3.0)*4;
+    ctx.fillStyle=i%2===0?furLight:furBase;
+    ctx.beginPath();
+    ctx.ellipse(px,py,13-a*5,11-a*4,0,0,Math.PI*2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // body torso
+  ctx.save();
+  ctx.translate(bodyX,bodyY);
+  ctx.scale(sx,1);
+  let grad=ctx.createLinearGradient(-bodyW/2,-bodyH,0,bodyH);
+  grad.addColorStop(0,furDark);
+  grad.addColorStop(0.5,furBase);
+  grad.addColorStop(1,furLight);
+  ctx.fillStyle=grad;
+  ctx.beginPath();
+  ctx.ellipse(0,0,bodyW/2,bodyH/2,0,0,Math.PI*2);
+  ctx.fill();
+  // fur strokes texture
+  for(let i=0;i<40;i++){
+    let ang=hash(i*5.3)*Math.PI*2;
+    let rx=(hash(i*1.7)-0.5)*bodyW*0.9;
+    let ry=(hash(i*2.9)-0.5)*bodyH*0.9;
+    ctx.strokeStyle='rgba(90,50,15,0.18)';
+    ctx.lineWidth=1.2;
+    ctx.beginPath();
+    ctx.moveTo(rx,ry);
+    ctx.lineTo(rx+Math.cos(ang)*6,ry+Math.sin(ang)*6);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // neck ruff
+  const neckX=cx+facing*30*(1-o);
+  const neckY=cy-62;
+  ctx.fillStyle=furLight;
+  ctx.beginPath();
+  ctx.ellipse(neckX,neckY,34*sx+10*o,30,0,0,Math.PI*2);
+  ctx.fill();
+
+  // front legs on top
+  leg(legFL,furBase);
+  leg(legFR,furBase);
+
+  // head
+  const headDX=facing*66*(1-o);
+  const headDY=-96-headPitch*26+breathe*1.2;
+  const headX=cx+headDX;
+  const headY=cy+headDY;
+  const headR=lerp(30,40,o);
+
+  // ears
+  function ear(side){
+    const ex=headX+side*lerp(10,20,o)+earTwitch*side*2;
+    const ey=headY-headR*0.85;
+    ctx.save();
+    ctx.translate(ex,ey);
+    ctx.rotate(side*0.3*(1-o*0.4));
+    ctx.fillStyle=furDark;
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    ctx.lineTo(-9,-28);
+    ctx.lineTo(9,-26);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle='#7a4420';
+    ctx.beginPath();
+    ctx.moveTo(-1,-4);
+    ctx.lineTo(-4,-18);
+    ctx.lineTo(4,-16);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+  ear(-1);ear(1);
+
+  // head shape
+  ctx.fillStyle=furBase;
+  ctx.beginPath();
+  ctx.ellipse(headX,headY,headR,headR*0.92,0,0,Math.PI*2);
+  ctx.fill();
+
+  // muzzle
+  const muzzleLen=lerp(26,10,o)*facing;
+  const muzzleX=headX+muzzleLen;
+  const muzzleY=headY+headR*0.35;
+  ctx.fillStyle=furLight;
+  ctx.beginPath();
+  ctx.ellipse((headX+muzzleX)/2,muzzleY,Math.abs(muzzleLen)*0.9+10,13,0,0,Math.PI*2);
+  ctx.fill();
+  // nose
+  ctx.fillStyle='#2a1a12';
+  ctx.beginPath();
+  ctx.ellipse(muzzleX,muzzleY-2,6,5,0,0,Math.PI*2);
+  ctx.fill();
+
+  // mouth / bone grip
+  if(mouthOpen>0.02){
+    ctx.strokeStyle='#3a2015';
+    ctx.lineWidth=3;
+    ctx.beginPath();
+    ctx.moveTo(muzzleX-6*facing,muzzleY+4);
+    ctx.quadraticCurveTo(muzzleX,muzzleY+4+mouthOpen*10,muzzleX+6*facing,muzzleY+4);
+    ctx.stroke();
+  }
+
+  // eyes
+  ctx.fillStyle='#1c130d';
+  for(let s of[-1,1]){
+    let exx=headX+s*lerp(10,15,o)*0.9 - (o*0)+ (facing*2);
+    let eyy=headY-headR*0.1;
+    ctx.beginPath();
+    ctx.ellipse(exx,eyy,4.2,4.8,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.5)';
+    ctx.beginPath();ctx.ellipse(exx-1.3,eyy-1.3,1.1,1.1,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#1c130d';
+  }
+
+  // bone held in mouth
+  if(boneHeld>0.01){
+    let bx=muzzleX+facing*4;
+    let by=muzzleY+6;
+    let ang=lerp(facing*0.1,0,o)+ (Math.PI/2)*o*0 + (facing>0?0.1:-0.1);
+    drawBone(bx,by, (o*1.57)+ (facing<0?Math.PI:0),0.9);
+  }
+
+  return {headX,headY};
+}
+
+function renderFrame(t){
+  t=clamp(t,0,12);
+  ctx.clearRect(0,0,W,H);
+  drawBackground(t);
+  drawHouseBack();
+  houseShadow();
+
+  // bone state
+  let boneHeld=0;
+  let boneX=BONE_REST.x, boneY=BONE_REST.y;
+  let mouthOpen=0, headPitch=0;
+  let cx,cy=GROUND,facing=1,o=0,legPhase=0,moveState=0,breathe,tailWag,earTwitch,insideHouse=false;
+
+  breathe=Math.sin(t*2.2)*1.0;
+  tailWag=t*1.6;
+  earTwitch=Math.sin(t*3.3)*0.5;
+
+  if(t<1){
+    cx=130; o=0; facing=1; legPhase=t*0.6; moveState=0;
+  } else if(t<3){
+    let p=(t-1)/2;
+    cx=lerp(130,760,smooth(p));
+    legPhase=t*3.2;
+    moveState=1;
+  } else if(t<4.5){
+    let p=(t-3)/1.5;
+    cx=lerp(760,815,smooth(p));
+    legPhase=t*3.2;
+    moveState=1;
+    insideHouse = cx>735;
+  } else if(t<6){
+    let p=(t-4.5)/1.5;
+    cx=815;
+    insideHouse=true;
+    headPitch=smooth(p)*1.0;
+    mouthOpen=smooth(p)*0.7+0.1;
+    legPhase=t*0.4;
+    moveState=0;
+    if(p>0.55){
+      boneHeld=smooth((p-0.55)/0.45);
+    }
+    boneX=lerp(BONE_REST.x,0,0); // placeholder, computed via head when held
+  } else if(t<8){
+    let p=(t-6)/2;
+    cx=lerp(815,760,smooth(p));
+    insideHouse = cx>735;
+    legPhase=t*2.2;
+    moveState=2;
+    headPitch=0.5;
+    mouthOpen=0.35;
+    boneHeld=1;
+  } else if(t<10){
+    let p=(t-8)/2;
+    cx=lerp(760,560,smooth(p));
+    o=smooth(p);
+    insideHouse=false;
+    legPhase=t*1.6;
+    moveState=3;
+    headPitch=0.2*(1-p);
+    mouthOpen=0.3;
+    boneHeld=1;
+  } else {
+    cx=560; o=1; insideHouse=false;
+    legPhase=t*0.5;
+    moveState=0;
+    mouthOpen=0.3;
+    boneHeld=1;
+    headPitch=0.05+Math.sin(t*2.0)*0.02;
+  }
+
+  cy=GROUND;
+
+  // draw bone resting if not yet held and visible (through doorway or in yard before retrieval)
+  const beforeGrab = t<4.5 || (t<6 && boneHeld<0.01);
+  if(beforeGrab){
+    drawBone(BONE_REST.x,BONE_REST.y,0.2,0.85);
+  }
+
+  // if dog is inside house, draw dog then wall overlay to occlude; else wall then dog
+  if(insideHouse){
+    let hp=headPitch, mo=mouthOpen;
+    let r=drawDog(cx,cy,facing,o,legPhase,hp,mo,boneHeld,breathe,moveState,earTwitch,tailWag);
+    drawHouseFrontWithHole();
+  } else {
+    drawHouseFrontWithHole();
+    drawDog(cx,cy,facing,o,legPhase,headPitch,mouthOpen,boneHeld,breathe,moveState,earTwitch,tailWag);
+  }
+}
+
+window.renderFrame=renderFrame;
+renderFrame(0);
+</script>
+</body></html>

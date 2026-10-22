@@ -1,0 +1,14 @@
+{
+  "modelId": "gpt-6-luna",
+  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
+  "sourceHash": "dc98bdb597f9b4ecbad1c16f0dee30160747c7ec55db2e1309156f9bb162e072",
+  "responseHash": "87498c2c18a1bceaf272b9dfb93d3d7958a93f36fc87833c158c35b07797f610",
+  "requestHash": "960c358c7218db115ee39946e661e5992a5b74372265b1b7cbe9afd612bfaf5d",
+  "streamHash": "064be42dc77eb59e1587169fdb5d9d9993e960fb787b52c8eb4befeadd58ac21",
+  "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
+  "submission": 1,
+  "tools": [],
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+}

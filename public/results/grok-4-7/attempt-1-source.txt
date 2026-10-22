@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+html,body{margin:0;background:#000;overflow:hidden;}
+#stage{width:960px;height:540px;display:block;}
+</style>
+</head>
+<body>
+<canvas id="stage" width="960" height="540"></canvas>
+<script>
+const canvas=document.getElementById("stage");
+const ctx=canvas.getContext("2d");
+function clamp(v,a,b){return v<a?a:v>b?b:v;}
+function lerp(a,b,u){return a+(b-a)*u;}
+function smooth(u){u=clamp(u,0,1);return u*u*(3-2*u);}
+function hash(n){const s=Math.sin(n*127.1+311.7)*43758.5453;return s-Math.floor(s);}
+function yawOf(t){
+  t=clamp(t,0,12);
+  if(t<8)return 0.04;
+  if(t<10)return lerp(0.04,1.5708,smooth((t-8)/2));
+  return 1.5708;
+}
+function poseOf(t){
+  t=clamp(t,0,12);
+  let x=210,z=80,gait="idle",spd=0,crouch=0,hp=0,mouth=0,grip=0,headY=0.55,alert=0;
+  if(t<1){
+    x=210;z=80;gait="idle";hp=-0.08;headY=lerp(0.62,0.08,smooth(t));alert=smooth(t);
+  }else if(t<3){
+    const u=smooth((t-1)/2);
+    x=lerp(210,468,u);z=lerp(80,78,u);gait="run";spd=1;hp=0.02;headY=0.02;
+  }else if(t<4.5){
+    const u=smooth((t-3)/1.5);
+    x=lerp(468,628,u);z=lerp(78,74,u);gait="walk";spd=0.72;hp=0.08;headY=0;
+  }else if(t<6){
+    const u=smooth((t-4.5)/1.5);
+    x=lerp(628,642,u);z=74;gait="grab";spd=0;crouch=smooth(Math.min(1,(t-4.5)/0.7));
+    hp=lerp(0.15,0.95,smooth(clamp((t-4.5)/0.8,0,1)));
+    mouth=Math.sin(clamp((t-4.6)/0.9,0,1)*Math.PI)*0.55;
+    grip=smooth(clamp((t-5.15)/0.7,0,1));
+    headY=0;
+  }else if(t<8){
+    const u=smooth((t-6)/2);
+    x=lerp(642,392,u);z=lerp(74,82,u);gait="back";spd=0.78;hp=0.22;mouth=0.06;grip=1;headY=0;
+  }else if(t<10){
+    const u=smooth((t-8)/2);
+    x=lerp(392,430,u);z=lerp(82,118,u);gait="turn";spd=0.55;hp=lerp(0.18,0.02,u);mouth=0.04;grip=1;headY=lerp(0, -0.04,u);
+  }else{
+    const b=Math.sin((t-10)*2.4);
+    x=430;z=118;gait="stand";spd=0;hp=0.03+b*0.02;mouth=0.03;grip=1;headY=-0.02;crouch=0;
+  }
+  const sc=lerp(1.05,1.28,clamp((z-78)/40,0,1));
+  return {t,x,z,y:0,yaw:yawOf(t),gait,spd,crouch,hp,mouth,grip,headY,alert,sc,
+    bob: (gait==="run"?Math.abs(Math.sin(t*11))*3.2:gait==="walk"||gait==="back"?Math.abs(Math.sin(t*7))*1.6:gait==="turn"?Math.abs(Math.sin(t*6))*1.1:0)};
+}
+function worldToScreen(wx,wz,wy){
+  return {sx:wx, sy:292+(wz-80)*1.15-wy};
+}
+const DOOR_L=536, DOOR_R=662, DOOR_T=292, DOOR_B=432;
+function drawYard(){
+  const g=ctx.createLinearGradient(0,0,0,540);
+  g.addColorStop(0,"#8ec6ea");
+  g.addColorStop(0.42,"#d7ecf8");
+  g.addColorStop(0.55,"#c5dca4");
+  g.addColorStop(1,"#6f8f45");
+  ctx.fillStyle=g;ctx.fillRect(0,0,960,540);
+  ctx.fillStyle="#f4e2a8";
+  ctx.beginPath();ctx.arc(150,78,34,0,7);ctx.fill();
+  ctx.fillStyle="rgba(255,244,210,0.35)";
+  ctx.beginPath();ctx.arc(150,78,70,0,7);ctx.fill();
+  ctx.fillStyle="#7ea36a";
+  ctx.beginPath();ctx.moveTo(0,250);ctx.quadraticCurveTo(240,220,480,246);ctx.quadraticCurveTo(720,268,960,236);ctx.lineTo(960,540);ctx.lineTo(0,540);ctx.fill();
+  ctx.fillStyle="#5d7a49";
+  for(let i=0;i<26;i++){
+    const x=20+i*38, h=46+hash(i)*30;
+    ctx.fillRect(x,214-h*0.2,3,h*0.25);
+  }
+  ctx.strokeStyle="#6d5338";ctx.lineWidth=4;
+  ctx.beginPath();ctx.moveTo(40,250);ctx.lineTo(40,330);ctx.moveTo(900,236);ctx.lineTo(900,330);ctx.stroke();
+  ctx.strokeStyle="#8a6a45";ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(20,268);ctx.lineTo(250,286);ctx.moveTo(250,286);ctx.lineTo(250,250);ctx.stroke();
+  for(let i=0;i<220;i++){
+    const gx=hash(i*3+1)*960;
+    const gy=300+hash(i*5+2)*220;
+    const h=6+hash(i*7+4)*10;
+    ctx.strokeStyle=hash(i)>0.5?"#4f7334":"#86a84e";
+    ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(gx,gy);ctx.lineTo(gx+ (hash(i+9)-0.5)*4,gy-h);ctx.stroke();
+  }
+  for(let i=0;i<9;i++){
+    const fx=80+hash(i+20)*760, fy=340+hash(i+21)*150;
+    ctx.fillStyle=i%2?"#d4556a":"#f0d15a";
+    ctx.beginPath();ctx.arc(fx,fy,3.2,0,7);ctx.fill();
+  }
+}
+function drawHouseShell(front){
+  const x=500,y=210,w=250,h=210;
+  if(!front){
+    ctx.fillStyle="#2a211c";
+    ctx.fillRect(DOOR_L+8,DOOR_T+6,DOOR_R-DOOR_L-16,DOOR_B-DOOR_T-8);
+    ctx.fillStyle="#3a2e26";
+    ctx.fillRect(DOOR_L+16,DOOR_B-28,DOOR_R-DOOR_L-36,16);
+    ctx.fillStyle="#6a5038";
+    ctx.fillRect(620,DOOR_B-18,46,8);
+    return;
+  }
+  ctx.fillStyle="#8d6844";
+  ctx.beginPath();
+  ctx.moveTo(x,y+40);ctx.lineTo(x+40,y);ctx.lineTo(x+w-20,y+8);ctx.lineTo(x+w+30,y+52);ctx.lineTo(x+w+18,y+h+8);ctx.lineTo(x+8,y+h);ctx.closePath();ctx.fill();
+  ctx.fillStyle="#6e5034";
+  ctx.beginPath();ctx.moveTo(x+w-20,y+8);ctx.lineTo(x+w+30,y+52);ctx.lineTo(x+w+18,y+h+8);ctx.lineTo(x+w-30,y+h-10);ctx.closePath();ctx.fill();
+  ctx.fillStyle="#a07850";
+  ctx.beginPath();ctx.moveTo(x+16,y+46);ctx.lineTo(x+70,y+18);ctx.lineTo(x+w-36,y+24);ctx.lineTo(x+w-10,y+58);ctx.lineTo(x+w-16,y+h-8);ctx.lineTo(x+18,y+h-6);ctx.closePath();ctx.fill();
+  ctx.fillStyle="#5a4030";
+  for(let i=0;i<7;i++){
+    ctx.globalAlpha=0.18;
+    ctx.fillRect(x+30,y+60+i*18,w-70,2);
+    ctx.globalAlpha=1;
+  }
+  ctx.fillStyle="#4a3426";
+  ctx.beginPath();
+  ctx.moveTo(DOOR_L,DOOR_T);ctx.lineTo(DOOR_R,DOOR_T-6);ctx.lineTo(DOOR_R,DOOR_B);ctx.lineTo(DOOR_L,DOOR_B+4);ctx.closePath();ctx.fill();
+  ctx.strokeStyle="#3a291c";ctx.lineWidth=8;
+  ctx.stroke();
+  ctx.fillStyle="#c4553a";
+  ctx.beginPath();ctx.moveTo(x+20,y+48);ctx.lineTo(x+120,y+8);ctx.lineTo(x+w-10,y+16);ctx.lineTo(x+w+8,y+46);ctx.lineTo(x+w-40,y+36);ctx.lineTo(x+110,y+30);ctx.closePath();ctx.fill();
+  ctx.fillStyle="#8fd0ea";
+  ctx.fillRect(700,268,28,24);
+  ctx.strokeStyle="#efe6d2";ctx.lineWidth=2;ctx.strokeRect(700,268,28,24);
+}
+function boneShape(x,y,ang,sc,shade){
+  ctx.save();ctx.translate(x,y);ctx.rotate(ang);ctx.scale(sc,sc);
+  ctx.fillStyle=shade||"#f3ead7";
+  ctx.strokeStyle="#c3b49a";ctx.lineWidth=1;
+  function knob(px,py){ctx.beginPath();ctx.arc(px,py,6.2,0,7);ctx.fill();ctx.stroke();}
+  ctx.beginPath();ctx.roundRect(-16,-4.2,32,8.4,3);ctx.fill();ctx.stroke();
+  knob(-16,-3.2);knob(-16,3.2);knob(16,-3.2);knob(16,3.2);
+  ctx.restore();
+}
+function fluff(cx,cy,rx,ry,rot,c0,c1,n,seed,alpha){
+  ctx.save();ctx.translate(cx,cy);ctx.rotate(rot);
+  const g=ctx.createRadialGradient(-rx*0.35,-ry*0.45,Math.min(rx,ry)*0.15,0,0,Math.max(rx,ry));
+  g.addColorStop(0,c0);g.addColorStop(1,c1);
+  ctx.fillStyle=g;ctx.globalAlpha=alpha==null?1:alpha;
+  ctx.beginPath();ctx.ellipse(0,0,rx,ry,0,0,7);ctx.fill();
+  ctx.globalAlpha=0.45;ctx.strokeStyle=c1;ctx.lineWidth=1;
+  for(let i=0;i<n;i++){
+    const a=hash(seed+i*1.7)*6.283, rad=0.55+hash(seed+i*3.1)*0.5;
+    const x1=Math.cos(a)*rx*rad, y1=Math.sin(a)*ry*rad;
+    const x2=Math.cos(a)*(rx*(rad+0.16)), y2=Math.sin(a)*(ry*(rad+0.2));
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawDog(p,pass){
+  const S=p.sc;
+  const yaw=p.yaw;
+  const c=Math.cos(yaw), s=Math.sin(yaw);
+  const bob=p.bob*(1-p.crouch*0.4);
+  const bodyY=26*S+bob*0.6-p.crouch*8;
+  function map(lf,rt,up){
+    const wx=p.x + (lf*c - rt*s)*S;
+    const wz=p.z + (lf*s + rt*c)*S*0.55;
+    const wy=up*S;
+    const sc=worldToScreen(wx,wz,wy);
+    return {wx,wz,wy,sx:sc.sx,sy:sc.sy+ (p.z>90?0:0), d:wz+up*0.01};
+  }
+  const parts=[];
+  function add(o){parts.push(o);}
+  const tailLag=yawOf(p.t-0.16)-yaw;
+  const breath=p.gait==="stand"?1+Math.sin(p.t*2.6)*0.018:1;
+  const hip=map(-6,0,bodyY);
+  const chest=map(16,0,bodyY+2);
+  add({k:"ell",wx:hip.wx,d:hip.d,sx:hip.sx,sy:hip.sy,rx:30*S*breath,ry:16*S,rot:s*0.2,c0:"#f0b07a",c1:"#b8612e",n:16,seed:10});
+  add({k:"ell",wx:(hip.wx+chest.wx)/2,d:(hip.d+chest.d)/2+2,sx:(hip.sx+chest.sx)/2,sy:(hip.sy+chest.sy)/2+2,rx:24*S,ry:15*S,rot:0,c0:"#e89455",c1:"#a65324",n:12,seed:20});
+  const ruff=map(22,0,bodyY+4);
+  add({k:"ell",wx:ruff.wx,d:ruff.d+1,sx:ruff.sx,sy:ruff.sy,rx:20*S,ry:18*S,rot:0,c0:"#f6e2cc",c1:"#e0a06a",n:18,seed:30});
+  const freq=p.gait==="run"?3.4:p.gait==="walk"?2.1:p.gait==="back"?1.8:p.gait==="turn"?1.5:0;
+  const dir=p.gait==="back"?-1:1;
+  const stride=(p.gait==="run"?16:p.gait==="turn"?7:11)*dir*(freq?1:0);
+  const offs=[0,0.5,0.25,0.75];
+  const hipsL=[[18,-7],[18,7],[-16,-7],[-16,7]];
+  for(let i=0;i<4;i++){
+    const ph=freq?((p.t*freq+offs[i])%1+1)%1:0.15+i*0.02;
+    let along,lift;
+    if(!freq){along=(i<2?4:-2);lift=0;}
+    else if(ph<0.55){const u=ph/0.55;along=stride*(1-2*u);lift=0;}
+    else {const u=(ph-0.55)/0.45;along=-stride+2*stride*u;lift=Math.sin(u*Math.PI)*(p.gait==="run"?12:7);}
+    if(p.gait==="grab"){lift=0;along=i<2?6:-4;}
+    const hloc=hipsL[i];
+    const hpj=map(hloc[0],hloc[1

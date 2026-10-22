@@ -1,0 +1,14 @@
+{
+  "modelId": "Codestral-2501",
+  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
+  "sourceHash": "0dce3a5800f42099ea058075b85471b2582db029e3b5d1afd0844a5d5d115d62",
+  "responseHash": "6290bab49eee9b0ba3526c3f15b1908b570ffc909b7df78be60780826b04a529",
+  "requestHash": "13d187687bcea92aa8bb2784d4c701490818d0b61507c2e587cd9608dd1fe7ab",
+  "streamHash": null,
+  "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
+  "submission": 1,
+  "tools": [],
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+}

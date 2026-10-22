@@ -1,0 +1,144 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;background:#000}canvas{display:block}</style></head><body><canvas id="stage" width="960" height="540"></canvas><script>
+const c=document.getElementById('stage'),g=c.getContext('2d');
+function cl(x,a,b){return Math.max(a,Math.min(b,x))}
+function sm(a,b,t){t=cl((t-a)/(b-a),0,1);return t*t*(3-2*t)}
+function lp(a,b,t){return a+(b-a)*t}
+function rnd(i){let s=Math.sin(i*127.1)*43758.5;return s-Math.floor(s)}
+function fur(x,y,r,rx,ry,n,col,a){g.save();g.globalAlpha=a;g.strokeStyle=col;g.lineWidth=1.5;g.beginPath();for(let i=0;i<n;i++){let an=rnd(i+r)*6.283,d=Math.sqrt(rnd(i*3+r))*0.95;let px=x+Math.cos(an)*rx*d,py=y+Math.sin(an)*ry*d;g.moveTo(px,py);g.lineTo(px+Math.cos(an)*6,py+Math.sin(an)*6+3)}g.stroke();g.restore()}
+function blob(x,y,rx,ry,rot,c1,c2){g.save();g.translate(x,y);g.rotate(rot||0);let gr=g.createRadialGradient(-rx*.3,-ry*.4,2,0,0,Math.max(rx,ry));gr.addColorStop(0,c1);gr.addColorStop(1,c2);g.fillStyle=gr;g.beginPath();
+for(let i=0;i<=28;i++){let a=i/28*6.283,k=1+0.06*Math.sin(i*5+rx);g.lineTo(Math.cos(a)*rx*k,Math.sin(a)*ry*k)}g.fill();g.restore()}
+// path for dog x position, door at x=700
+const DOORX=690,GY=420;
+function state(t){
+let s={x:0,mode:0,enter:0,turn:0,bone:0,head:0,gait:0};
+if(t<1){s.x=120;s.head=0}
+else if(t<3){let u=(t-1)/2;s.x=lp(120,560,sm(0,1,u)*0.6+u*0.4);s.mode=1}
+else if(t<4.5){s.x=lp(560,760,sm(3,4.5,t));s.mode=1}
+else if(t<6){s.x=775;s.mode=2}
+else if(t<8){s.x=lp(775,560,sm(6,8,t));s.mode=3}
+else{s.x=560;s.mode=4}
+return s}
+function render(t){
+t=cl(t,0,12);
+let S=state(t);
+// sky/yard
+let sk=g.createLinearGradient(0,0,0,300);sk.addColorStop(0,'#9cc4dc');sk.addColorStop(1,'#dbe8d6');g.fillStyle=sk;g.fillRect(0,0,960,540);
+g.fillStyle='#4f7a3c';g.fillRect(0,250,960,40);
+// fence
+g.fillStyle='#8a6a48';for(let i=0;i<20;i++){g.fillRect(i*50,190,40,110);g.fillStyle=i%2?'#7c5e3e':'#8a6a48'}
+let gr=g.createLinearGradient(0,290,0,540);gr.addColorStop(0,'#6a9a47');gr.addColorStop(1,'#3f6c2c');g.fillStyle=gr;g.fillRect(0,290,960,250);
+g.strokeStyle='rgba(30,70,20,.35)';for(let i=0;i<600;i++){let x=rnd(i)*960,y=290+rnd(i+9)*250;g.beginPath();g.moveTo(x,y);g.lineTo(x+2,y-6-(y-290)/30);g.stroke()}
+// doghouse back (interior)
+const hx=640,hy=250,hw=260,hh=190;
+g.fillStyle='#6b3f26';g.fillRect(hx,hy,hw,hh);
+// interior dark
+g.fillStyle='#1a0f0a';g.fillRect(hx+40,hy+60,150,hh-60);
+// bone in house
+let boneX=hx+110,boneY=GY-6;
+let bonePos;
+let mouth=null;
+// dog
+let dog=drawDogData(t,S);
+// bone at rest
+let held=t>=5.4;
+function drawBone(x,y,rot,sc){g.save();g.translate(x,y);g.rotate(rot);g.scale(sc,sc);g.fillStyle='#efe6cf';g.fillRect(-16,-4,32,8);for(let sx of[-1,1])for(let sy of[-1,1]){g.beginPath();g.arc(sx*17,sy*5,6,0,6.283);g.fill()}g.restore()}
+if(!held)drawBone(boneX,boneY,0.1,1);
+// shadow
+g.fillStyle='rgba(0,0,0,.3)';g.beginPath();g.ellipse(dog.sx,GY+14,70,10,0,0,6.283);g.fill();
+// dog occlusion: clip dog to outside of house wall when inside
+g.save();
+if(dog.x>hx-20){ // dog inside: clip front wall except doorway
+g.beginPath();g.rect(0,0,960,540);g.restore();g.save();
+// front wall left of door region is drawn after dog; dog drawn first
+}
+drawDog(dog,t,S);
+g.restore();
+// front wall of house (occludes dog body inside)
+let wallx=hx+hw*0.5;
+g.fillStyle='#a5683b';
+// front face from x=hx+190 to hx+hw as wall with door? use door at hx+10..hx+190 drawn as opening
+g.fillStyle='#b8743f';g.fillRect(hx+190,hy+40,hw-190,hh-40);
+g.fillStyle='#a5683b';g.fillRect(hx,hy+40,40,hh-40);
+g.fillRect(hx+40,hy+40,150,20);
+// door arch visual
+// roof
+g.fillStyle='#5a2e22';g.beginPath();g.moveTo(hx-25,hy+55);g.lineTo(hx+hw/2,hy-50);g.lineTo(hx+hw+25,hy+55);g.fill();
+g.fillStyle='rgba(0,0,0,.25)';g.fillRect(hx-25,hy+50,hw+50,8);
+// dog parts inside draw over interior but wall hides back part: redraw dog overlay for portion left of wall handled via order
+drawDogOver(dog,t,S);
+if(held){let m=dog.mouth;drawBone(m.x,m.y,m.r,1);}
+// foreground grass
+g.strokeStyle='#3a6a28';for(let i=0;i<120;i++){let x=rnd(i+50)*960,y=500+rnd(i)*40;g.beginPath();g.moveTo(x,y);g.lineTo(x+3,y-14);g.stroke()}
+}
+function drawDogData(t,S){
+let x=S.x,m=S.mode;
+let run=(t>1&&t<4.5)?1:0, rev=(t>6&&t<8)?1:0;
+let ph=t*(run?13:rev?7:0);
+let bob=run?Math.sin(ph*2)*3:0;
+let turn=sm(8,10,t); // 0 side facing right ->1 front
+let down=(t>4.5&&t<6)?sm(4.5,5.2,t)*(1-sm(5.6,6,t)):0;
+// reverse: body faces right still while backing (dog faces house)
+return{x:x,sx:x,bob:bob,ph:ph,run:run,rev:rev,turn:turn,down:down,mouth:{x:0,y:0,r:0}};
+}
+function drawDog(d,t,S){
+// pass 1: complete dog if outside; parts behind wall handled by painting order
+d.drawn=true;
+paint(d,t,false)}
+function drawDogOver(d,t,S){paint(d,t,true)}
+function paint(d,t,over){
+// over pass: only draw rear part (x< wall) not needed; simply draw when dog outside house front
+let inHouse=d.x>720;
+if(!over&&!inHouse)return;
+if(over&&inHouse)return;
+if(over===false&&inHouse){/*body inside, behind front wall*/}
+let k=d.turn,x=d.x,y=GY+d.bob;
+let face=1-k; // side weight
+let fx=Math.cos(k*1.57),fz=Math.sin(k*1.57);
+let sc=1+k*0.06;
+let tx=x,ty=y;
+g.save();g.translate(tx,ty);g.scale(sc,sc);
+let ph=d.ph;
+let O1='#e0872f',O2='#a85a1c',C='#f3d9a8';
+// legs
+function leg(px,pp,front){let a=Math.sin(pp),lift=Math.max(0,Math.cos(pp))*(d.run?10:d.rev?5:0);let sw=a*(d.run?14:d.rev?8:0);
+let ox=px*fx*1;
+blob(ox+sw,-6-lift*0.5+14,7,15-lift*0.3,0.0,C,'#b99a6a');blob(ox+sw+2,22-lift,8,4,0,'#f5e6c8','#9c8458')}
+if(k<0.9){let sp=1-k;
+leg(-26*sp,ph+3.1,0);leg(-14*sp,ph+0.3,0);leg(24*sp,ph+3.1+0.4,1);leg(34*sp,ph,1);}
+else{leg(-16,0,1);leg(16,0,1)}
+// tail
+let tw=Math.sin(t*3)*3;
+if(k<0.7){blob(-42*(1-k)+tw,-52,22,26,-0.5,'#f0a04a',O2);fur(-42*(1-k),-52,5,22,26,40,'#7a3d12',.4)}
+else blob(-18*(1-k)+tw,-62,24,22,0,'#f0a04a',O2);
+// body
+let bw=lerp(46,34,k);blob(0,-32,bw,28,-0.05,O1,O2);fur(0,-32,1,bw,28,90,'#8a4414',.45);fur(0,-28,2,bw-8,20,60,'#ffd08a',.35);
+// chest ruff
+let hxp=lerp(46,0,k),hyp=-52+d.down*34+(k>0.5?0:0);
+blob(hxp*0.75*(1-k)+0,-40,26,24,0,'#f5d9a5','#c99a5a');
+// head
+let hd=hxp+(d.down?d.down*14:0);
+let hy2=hyp-6+(d.rev?-2:0);
+blob(hd,hy2,22,20,0,'#eda04a','#b4661f');fur(hd,hy2,3,22,20,50,'#7a3d12',.4);
+// ruff
+blob(hd-8*(1-k),hy2+14,26,16,0,'#f8e1b3','#c99a5a');fur(hd,hy2+14,4,26,14,40,'#a07030',.4);
+// ears
+let ex=lerp(6,14,k);
+for(let s of[-1,1]){if(k<0.5&&s>0&&false)continue;g.fillStyle='#c46f23';g.beginPath();let cx=hd+s*ex*(k>0.2?1:0.6)-2*(1-k)*(-s)+(k<0.2?(s<0?-6:2):0),cy=hy2-16;g.moveTo(cx-6,cy+8);g.lineTo(cx+s*1,cy-14);g.lineTo(cx+6,cy+8);g.fill()}
+// muzzle
+let mx=hd+lerp(24,0,k),my=hy2+6+d.down*2;let mo=(t>4.8&&t<5.4)?sm(4.8,5.0,t)*(1-sm(5.2,5.4,t))*5:0;
+blob(mx,my,lerp(13,9,k),lerp(8,10,k),0,'#f4d3a0','#b68a50');
+g.fillStyle='#111';g.beginPath();g.arc(mx+lerp(10,0,k),my-3+(k>0.5?4:0),2.5,0,6.283);g.fill();
+// eyes
+g.fillStyle='#120a06';let e1=lerp(hd+10,hd-7,k),e2=hd+7;
+g.beginPath();g.arc(e1,hy2-3,2.6,0,6.283);g.fill();if(k>0.1){g.beginPath();g.arc(lerp(hd+10,hd+7,k)+ (k<.1?0:0),hy2-3,2.6,0,6.283);g.fill()}
+// mouth/bone
+let m={x:mx+lerp(4,0,k),y:my+lerp(5,9,k)+mo*0.5,r:lerp(0.05,0,k)};
+if(k>0.5){m.r=0}
+d.mouth={x:tx+(m.x)*sc,y:ty+m.y*sc,r:m.r+(t>8?0:0)};
+g.restore();
+if(t>=5.4&&t<8)d.mouth.r=0.05;
+}
+function lerp(a,b,t){return a+(b-a)*t}
+window.renderFrame=function(t){g.clearRect(0,0,960,540);render(+t||0)};
+renderFrame(0);
+</script></body></html>

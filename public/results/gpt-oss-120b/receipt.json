@@ -1,0 +1,14 @@
+{
+  "modelId": "gpt-oss-120b",
+  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
+  "sourceHash": "7cc422399f80cc6497325184e3d97adcc93b80e4e90859969b215fe282f0be65",
+  "responseHash": "fa4d180ef33db7f11e2800e3c4f21b1c91b809078ab1e906b060e294dff204a4",
+  "requestHash": "b789034409b2a9300515cbd1366121e3973ed8bcec7b99c4c4d9d74e087bd02a",
+  "streamHash": "0628f3b06c09e006b605ddee03ad466e8169e6c443f462fc2ad78790e94a084d",
+  "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
+  "submission": 1,
+  "tools": [],
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+}

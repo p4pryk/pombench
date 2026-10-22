@@ -1,0 +1,5 @@
+{
+  "at": "2026-10-22T13:22:21.307322+00:00",
+  "scriptHash": "0173a390a7506b86bf614143bc83ff0b68250ebd91ead689a46c4da1f3f74e56",
+  "policy": "Finish the existing Pro execution-repair request. A recorded absolute deadline remains 1200 seconds. If transport has no terminal usage, archive it as unknown rather than retrying the same capped 32768 request. A completed capped reply qualifies for the existing single 65536 completion rescue; use the most recent actually completed reply as lineage. No completed creative response discarded, no best-of selection."
+}

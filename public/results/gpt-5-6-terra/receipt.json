@@ -1,0 +1,14 @@
+{
+  "modelId": "gpt-5.6-terra",
+  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
+  "sourceHash": "25e6fa3cfcb0e7b91fd878577dfab0b36a2b8fa5e8c2cb274077d770952748ce",
+  "responseHash": "bc1f098e6388a825815858fae5129bfc6e725a95b90673bc602f304701a49373",
+  "requestHash": "8ee8e034c76e3bf1779d293337d4258a35d9822ecf70ce628e37bd6099360f07",
+  "streamHash": "886f91f46f896539c5bfdd425f12a2ef674dea8b82fd2bded3cc982aeb9b5370",
+  "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
+  "submission": 1,
+  "tools": [],
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+}

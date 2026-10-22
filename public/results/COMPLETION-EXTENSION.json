@@ -1,0 +1,10 @@
+{
+  "recordedAt": "2026-10-22T08:42:02.526829+00:00",
+  "reason": "User explicitly requested attention to the remaining GPT-5 Mini playback failure.",
+  "policy": "One extra execution-only repair equally available to every model still failing after the initial repair; maximum three creative responses. Last response retained, never best-of. All known usage included. Original brief and prior evidence remain unchanged.",
+  "eligibleModels": [
+    "gpt-5-mini"
+  ],
+  "promptTemplate": "\n\n## Additional execution-completion repair\nThe organizer is allowing one additional repair for every model whose scene still\nfails to execute after the original repair. Your latest source and the actual\nbrowser/compiler diagnosis are below. Return ONE complete corrected HTML scene\nfor the same Pomeranian task. Do not send a patch or an explanation. Preserve the\nrequested action. Inspect syntax, identifiers, object literals, helpers and all\nrenderFrame(t) paths. Do not add timers, network requests or your own playback.\n\nPrevious source (verbatim data):\n<previous-source>\n{source}\n</previous-source>\n\nActual diagnostics:\n{feedback}\n",
+  "scriptHash": "c6550d94579de2ebfd9a4fd9e35bde7b287a4f449d5225a23a91784738ed5e4c"
+}

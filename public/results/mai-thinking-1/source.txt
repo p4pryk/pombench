@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #000;
+  }
+  #stage {
+    display: block;
+    width: 960px;
+    height: 540px;
+    image-rendering: optimizeSpeed;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+  }
+</style>
+</head>
+<body>
+<canvas id="stage" width="960" height="540"></canvas>
+<script>
+(function () {
+  'use strict';
+
+  var canvas = document.getElementById('stage');
+  var ctx = canvas.getContext('2d', { alpha: false });
+
+  // ===== FIXED SCENE CONSTANTS =====
+  var SCENE = {
+    W: 960,
+    H: 540,
+    GRAV_Y: 0,
+    // Ground
+    GROUND_Y: 430,
+    GROUND_COLOR_0: [0xC7, 0xD5, 0xA3],
+    GROUND_COLOR_1: [0xB5, 0xC5, 0x92],
+    // Lighting
+    SUN_DIR_X: 0.25,
+    SUN_DIR_Y: -0.55,
+    AMBIENT: 0.28,
+    DIRECT: 0.72,
+    // Doghouse
+    DH_X: 620,
+    DH_Y: 360,
+    DH_W: 130,
+    DH_H: 120,
+    DH_ROOF_H: 48,
+    DH_DOOR_W: 44,
+    DH_DOOR_H: 76,
+    DH_DOOR_XOFF: 43,
+    DH_INTERIOR: [0x3C, 0x2F, 0x1D],
+    DH_WALL: [0x8F, 0x6B, 0x3F],
+    DH_ROOF: [0x7A, 0x4F, 0x2C],
+    DH_TRIM: [0x6C, 0x4A, 0x25],
+    // Bone
+    BONE_REST_X: 660,
+    BONE_REST_Y: 435,
+    BONE_R: 5.2,
+    BONE_LEN: 20,
+    BONE_COLOR: [0xD9, 0xD2, 0xC3],
+    // Dog root
+    DOG_START_X: -80,
+    DOG_START_Y: 422,
+    DOG_SCALE: 1.0,
+    // Pomeranian colors
+    COAT_ORANGE: [0xF5, 0xA9, 0x4D],
+    COAT_CREAM: [0xF2, 0xE6, 0xD6],
+    COAT_RUFF: [0xF6, 0xF0, 0xE6],
+    COAT_TAIL_DARK: [0xE9, 0x9A, 0x47],
+    NOSE: [0x1F, 0x1A, 0x15],
+    EYE_DARK: [0x16, 0x12, 0x0C],
+    PAW: [0xF2, 0xEC, 0xE2],
+    LIP: [0xD9, 0xC9, 0xC2]
+  };
+
+  // ===== DETERMINISTIC HASH =====
+  function hash2(ix, iy) {
+    var x = (ix >>> 0) * 131542391;
+    var y = (iy >>> 0) * 1000000009;
+    var h = (x ^ y) ^ ((x << 13) | (x >>> 19)) ^ ((y << 7) | (y >>> 25));
+    h = (h * 1664525 + 1013904223) >>> 0;
+    return (h & 0xFFFFFF) / 16777216.0;
+  }
+  function hash3(ix, iy, iz) {
+    var h = hash2(ix, iy);
+    var xz = (iz >>> 0) * 201326611;
+    h = (h * 16777216.0 + ((xz ^ (xz << 17)) >>> 0) & 0xFFFFFF) / 16777216.0;
+    return h - Math.floor(h);
+  }
+
+  function clamp(v, a, b) {
+    return v < a ? a : (v > b ? b : v);
+  }
+  function smoothstep(e0, e1, x) {
+    var t = clamp((x - e0) / (e1 - e0), 0.0, 1.0);
+    return t * t * (3.0 - 2.0 * t);
+  }
+  function smootherstep(e0, e1, x) {
+    var t = clamp((x - e0) / (e1 - e0), 0.0, 1.0);
+    return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
+  }
+  function lerp(a, b, t) {
+    return a + (b - a) * t;
+  }
+  function sinDet(t) {
+    return Math.sin(t * 2.0 * Math.PI);
+  }
+
+  // ===== ANIMATION STATE COMPUTATION =====
+  function computePose(t) {
+    var pose = {
+      rootX: 0, rootY: 0, rootRot: 0,
+      spine0: 0, spine1: 0, spine2: 0,
+      headX: 0, headY: 0, headRot: 0,
+      muzzleRot: 0,
+      earL: 0, earR: 0,
+      neck: 0, ruff: 0,
+      tailBase: 0, tailMid: 0, tailTip: 0,
+      jaw: 0,
+      mouthOpen: 0,
+      // Legs: angles in radians (simplified)
+      FL: {s:0,e:0,p:0,con:0}, FR: {s:0,e:0,p:0,con:0},
+      BL: {s:0,e:0,p:0,con:0}, BR: {s:0,e:0,p:0,con:0},
+      // Bone
+      boneX: SCENE.BONE_REST_X, boneY: SCENE.BONE_REST_Y, boneRot: 0, inMouth: false,
+      // Camera
+      camX: 0, camY: 0,
+      // Breathing
+      breath: 0
+    };
+
+    var tt = t;
+    if (tt < 0) tt = 0;
+    if (tt > 12) tt = 12;
+
+    pose.breath = 0.012 * Math.sin(tt * 2.0 * Math.PI * 0.8);
+
+    // Phases
+    var pRunStart = 1.0, pRunEnd = 3.0;
+    var pEnterStart = 3.0, pEnterEnd = 4.5;
+    var pGrabStart = 4.5, pGrabEnd = 6.0;
+    var pBackStart = 6.0, pBackEnd = 8.0;
+    var pTurnStart = 8.0, pTurnEnd = 10.0;
+    var pSettleStart = 10.0, pSettleEnd = 12.0;
+
+    // 0–1: establish
+    var est = smoothstep(0, 1.0, tt);
+    pose.rootX = SCENE.DOG_START_X + (180 - SCENE.DOG_START_X) * est * 0.15;
+    pose.rootY = SCENE.DOG_START_Y - 1.0 * est;
+    pose.rootRot = -0.05 * est;
+    pose.spine0 = 0.02 * est; pose.spine1 = -0.01 * est; pose.spine2 = 0.01 * est;
+    pose.headRot = 0.08 * est; pose.muzzleRot = -0.02 * est;
+    pose.earL = 0.25 * est; pose.earR = 0.28 * est;
+    pose.tailBase = -0.35 * est; pose.tailMid = -0.45 * est; pose.tailTip = -0.35 * est;
+    pose.mouthOpen = 0.0;
+
+    // 1–3: run
+    if (tt >= pRunStart) {
+      var tr = clamp((tt - pRunStart) / (pRunEnd - pRunStart), 0, 1);
+      var stride = tr * 2.0 * Math.PI;
+      // Root
+      pose.rootX = 170 + (SCENE.DH_X - 50 - 170) * tr;
+      pose.rootY = SCENE.DOG_START_Y - Math.abs(Math.sin(stride * 2.0)) * 2.2;
+      pose.rootRot = -0.03 + Math.sin(stride) * 0.004;
+      // Spine
+      pose.spine0 = 0.06 + Math.sin(stride * 2.0 + 0.5) * 0.01;
+      pose.spine1 = -0.02 + Math.sin(stride * 2.0) * 0.006;
+      pose.spine2 = 0.03 + Math.sin(stride * 2.0 - 0.3) * 0.005;
+      // Head
+      pose.headRot = 0.12 + Math.sin(stride * 2.0 - 1.0) * 0.02;
+      pose.muzzleRot = -0.01;
+      pose.earL = 0.35 + Math.sin(stride * 2.0) * 0.05; pose.earR = 0.38 + Math.sin(stride * 2.0 - 0.2) * 0.05;
+      // Tail
+      pose.tailBase = -0.42 + Math.sin(stride * 2.0 + 1.0) * 0.04;
+      pose.tailMid = -0.55 + Math.sin(stride * 2.0 + 1.2) * 0.05;
+      pose.tailTip = -0.45 + Math.sin(stride * 2.0 + 1.4) * 0.04;
+      // Gait
+      var cFL = Math.max(0, Math.sin(stride));
+      var cFR = Math.max(0, Math.sin(stride + Math.PI));
+      var cBL = Math.max(0, Math.sin(stride + Math.PI));
+      var cBR = Math.max(0, Math.sin(stride));
+      pose.FL = {s: 0.4*cFL, e: 0.9*cFL, p: 0.2*cFL, con: cFL};
+      pose.FR = {s: 0.4*cFR, e: 0.9*cFR, p: 0.2*cFR, con: cFR};
+      pose.BL = {s: 0.35*cBL, e: 0.8*cBL, p: 0.25*cBL, con: cBL};
+      pose.BR = {s: 0.35*cBR, e: 0.8*cBR, p: 0.25*cBR, con: cBR};
+    }
+
+    // 3–4.5: enter
+    if (tt >= pEnterStart) {
+      var te = clamp((tt - pEnterStart) / (pEnterEnd - pEnterStart), 0, 1);
+      var tee = smootherstep(0,1,te);
+      pose.rootX = (SCENE.DH_X - 50) + (SCENE.DH_X - 18 - (SCENE.DH_X - 50)) * tee;
+      pose.rootY = SCENE.DOG_START_Y - Math.sin(tee * Math.PI) * 1.0;
+      pose.rootRot = -0.03 - tee * 0.01;
+      pose.spine0 = 0.05 - tee * 0.01; pose.spine1 = -0.01; pose.spine2 = 0.02;
+      pose.headRot = 0.08 - tee * 0.04;
+      pose.muzzleRot = -0.005;
+      pose.earL = 0.32; pose.earR = 0.34;
+      pose.tailBase = -0.38; pose.tailMid = -0.48; pose.tailTip = -0.36;
+      var g = 0.5 + 0.5*Math.sin(tee*Math.PI*2.0);
+      pose.FL = {s:0.25*g,e:0.6*g,p:0.15*g,con:g};
+      pose.FR = {s:0.22*g,e:0.55*g,p:0.12*g,con:g};
+      pose.BL = {s:0.18*g,e:0.5*g,p:0.1*g,con:g*0.8};
+      pose.BR = {s:0.16*g,e:0.48*g,p:0.08*g,con:g*0.8};
+      pose.mouthOpen = 0.0;
+    }
+
+    // 4.5–6: grab
+    if (tt >= pGrabStart) {
+      var tg = clamp((tt - pGrabStart) / (pGrabEnd - pGrabStart), 0, 1);
+      var tgs = smoothstep(0,1,tg);
+      pose.rootX = SCENE.DH_X - 16 + Math.sin(tgs*Math.PI*1.5)*0.8;
+      pose.rootY = SCENE.DOG_START_Y - 0.5 + Math.sin(tgs*Math.PI*2.0)*0.2;
+      pose.rootRot = -0.04;
+      pose.spine0 = 0.03; pose.spine1 = -0.008; pose.spine2 = 0.015;
+      pose.headRot = -0.05 - tgs * 0.09;
+      pose.muzzleRot = 0.01;
+      pose.earL = 0.28 - tgs*0.04; pose.earR = 0.30 - tgs*0.04;
+      pose.tailBase = -0.32; pose.tailMid = -0.40; pose.tailTip = -0.30;
+      pose.mouthOpen = 0.0 + tgs * 0.55;
+      pose.FL = {s:0.12,e:0.3,p:0.08,con:0.6};
+      pose.FR = {s:0.1,e:0.28,p:0.07,con:0.6};
+      pose.BL = {s:0.08,e:0.24,p:0.06,con:0.5};
+      pose.BR = {s:0.07,e:0.22,p:0.05,con:0.5};
+      // Bone grab
+      if (tg >= 0.25) {
+        var bg = smoothstep(0.25, 0.9, tg);
+        pose.boneX = lerp(SCENE.BONE_REST_X, SCENE.DH_X + 6, bg);
+        pose.boneY = lerp(SCENE.BONE_REST_Y, SCENE.GROUND_Y - 34, bg);
+        pose.boneRot = bg * 0.6;
+        pose.inMouth = (tg >= 0.45);
+      } else {
+        pose.boneX = SCENE.BONE_REST_X; pose.boneY = SCENE.BONE_REST_Y; pose.boneRot = 0; pose.inMouth = false;
+      }
+    } else {
+      pose.boneX = SCENE.BONE_REST_X; pose.boneY = SCENE.BONE_REST_Y; pose.boneRot = 0; pose.inMouth = false;
+    }
+
+    // 6–8: back out
+    if (tt >= pBackStart) {
+      var tb = clamp((tt - pBackStart) / (pBackEnd - pBackStart), 0, 1);
+      var tbs = smootherstep(0,1,tb);
+      pose.rootX = (SCENE.DH_X - 16) + (SCENE.DH_X - 70 - (SCENE.DH_X - 16)) * tbs;
+      pose.rootY = SCENE.DOG_START_Y - 0.2 - Math.sin(tbs*Math.PI)*0.6;
+      pose.rootRot = -0.02 + Math.sin(tbs*Math.PI*1.5)*0.002;
+      pose.spine0 = 0.02; pose.spine1 = -0.006; pose.spine2 = 0.01;
+      pose.headRot = -0.08 + Math.sin(tbs*Math.PI*2.0)*0.003;
+      pose.muzzleRot = 0.005;
+      pose.earL = 0.24; pose.earR = 0.26;
+      pose.tailBase = -0.28; pose.tailMid = -0.36; pose.tailTip = -0.26;
+      pose.mouthOpen = 0.48;
+      pose.inMouth = true;
+      pose.boneX = pose.rootX + 22;
+      pose.boneY = pose.rootY - 34;
+      pose.boneRot = -0.15 + Math.sin(tbs*Math.PI*1.2)*0.05;
+      var gb = 0.6 + 0.4*Math.sin(tbs*Math.PI*2.0);
+      pose.BL = {s:0.2*gb,e:0.5*gb,p:0.12*gb,con:gb};
+      pose.BR = {s:0.18*gb,e:0.48*gb,p:0.1*gb,con:gb};
+      pose.FL = {s:0.14*gb,e:0.4*gb,p:0.08*gb,con:gb*0.9};
+      pose.FR = {s:0.12*gb,e:0.38*gb,p:0.07*gb,con:gb*0.9};
+    }
+
+    // 8–10: turn
+    if (tt >= pTurnStart) {
+      var tu = clamp((tt - pTurnStart) / (pTurnEnd - pTurnStart), 0, 1);
+      var tus = smootherstep(0,1,tu);
+      pose.rootX = SCENE.DH_X - 70 + (SCENE.DH_X - 40 - (SCENE.DH_X - 70)) * tu * 0.2;
+      pose.rootY = SCENE.DOG_START_Y - 0.8 + Math.sin(tus*Math.PI)*0.8;
+      pose.rootRot = -0.02 + tus * 0.65;
+      pose.spine0 = 0.01 + tus*0.02; pose.spine1 = -0.004; pose.spine2 = 0.008;
+      pose.headRot = -0.06 + tus * 0.38;
+      pose.muzzleRot = 0.002 + tus*0.01;
+      pose.earL = 0.22 + tus*0.08; pose.earR = 0.24 + tus*0.1;
+      pose.tailBase = -0.24 - tus*0.05;
+      pose.tailMid = -0.32 - tus*0.08;
+      pose.tailTip = -0.22 - tus*0.06;
+      pose.mouthOpen = 0.45;
+      pose.inMouth = true;
+      pose.boneX = pose.rootX + Math.cos(pose.rootRot)*26 - Math.sin(pose.rootRot)*(-4);
+      pose.boneY = pose.rootY - 34 + Math.sin(pose.rootRot)*26 + Math.cos(pose.rootRot)*(-4);
+      pose.boneRot = -0.1 + pose.rootRot*0.2;
+      var gt = 0.5 + 0.5*Math.sin(tus*Math.PI*2.5);
+      pose.FL = {s:0.16*gt,e:0.42*gt,p:0.1*gt,con:gt};
+      pose.FR = {s:0.14*gt,e:0.4*gt,p:0.09*gt,con:gt};
+      pose.BL = {s:0.18*gt,e:0.45*gt,p:0.11*gt,con:gt};
+      pose.BR = {s:0.15*gt,e:0.43*gt,p:0.1*gt,con:gt};
+    }
+
+    // 10–12: settle frontal
+    if (tt >= pSettleStart) {
+      var ts = clamp((tt - pSettleStart) / (pSettleEnd - pSettleStart), 0, 1);
+      var tss = smoothstep(0,1,ts);
+      pose.rootX = SCENE.DH_X - 40 + 8*tss;
+      pose.rootY = SCENE.DOG_START_Y - 0.4 - 1.2*tss + pose.breath*6.0;
+      pose.rootRot = 0.65 - tss*0.03;
+      pose.spine0 = 0.03 + pose.breath*0.4;
+      pose.spine1 = -0.002 + pose.breath*0.25;
+      pose.spine2 = 0.006 + pose.breath*0.2;
+      pose.headRot = 0.32 - tss*0.0 + pose.breath*0.15;
+      pose.muzzleRot = 0.012 + Math.sin(tt*2.0*Math.PI*0.6)*0.0015;
+      pose.earL = 0.30 + Math.sin(tt*2.0*Math.PI*0.7)*0.008;
+      pose.earR = 0.34 + Math.sin(tt*2.0*Math.PI*0.65)*0.009;
+      pose.tailBase = -0.29 + Math.sin(tt*2.0*Math.PI*0.5)*0.004;
+      pose.tailMid = -0.40 + Math.sin(tt*2.0*Math.PI*0.5 - 0.2)*0.005;
+      pose.tailTip = -0.30 + Math.sin(tt*2.0*Math.PI*0.5 - 0.4)*0.004;
+      pose.mouthOpen = 0.42;
+      pose.inMouth = true;
+      var bx = pose.rootX + 20 * Math.cos(pose.rootRot) - (-6) * Math.sin(pose.rootRot);
+      var by = pose.rootY - 32 + 20 * Math.sin(pose.rootRot) + (-6) * Math.cos(pose.rootRot);
+      pose.boneX = lerp(pose.boneX, bx, tss);
+      pose.boneY = lerp(pose.boneY, by, tss);
+      pose.boneRot = lerp(pose.boneRot, pose.rootRot * 0.1, tss);
+      pose.FL = {s:0.08,e:0.22,p:0.05,con:0.8};
+      pose.FR = {s:0.07,e:0.2,p:0.04,con:0.8};
+      pose.BL = {s:0.06,e:0.18,p:0.04,con:0.7};
+      pose.BR = {s:0.05,e:0.16,p:0.03,con:0.7};
+    }
+
+    pose.camX = 0; pose.camY = 0;
+    return pose;
+  }
+
+  // ===== DRAWING HELPERS =====
+  function drawRect(x,y,w,h,c) {
+    ctx.fillStyle = 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')';
+    ctx.fillRect(x,y,w,h);
+  }
+  function shadeRGB(c, s) {
+    var r = clamp(c[0]*s, 0, 255)|0;
+    var g = clamp(c[1]*s, 0, 255)|0;
+    var b = clamp(c[2]*s, 0, 255)|0;
+    return 'rgb(' + r + ',' + g + ',' + b + ')';
+  }
+  function mixRGB(c0,c1,t) {
+    var r = clamp(c0[0]*(1-t)+c1[0]*t,0,255)|0;
+    var g = clamp(c0[1]*(1-t)+c1[1]*t,0,255)|0;
+    var b = clamp(c0[2]*(1-t)+c1[2]*t,0,255)|0;
+    return 'rgb(' + r + ',' + g + ',' + b + ')';
+  }
+
+  // ===== MAIN RENDER =====
+  window.renderFrame = function (timeSeconds) {
+    var t = timeSeconds;
+    if (t < 0) t = 0;
+    if (t > 12) t = 12;
+    var pose = computePose(t);
+
+    ctx.save();
+    // Clear
+    ctx.fillStyle = '#C9D6B5';
+    ctx.fillRect(0,0,SCENE.W,SCENE.H);
+
+    // Ground
+    var gGrad = ctx.createLinearGradient(0, SCENE.GROUND_Y, 0, SCENE.H);
+    gGrad.addColorStop(0, 'rgb(' + SCENE.GROUND_COLOR_0[0] + ',' + SCENE.GROUND_COLOR_0[1] + ',' + SCENE.GROUND_COLOR_0[2] + ')');
+    gGrad.addColorStop(1, 'rgb(' + SCENE.GROUND_COLOR_1[0] + ',' + SCENE.GROUND_COLOR_1[1] + ',' + SCENE.GROUND_COLOR_1[2] + ')');
+    ctx.fillStyle = gGrad;
+    ctx.fillRect(0, SCENE.GROUND_Y, SCENE.W, SCENE.H - SCENE.GROUND_Y);
+
+    // Doghouse exterior back
+    drawRect(SCENE.DH_X, SCENE.DH_Y - SCENE.DH_ROOF_H, SCENE.DH_W, SCENE.DH_H + SCENE.DH_ROOF_H, SCENE.DH_WALL);
+    // Roof
+    ctx.fillStyle = 'rgb(' + SCENE.DH_ROOF[0] + ',' + SCENE.DH_ROOF[1] + ',' + SCENE.DH_ROOF[2] + ')';
+    ctx.beginPath();
+    ctx.moveTo(SCENE.DH_X - 6, SCENE.DH_Y - SCENE.DH_ROOF_H);
+    ctx.lineTo(SCENE.DH_X + SCENE.DH_W + 6, SCENE.DH_Y - SCENE.DH_ROOF_H);
+    ctx.lineTo(SCENE.DH_X + SCENE.DH_W - 4, SCENE.DH_Y - SCENE.DH_ROOF_H - 18);
+    ctx.lineTo(SCENE.DH_X + 4, SCENE.DH_Y - SCENE.DH_ROOF_H - 18);
+    ctx.closePath();
+    ctx.fill();
+    // Trim
+    drawRect(SCENE.DH_X, SCENE.DH_Y, SCENE.DH_W, 6, SCENE.DH_TRIM);
+
+    // Interior (draw before dog parts that may be behind opening? draw area)
+    var doorX = SCENE.DH_X + SCENE.DH_DOOR_XOFF;
+    var doorY = SCENE.DH_Y + (SCENE.DH_H - SCENE.DH_DOOR_H);
+    // Interior floor/wall
+    ctx.fillStyle = 'rgb(' + SCENE.DH_INTERIOR[0] + ',' + SCENE.DH_INTERIOR[1] + ',' + SCENE.DH_INTERIOR[2] + ')';
+    ctx.fillRect(doorX, doorY, SCENE.DH_DOOR_W, SCENE.DH_DOOR_H);
+
+    // Bone rest (before dog when outside)
+    if (!pose.inMouth || t < 4.5) {
+      var brx = SCENE.BONE_REST_X, bry = SCENE.BONE_REST_Y;
+      if (t >= 4.5 && t < 6.0) { brx = pose.boneX; bry = pose.boneY; }
+      drawBone(brx, bry, 0, false);
+    }
+
+    // Dog
+    drawDog(pose, t);
+
+    // Bone in mouth
+    if (pose.inMouth) {
+      drawBone(pose.boneX, pose.boneY, pose.boneRot, true);
+    }
+
+    // Doghouse front frame & occlusion refinement (door frame)
+    ctx.fillStyle = 'rgb(' + SCENE.DH_WALL[0] + ',' + SCENE.DH_WALL[1] + ',' + SCENE.DH_WALL[2] + ')';
+    ctx.fillRect(doorX - 2, doorY, 2, SCENE.DH_DOOR_H);
+    ctx.fillRect(doorX + SCENE.DH_DOOR_W, doorY, 2, SCENE.DH_DOOR_H);
+    ctx.fillRect(doorX - 2, doorY - 2, SCENE.DH_DOOR_W + 4, 2);
+    drawRect(SCENE.DH_X, SCENE.DH_Y, 6, SCENE.DH_H, SCENE.DH_TRIM);
+    drawRect(SCENE.DH_X + SCENE.DH_W - 6, SCENE.DH_Y, 6, SCENE.DH_H, SCENE.DH_TRIM);
+    drawRect(SCENE.DH_X, SCENE.DH_Y + SCENE.DH_H - 6, SCENE.DH_W, 6, SCENE.DH_TRIM);
+
+    ctx.restore();
+  };
+
+  function drawBone(x,y,rot,inMouth) {
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(rot);
+    var col = SCENE.BONE_COLOR;
+    ctx.fillStyle = 'rgb(' + col[0] + ',' + col[1] + ',' + col[2] + ')';
+    ctx.beginPath();
+    ctx.ellipse(-SCENE.BONE_LEN*0.25, 0, SCENE.BONE_LEN*0.25, SCENE.BONE_R*0.7, 0, 0, 2*Math.PI);
+    ctx.ellipse(SCENE.BONE_LEN*0.25, 0, SCENE.BONE_LEN*0.25, SCENE.BONE_R*0.7, 0, 0, 2*Math.PI);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(120,112,96,0.25)';
+    ctx.beginPath();
+    ctx.arc(0, 1, SCENE.BONE_R*0.5, 0, 2*Math.PI);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawDog(pose, t) {
+    ctx.save();
+    ctx.translate(pose.rootX, pose.rootY);
+    ctx.rotate(pose.rootRot);
+
+    // Body
+    drawBody(pose, t);
+    // Head
+    drawHead(pose, t);
+    // Legs
+    drawLegs(pose, t);
+    // Tail
+    drawTail(pose, t);
+
+    ctx.restore();
+    // Contact shadows
+    drawShadows(pose);
+  }
+
+  function drawBody(pose, t) {
+    ctx.save();
+    var bx = 0, by = -26;
+    ctx.translate(bx, by + pose.spine0*6);
+    // Main body
+    var coat = SCENE.COAT_ORANGE;
+    var col = shadeRGB(coat, 0.95 + Math.sin(t*1.37)*0.002);
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 46, 28, 0.1 + pose.spine1, 0, 2*Math.PI);
+    ctx.fill();
+    // Ruff
+    var rcol = SCENE.COAT_RUFF;
+    ctx.fillStyle = 'rgb(' + rcol[0] + ',' + rcol[1] + ',' + rcol[2] + ')';
+    ctx.beginPath();
+    ctx.ellipse(-8, -6, 18, 16, -0.2, 0, 2*Math.PI);
+    ctx.ellipse(4, -8, 16, 14, 0.3, 0, 2*Math.PI);
+    ctx.fill();
+    // Fur volume
+    drawFur(0, 0, 46, 28, 0.1, coat, t);
+    ctx.restore();
+  }
+
+  function drawHead(pose, t) {
+    ctx.save();
+    var hx = -18 + pose.headX, hy = -46 + pose.headY + pose.spine2*4;
+    ctx.translate(hx, hy);
+    ctx.rotate(pose.headRot);
+    // Skull
+    var c = SCENE.COAT_ORANGE;
+    ctx.fillStyle = shadeRGB(c, 0.98);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 26, 22, -0.15, 0, 2*Math.PI);
+    ctx.fill();
+    // Muzzle
+    ctx.save();
+    ctx.translate(18, 4);
+    ctx.rotate(pose.muzzleRot);
+    ctx.fillStyle = shadeRGB(SCENE.COAT_CREAM, 0.98);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 14, 10, -0.1, 0, 2*Math.PI);
+    ctx.fill();
+    // Nose
+    ctx.fillStyle = 'rgb(' + SCENE.NOSE[0] + ',' + SCENE.NOSE[1] + ',' + SCENE.NOSE[2] + ')';
+    ctx.beginPath();
+    ctx.ellipse(10, -1, 2.6, 2.0, -0.2, 0, 2*Math.PI);
+    ctx.fill();
+    // Mouth
+    if (pose.mouthOpen > 0.05) {
+      ctx.fillStyle = 'rgb(' + SCENE.LIP[0] + ',' + SCENE.LIP[1] + ',' + SCENE.LIP[2] + ')';
+      ctx.beginPath();
+      ctx.ellipse(6, 2, 6, 2.5 * pose.mouthOpen, -0.1, 0, Math.PI);
+      ctx.fill();
+    }
+    ctx.restore();
+    // Eyes
+    ctx.fillStyle = 'rgb(' + SCENE.EYE_DARK[0] + ',' + SCENE.EYE_DARK[1] + ',' + SCENE.EYE_DARK[2] + ')';
+    ctx.beginPath();
+    ctx.arc(4, -6, 1.8, 0, 2*Math.PI);
+    ctx.arc(14, -4, 1.6, 0, 2*Math.PI);
+    ctx.fill();
+    // Ears
+    drawEar(-6, -14, -pose.earL, t);
+    drawEar(6, -12, pose.earR, t);
+    // Head fur
+    drawFur(0, 0, 26, 22, -0.15, c, t);
+    ctx.restore();
+  }
+
+  function drawEar(x,y,r,t) {
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(r);
+    var c = SCENE.COAT_ORANGE;
+    ctx.fillStyle = shadeRGB(c, 0.9);
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    ctx.lineTo(-6,-10);
+    ctx.quadraticCurveTo(-2,-16, 2,-10);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = shadeRGB(SCENE.COAT_CREAM, 0.8);
+    ctx.beginPath();
+    ctx.moveTo(0,-2);
+    ctx.lineTo(-3,-9);
+    ctx.quadraticCurveTo(-1,-12, 1,-9);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawLegs(pose, t) {
+    function leg(side, lx, ly, angs, t) {
+      ctx.save();
+      ctx.translate(lx, ly);
+      // Shoulder/hip simplified
+      ctx.rotate(angs.s * 0.8);
+      ctx.fillStyle = shadeRGB(SCENE.COAT_ORANGE, 0.92);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 8, 14, 0, 0, 2*Math.PI);
+      ctx.fill();
+      ctx.translate(0, 12);
+      ctx.rotate(angs.e * 0.9);
+      ctx.fillStyle = shadeRGB(SCENE.COAT_ORANGE, 0.9);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 6, 12, 0, 0, 2*Math.PI);
+      ctx.fill();
+      ctx.translate(0, 10);
+      ctx.rotate(angs.p * 0.5);
+      ctx.fillStyle = 'rgb(' + SCENE.PAW[0] + ',' + SCENE.PAW[1] + ',' + SCENE.PAW[2] + ')';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 5, 3, 0, 0, 2*Math.PI);
+      ctx.fill();
+      ctx.restore();
+    }
+    // Front
+    leg('FL', -14, -12, pose.FL, t);
+    leg('FR', 6, -14, pose.FR, t);
+    // Back
+    leg('BL', -10, 4, pose.BL, t);
+    leg('BR', 10, 2, pose.BR, t);
+  }
+
+  function drawTail(pose, t) {
+    ctx.save();
+    ctx.translate(20, -20);
+    ctx.rotate(pose.tailBase);
+    var c = SCENE.COAT_ORANGE;
+    ctx.fillStyle = shadeRGB(c, 0.88);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 6, 16, 0.4, 0, 2*Math.PI);
+    ctx.fill();
+    ctx.translate(4, 14);
+    ctx.rotate(pose.tailMid);
+    ctx.fillStyle = shadeRGB(c, 0.86);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 5, 14, 0.6, 0, 2*Math.PI);
+    ctx.fill();
+    ctx.translate(4, 12);
+    ctx.rotate(pose.tailTip);
+    ctx.fillStyle = shadeRGB(SCENE.COAT_TAIL_DARK, 0.9);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 4, 10, 0.8, 0, 2*Math.PI);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawFur(cx, cy, rx, ry, rot, baseCol, t) {
+    var count = 18;
+    for (var i = 0; i < count; i++) {
+      var a = (i / count) * 2.0 * Math.PI;
+      var r = rx * (0.6 + 0.4 * hash3(i, 7, Math.floor(t*0)));
+      var fx = cx + Math.cos(a + rot) * r * 0.8;
+      var fy = cy + Math.sin(a + rot) * r * 0.6;
+      var h = hash3(i, 11, 1);
+      var sc = 0.85 + 0.08 * h;
+      ctx.fillStyle = shadeRGB(baseCol, sc);
+      ctx.beginPath();
+      ctx.ellipse(fx, fy, 2 + h*2, 1 + h, a, 0, 2*Math.PI);
+      ctx.fill();
+    }
+  }
+
+  function drawShadows(pose) {
+    ctx.save();
+    ctx.globalAlpha = 0.18;
+    ctx.fillStyle = '#000';
+    // Simple ground contact under approximate feet
+    var feet = [
+      {x: pose.rootX - 14 + 2, y: SCENE.GROUND_Y},
+      {x: pose.rootX + 6 + 2, y: SCENE.GROUND_Y},
+      {x: pose.rootX - 10 + 2, y: SCENE.GROUND_Y},
+      {x: pose.rootX + 10 + 2, y: SCENE.GROUND_Y}
+    ];
+    for (var i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.ellipse(feet[i].x, feet[i].y, 6 + i*0.5, 3, 0, 0, 2*Math.PI);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 0.12;
+    ctx.beginPath();
+    ctx.ellipse(pose.rootX, SCENE.GROUND_Y + 1, 30, 8, pose.rootRot*0.2, 0, 2*Math.PI);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Init
+  window.renderFrame(0);
+})();
+</script>
+</body>
+</html>

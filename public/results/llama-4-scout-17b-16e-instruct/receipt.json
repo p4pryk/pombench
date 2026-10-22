@@ -1,0 +1,14 @@
+{
+  "modelId": "Llama-4-Scout-17B-16E-Instruct",
+  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
+  "sourceHash": "66fa0ec317f983a7dd388c11e7a726eaeef40120e041a73efdb97281c75051f8",
+  "responseHash": "bda560329faa164d13405293abfd204bd4bf52f8976ede2b3883d52542b66ac8",
+  "requestHash": "8503aaafb8ef78379a25763243d9a9d5810862e77fc163ccd6e53146d7dbf5f4",
+  "streamHash": "9448f3dcb780eff76f8c0ba3717810ee36ec7db46cb20dc59e828498714e77c7",
+  "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
+  "submission": 1,
+  "tools": [],
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+}

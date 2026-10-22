@@ -1,0 +1,14 @@
+{
+  "modelId": "Mistral-Large-3",
+  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
+  "sourceHash": "c79e364ab393a0e5b8d940cae592bfaae124ded82f96a208735ad8e5799aff8c",
+  "responseHash": "4ac5c274064e7d05196f13d9497f7ff54378f18aff715b12f0b56c3df6a9e922",
+  "requestHash": "a3d885d5fa0bc322db89af5da26978606dbc76f35bb082e084c61406193941a9",
+  "streamHash": "6283e1fde5e156ee9b124c89c385d8f8241337c0c06cfe49e8f0b68d106e0fab",
+  "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
+  "submission": 1,
+  "tools": [],
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+}

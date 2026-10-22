@@ -1,0 +1,7 @@
+{
+  "at": "2026-10-22T11:28:20.050963+00:00",
+  "modelId": "Codestral-2501",
+  "reason": "Endpoint rejects stream_options.include_usage (HTTP 422). Same non-streaming route accepted compatibility probe. Read mandatory actual terminal usage. No creative response discarded.",
+  "unchanged": "Prompt, model/version, output allowance, reasoning setting, stage deadline, recording and execution-repair policy.",
+  "scriptHash": "afb68732526daa4dbfed615a9d708d992dab4f12956705316dbc5561eb808b70"
+}

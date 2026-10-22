@@ -1,0 +1,914 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<style>
+html,body{margin:0;background:#0b0f14}
+#stage{display:block;margin:0 auto;background:#9cc9e7}
+</style>
+</head>
+<body>
+<canvas id="stage" width="960" height="540"></canvas>
+<script>
+(() => {
+  const canvas = document.getElementById('stage');
+  const ctx = canvas.getContext('2d', {alpha:false});
+  const W = canvas.width, H = canvas.height;
+
+  const clamp01 = (t)=>Math.max(0,Math.min(1,t));
+  const lerp = (a,b,t)=>a+(b-a)*t;
+  const smoothstep=(a,b,t)=>{t=(t-a)/(b-a);t=clamp01(t);return t*t*(3-2*t)};
+  const easeInOutCubic=(t)=>{t=clamp01(t);return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2};
+  const fract = (x)=>x-Math.floor(x);
+  const hash1 = (n)=>fract(Math.sin(n*127.1)*43758.5453123);
+
+  // simple deterministic fur noise
+  function hash2(x,y){ return fract(Math.sin(x*127.1+y*311.7)*43758.5453123); }
+
+  // Camera / projection: X right, Y up, Z toward back (into yard/house). Z higher => farther.
+  const cam = { cx: 480, cy: 320, scale: 28, xOff: -2.2, zOff: -1.0, persp: 0.012 };
+
+  function project(P){
+    // P: {x,y,z}
+    const x = P.x - cam.xOff;
+    const z = P.z - cam.zOff;
+    const s = cam.scale / (1 + z*cam.persp);
+    // slight shearing for nicer 3/4 view
+    const sx = cam.cx + x*s + (-0.35*z)*s*0.35;
+    const sy = cam.cy - P.y*s + z*s*0.10;
+    return {x:sx, y:sy, s};
+  }
+
+  function rotY(p, yaw){
+    const c=Math.cos(yaw), s=Math.sin(yaw);
+    return {x:p.x*c + p.z*s, y:p.y, z:-p.x*s + p.z*c};
+  }
+
+  function rot2D(x,z,yaw){
+    const c=Math.cos(yaw), s=Math.sin(yaw);
+    return {x:x*c + z*s, z:-x*s + z*c};
+  }
+
+  // world environment
+  function drawSky(){
+    const g = ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'#7fc5f0');
+    g.addColorStop(0.45,'#9dd7f6');
+    g.addColorStop(1,'#a7dff9');
+    ctx.fillStyle=g;
+    ctx.fillRect(0,0,W,H);
+    ctx.save();
+    ctx.globalAlpha=0.55;
+    const rg = ctx.createRadialGradient(720,70,0,720,70,240);
+    rg.addColorStop(0,'rgba(255,255,255,0.75)');
+    rg.addColorStop(0.25,'rgba(255,255,255,0.25)');
+    rg.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle=rg;
+    ctx.beginPath(); ctx.arc(720,70,220,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawGround(){
+    // base ground plane
+    const horizonY = project({x:0,y:0,z:10}).y - 18;
+    const g = ctx.createLinearGradient(0,horizonY,0,H);
+    g.addColorStop(0,'#8fdc72');
+    g.addColorStop(0.35,'#79c35b');
+    g.addColorStop(1,'#5ca744');
+    ctx.fillStyle=g;
+
+    const a=project({x:-18,y:0,z:0});
+    const b=project({x:18,y:0,z:0});
+    const c=project({x:28,y:0,z:14});
+    const d=project({x:-28,y:0,z:14});
+    ctx.beginPath();
+    ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.lineTo(c.x,c.y); ctx.lineTo(d.x,d.y);
+    ctx.closePath(); ctx.fill();
+
+    // grass blades (deterministic, sparse)
+    ctx.save();
+    ctx.globalAlpha=0.35;
+    const blades = 1200;
+    for(let i=0;i<blades;i++){
+      const gx = (hash1(i*1.7)-0.5)*48; // centered region
+      const gz = (hash1(i*2.1+9))*15;
+      if(gz<0.2 || gz>13.5) continue;
+      const w = (1 - gz/13.5);
+      const base=project({x:gx,y:0,z:gz});
+      if(base.y<0 || base.y>H) continue;
+      const len = 3 + 10*w + (hash2(i,7)-0.5)*2;
+      const sway = (hash1(i*3.3)-0.5)*0.5;
+      const ang = sway + (hash1(i*4.1)-0.5)*0.2;
+      const tip = {x:base.x + Math.sin(ang)*w*10, y:base.y - len*(0.9+0.25*w)};
+      ctx.strokeStyle = (hash1(i*10.2)<0.5) ? 'rgba(40,120,45,0.72)' : 'rgba(55,145,55,0.64)';
+      ctx.lineWidth=1;
+      ctx.beginPath();
+      ctx.moveTo(base.x,base.y);
+      ctx.lineTo(base.x + Math.sin(ang)*w*4, tip.y + 1);
+      ctx.lineTo(tip.x, tip.y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function storeHouse(){
+    const house = {
+      hx:-1, hz:10.0, Wd:6.8, Dd:4.2, Hd:5.0,
+      x0:-1, x1:-1+6.8,
+      z0:10.0-4.2, z1:10.0,
+      frontZ:(10.0-4.2),
+      frontZWall:(10.0-4.2),
+      innerZ:(10.0-4.2)+0.22,
+      doorX0: (-1)+2.2,
+      doorX1: (-1)+2.2+2.35,
+      doorY0:0.55,
+      doorY1:0.55+2.8
+    };
+
+    // bone rest: centered near doorway interior floor
+    house.boneRest = { x:(house.doorX0+house.doorX1)/2, y:house.doorY0+0.22, z:house.innerZ+0.6 };
+    window.__house = house;
+
+    // draw the house
+    const hx=house.hx, hz=house.hz, Wd=house.Wd, Dd=house.Dd, Hd=house.Hd;
+    const x0=house.x0, x1=house.x1;
+    const z0=house.z0, z1=house.z1;
+    const frontZ=z0, backZ=z1;
+
+    const P=(x,y,z)=>project({x,y,z});
+
+    const fp=[P(x0,0,frontZ), P(x1,0,frontZ), P(x1,0,backZ), P(x0,0,backZ)];
+    const bp=[P(x0,0,backZ), P(x1,0,backZ), P(x1,Hd,backZ), P(x0,Hd,backZ)];
+
+    // back wall
+    ctx.fillStyle='#b58c63';
+    ctx.beginPath();
+    ctx.moveTo(bp[0].x,bp[0].y); ctx.lineTo(bp[1].x,bp[1].y); ctx.lineTo(bp[2].x,bp[2].y); ctx.lineTo(bp[3].x,bp[3].y);
+    ctx.closePath(); ctx.fill();
+
+    // planks
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(bp[0].x,bp[0].y); ctx.lineTo(bp[1].x,bp[1].y); ctx.lineTo(bp[2].x,bp[2].y); ctx.lineTo(bp[3].x,bp[3].y);
+    ctx.closePath(); ctx.clip();
+    for(let k=0;k<24;k++){
+      const gx = lerp(x0,x1,k/23);
+      const a=P(gx,0.1,backZ), b=P(gx,Hd,backZ);
+      ctx.strokeStyle='rgba(90,55,30,0.12)';
+      ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+    }
+    ctx.restore();
+
+    // roof
+    const roofY = Hd+1.1;
+    const roofFront=[P(x0-0.2,roofY,frontZ), P(x1+0.2,roofY,frontZ), P(x1,roofY-0.7,backZ), P(x0,roofY-0.7,backZ)];
+    ctx.fillStyle='#8a5d3c';
+    ctx.beginPath();
+    ctx.moveTo(roofFront[0].x,roofFront[0].y); ctx.lineTo(roofFront[1].x,roofFront[1].y);
+    ctx.lineTo(roofFront[2].x,roofFront[2].y); ctx.lineTo(roofFront[3].x,roofFront[3].y);
+    ctx.closePath(); ctx.fill();
+
+    ctx.save();
+    ctx.globalAlpha=0.55;
+    ctx.fillStyle='rgba(255,255,255,0.12)';
+    ctx.beginPath();
+    ctx.moveTo(roofFront[0].x,roofFront[0].y);
+    ctx.lineTo(roofFront[1].x,roofFront[1].y);
+    ctx.lineTo(lerp(roofFront[1].x,roofFront[2].x,0.55), lerp(roofFront[1].y,roofFront[2].y,0.55));
+    ctx.lineTo(lerp(roofFront[0].x,roofFront[3].x,0.55), lerp(roofFront[0].y,roofFront[3].y,0.55));
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+
+    // front wall
+    const frontWall=[P(x0,0,frontZ), P(x1,0,frontZ), P(x1,Hd,frontZ), P(x0,Hd,frontZ)];
+    ctx.fillStyle='#c2956a';
+    ctx.beginPath();
+    ctx.moveTo(frontWall[0].x,frontWall[0].y); ctx.lineTo(frontWall[1].x,frontWall[1].y);
+    ctx.lineTo(frontWall[2].x,frontWall[2].y); ctx.lineTo(frontWall[3].x,frontWall[3].y);
+    ctx.closePath(); ctx.fill();
+
+    // base shadow under house
+    ctx.save();
+    ctx.globalAlpha=0.25;
+    ctx.fillStyle='rgba(0,0,0,0.35)';
+    const s0=project({x:x0+Wd*0.15,y:0,z:frontZ-0.1});
+    const s1=project({x:x0+Wd*0.85,y:0,z:frontZ-0.1});
+    const s2=project({x:x0+Wd*0.95,y:0,z:z1+0.2});
+    const s3=project({x:x0+Wd*0.05,y:0,z:z1+0.2});
+    ctx.beginPath(); ctx.moveTo(s0.x,s0.y+6); ctx.lineTo(s1.x,s1.y+6); ctx.lineTo(s2.x,s2.y+2); ctx.lineTo(s3.x,s3.y+2);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+
+    // Door cutout: paint interior dark and rim strokes for occlusion cues
+    const dw=2.35, dh=2.8;
+    const doorX0=house.doorX0, doorX1=house.doorX1, doorY0=house.doorY0, doorY1=house.doorY1;
+    const doorPoly=[P(doorX0,doorY0,frontZ), P(doorX1,doorY0,frontZ), P(doorX1,doorY1,frontZ), P(doorX0,doorY1,frontZ)];
+    const innerZ=house.innerZ;
+    const innerPoly=[P(doorX0+0.12,doorY0,innerZ), P(doorX1-0.12,doorY0,innerZ), P(doorX1-0.12,doorY1-0.15,frontZ+0.22), P(doorX0+0.12,doorY1-0.15,frontZ+0.22)];
+
+    // clip to front wall area for doorway region
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(frontWall[0].x,frontWall[0].y); ctx.lineTo(frontWall[1].x,frontWall[1].y);
+    ctx.lineTo(frontWall[2].x,frontWall[2].y); ctx.lineTo(frontWall[3].x,frontWall[3].y);
+    ctx.closePath(); ctx.clip();
+
+    // interior fill
+    ctx.fillStyle='#5a3d25';
+    ctx.beginPath();
+    ctx.moveTo(innerPoly[0].x,innerPoly[0].y); ctx.lineTo(innerPoly[1].x,innerPoly[1].y);
+    ctx.lineTo(innerPoly[2].x,innerPoly[2].y); ctx.lineTo(innerPoly[3].x,innerPoly[3].y);
+    ctx.closePath(); ctx.fill();
+
+    // interior vignette
+    ctx.save();
+    ctx.globalAlpha=0.55;
+    const gx=(innerPoly[0].x+innerPoly[1].x)*0.5, gy=(innerPoly[2].y+innerPoly[3].y)*0.5;
+    const ig=ctx.createRadialGradient(gx,gy,0,gx,gy,220);
+    ig.addColorStop(0,'rgba(0,0,0,0.12)');
+    ig.addColorStop(1,'rgba(0,0,0,0.45)');
+    ctx.fillStyle=ig;
+    ctx.beginPath();
+    ctx.moveTo(innerPoly[0].x,innerPoly[0].y); ctx.lineTo(innerPoly[1].x,innerPoly[1].y);
+    ctx.lineTo(innerPoly[2].x,innerPoly[2].y); ctx.lineTo(innerPoly[3].x,innerPoly[3].y);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+
+    // rim
+    ctx.strokeStyle='rgba(50,30,18,0.55)';
+    ctx.lineWidth=4;
+    ctx.beginPath();
+    ctx.moveTo(doorPoly[0].x,doorPoly[0].y); ctx.lineTo(doorPoly[1].x,doorPoly[1].y);
+    ctx.lineTo(doorPoly[2].x,doorPoly[2].y); ctx.lineTo(doorPoly[3].x,doorPoly[3].y);
+    ctx.closePath(); ctx.stroke();
+
+    ctx.strokeStyle='rgba(255,255,255,0.12)';
+    ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.moveTo(innerPoly[0].x,innerPoly[0].y); ctx.lineTo(innerPoly[1].x,innerPoly[1].y);
+    ctx.lineTo(innerPoly[2].x,innerPoly[2].y); ctx.lineTo(innerPoly[3].x,innerPoly[3].y);
+    ctx.closePath(); ctx.stroke();
+
+    ctx.restore();
+
+    // doorway plane for occlusion
+    house.doorPlaneZ = frontZ + 0.06;
+    house.doorPoly = doorPoly;
+  }
+
+  function drawFurBlob(worldCenter, rx, ry, c0, c1, alpha){
+    const c = project(worldCenter);
+    const sx = Math.abs(rx)*c.s, sy=Math.abs(ry)*c.s;
+    ctx.save();
+    ctx.globalAlpha=alpha;
+    const grad = ctx.createRadialGradient(c.x - sx*0.25, c.y - sy*0.25, 0, c.x, c.y, Math.max(sx,sy));
+    grad.addColorStop(0, c0);
+    grad.addColorStop(0.55, c1);
+    grad.addColorStop(1, 'rgba(90,45,20,0.42)');
+    ctx.fillStyle=grad;
+    ctx.beginPath();
+    ctx.ellipse(c.x,c.y,sx,sy,0,0,Math.PI*2);
+    ctx.fill();
+
+    // deterministic fur strokes
+    ctx.globalAlpha=alpha*0.9;
+    ctx.strokeStyle='rgba(60,28,12,0.28)';
+    const count=14;
+    for(let i=0;i<count;i++){
+      const u=i/(count-1);
+      const ang = (hash2(Math.floor(worldCenter.x*10)+i*3, Math.floor(worldCenter.z*10)+7)-0.5)*1.6;
+      const px = c.x + (u-0.5)*sx*0.95;
+      const py = c.y + Math.sin(u*3.1)*sy*0.10;
+      const len = 8 + 10*(1-u) + hash1(i*7.7)*6;
+      ctx.lineWidth = Math.max(0.6, 0.9*c.s);
+      ctx.beginPath();
+      ctx.moveTo(px,py);
+      ctx.lineTo(px + Math.sin(ang)*2, py - len*0.55);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function placeDog(dog, local){
+    // local: {x,y,z} in dog local space (origin at hips height baseline)
+    const r = rotY(local, dog.yaw);
+    return {x:dog.x + r.x, y:dog.y + r.y, z:dog.z + r.z};
+  }
+
+  function drawDog(dog){
+    const house = window.__house;
+    const bodyLen=1.35, bodyH=0.62, bodyW=0.62;
+    const hipY=0.28;
+    const legLen=0.40;
+
+    // Local gait: 4 legs cycle
+    const stride = 0.28 * dog.speedN;
+    const t = dog.t;
+
+    function footMotion(phi){
+      // Contact when cos>0; lift on swing.
+      const c=Math.cos(phi), s=Math.sin(phi);
+      const on = c>0;
+      let lift=0;
+      if(!on){
+        const liftT = smoothstep(-0.1,0.9,(s+1)/2);
+        lift = liftT * (0.14 + 0.04*dog.speedN);
+      }
+      const strideZ = s*0.10*stride + (on ? -0.02*dog.speedN : 0.06*dog.speedN);
+      return {on,lift,strideZ};
+    }
+
+    const cyc = (t* (dog.speedN>0.2 ? (dog.speedN>0.7 ? 12.5:7.0) : 3.5));
+    const phase = dog.gaitPhase;
+
+    // paw anchor relative positions in local
+    function legLocal(side, front){
+      const sx = side*(bodyW*0.58);
+      const sz = (front? bodyLen*0.45 : -bodyLen*0.45);
+      return {x:sx, y:hipY - legLen*0.82, z:sz};
+    }
+
+    const off = {FL:0, BR:0, FR:Math.PI, BL:Math.PI};
+    const mFL=footMotion(cyc+off.FL+phase), mFR=footMotion(cyc+off.FR+phase),
+          mBL=footMotion(cyc+off.BL+phase), mBR=footMotion(cyc+off.BR+phase);
+
+    const FL = {...legLocal(+1,true), y:hipY - legLen*0.82 + mFL.lift, z: legLocal(+1,true).z + mFL.strideZ};
+    const FR = {...legLocal(-1,true), y:hipY - legLen*0.82 + mFR.lift, z: legLocal(-1,true).z + mFR.strideZ};
+    const BL = {...legLocal(+1,false), y:hipY - legLen*0.82 + mBL.lift, z: legLocal(+1,false).z + mBL.strideZ};
+    const BR = {...legLocal(-1,false), y:hipY - legLen*0.82 + mBR.lift, z: legLocal(-1,false).z + mBR.strideZ};
+
+    // occlusion split against doorway plane: draw back then front
+    function zFront(worldZ){ return worldZ <= house.doorPlaneZ + 0.02; }
+
+    // shadow
+    {
+      const feet=[FL,FR,BL,BR].map(p=>placeDog(dog,p));
+      const mid = feet.reduce((a,p)=>({x:a.x+p.x,y:0,z:a.z+p.z}),{x:0,y:0,z:0});
+      mid.x/=4; mid.z/=4;
+      const sp=project({x:mid.x,y:0.01,z:mid.z});
+      ctx.save();
+      ctx.globalAlpha=0.35;
+      ctx.fillStyle='rgba(0,0,0,0.35)';
+      ctx.beginPath();
+      ctx.ellipse(sp.x, sp.y, (28+6*dog.speedN)*sp.s/0.9, (9+2*dog.speedN)*sp.s/0.9, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // tail plumed curled over back
+    function drawTail(){
+      const rootLocal={x: bodyW*0.68, y: hipY+bodyH*0.32, z:-bodyLen*0.46};
+      const root=placeDog(dog,rootLocal);
+      const segments=14;
+      const curl = 0.55 + 0.45*Math.abs(Math.sin(dog.tailPhase));
+      const tAng = dog.tailAng;
+      ctx.save();
+      for(let s=0;s<segments;s++){
+        const u=s/(segments-1);
+        const ang = lerp(-1.35, -0.30, u)*curl + tAng*0.35;
+        const rad = lerp(0.18, 0.52, u);
+        const pLocal={
+          x: rootLocal.x + Math.cos(ang)*rad*0.35 + (u-0.5)*0.05,
+          y: rootLocal.y + Math.sin(ang)*rad*0.20 + u*0.02,
+          z: rootLocal.z - (u*u)*0.25
+        };
+        const pw=placeDog(dog,pLocal);
+        const pr=project(pw);
+        const width=(1-u)*1.6 + u*2.6;
+        ctx.strokeStyle='rgba(110,55,25,0.35)';
+        ctx.lineWidth=Math.max(0.6, width*pr.s*0.035);
+        ctx.beginPath();
+        ctx.moveTo(pr.x, pr.y);
+        ctx.lineTo(pr.x + (hash1(s*11.1)*2-1)*width*1.2, pr.y - 8*pr.s*0.16);
+        ctx.stroke();
+        ctx.fillStyle=(s%2===0)?'rgba(255,200,150,0.55)':'rgba(225,145,90,0.45)';
+        ctx.beginPath();
+        ctx.arc(pr.x, pr.y, 2.2*pr.s*0.14 + u*1.1, 0, Math.PI*2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // Ruff / body / head (simple volume + fur)
+    function drawCore(near){
+      // tail: often outside; include based on its local points
+      // Body center
+      const torsoLocal={x:0,y:hipY+bodyH*0.15,z:0};
+      const torso=placeDog(dog,torsoLocal);
+      if(!zFront(torso.z) && near) { /* skip */ }
+      if(zFront(torso.z) && !near) { /* skip */ }
+
+      // body volumes
+      if( (near && zFront(torso.z)) || (!near && !zFront(torso.z)) ){
+        drawFurBlob(torso, bodyW*1.05, bodyH*0.95,
+          'rgba(255,190,120,0.95)','rgba(220,140,85,0.75)', 0.95);
+        // hind/shoulder fluff
+        drawFurBlob(placeDog(dog,{x:0,y:hipY+bodyH*0.20,z:-bodyLen*0.22}),
+          bodyW*0.95, bodyH*0.55,
+          'rgba(255,205,150,0.88)','rgba(205,120,70,0.62)', 0.7);
+        drawFurBlob(placeDog(dog,{x:0,y:hipY+bodyH*0.62,z: bodyLen*0.18}),
+          bodyW*1.15, bodyH*0.72,
+          'rgba(255,220,185,0.92)','rgba(220,150,95,0.70)', 0.75);
+      }
+
+      // legs
+      function drawLegFromLocal(p){
+        const pw=placeDog(dog,p);
+        const pr=project(pw);
+        const sc=pr.s;
+
+        // leg as fluffy capsule-like stroke
+        const kneeLocal={x:p.x, y:hipY+0.10, z:p.z*0.75};
+        const kWorld=placeDog(dog,kneeLocal);
+        const prK=project(kWorld);
+
+        ctx.save();
+        ctx.strokeStyle='rgba(95,45,20,0.35)';
+        ctx.lineWidth=5*sc*0.9;
+        ctx.lineCap='round';
+        ctx.beginPath();
+        ctx.moveTo(prK.x, prK.y);
+        // slight bend
+        const bendX=(prK.x-pr.x)*0.15;
+        const midY=(prK.y+pr.y)*0.55 - 2*sc;
+        ctx.quadraticCurveTo(prK.x + bendX, midY, pr.x, pr.y);
+        ctx.stroke();
+
+        // paw
+        ctx.fillStyle='rgba(240,180,130,0.85)';
+        ctx.beginPath();
+        ctx.ellipse(pr.x, pr.y + 1.6*sc, 4.8*sc, 2.7*sc, 0, 0, Math.PI*2);
+        ctx.fill();
+
+        // pad shadow
+        ctx.fillStyle='rgba(30,15,10,0.55)';
+        ctx.beginPath();
+        ctx.ellipse(pr.x, pr.y + 2.7*sc, 5.2*sc, 2.8*sc, 0, 0, Math.PI*2);
+        ctx.fill();
+
+        ctx.fillStyle='rgba(255,220,170,0.8)';
+        ctx.beginPath();
+        ctx.ellipse(pr.x, pr.y + 0.3*sc, 5.0*sc, 2.2*sc, 0, 0, Math.PI*2);
+        ctx.fill();
+
+        // toes
+        ctx.fillStyle='rgba(70,30,12,0.8)';
+        for(let i=0;i<4;i++){
+          const a=i/3.0*Math.PI*0.8 - Math.PI*0.4;
+          ctx.beginPath();
+          ctx.arc(pr.x+Math.cos(a)*2.3*sc, pr.y+2.8*sc+Math.sin(a)*1.1*sc, 1.1*sc, 0, Math.PI*2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      const legs=[FL,FR,BL,BR];
+      for(const L of legs){
+        const pw=placeDog(dog,L);
+        const inFront=zFront(pw.z);
+        if( (near && inFront) || (!near && !inFront) ){
+          drawLegFromLocal(L);
+        }
+      }
+
+      // head/ruff and face
+      const neckLocal={x:0,y:hipY+bodyH*0.72,z: bodyLen*0.42};
+      const neck=placeDog(dog,neckLocal);
+      const headLocal={x:bodyW*0.35,y:hipY+bodyH*0.78,z:bodyLen*0.60};
+      const head=placeDog(dog,headLocal);
+
+      const headNear = zFront(head.z);
+      if( (near && headNear) || (!near && !headNear) ){
+        drawFurBlob(neck, bodyW*0.85, bodyH*0.55, 'rgba(255,205,155,0.90)','rgba(210,135,90,0.68)',0.65);
+        drawFurBlob(head, bodyW*0.95, bodyH*0.52, 'rgba(255,220,185,0.92)','rgba(215,145,95,0.70)',0.7);
+
+        // muzzle
+        const muzzle=placeDog(dog,{x:bodyW*0.55,y:hipY+bodyH*0.76,z:bodyLen*0.63});
+        drawFurBlob(muzzle, bodyW*0.75, bodyH*0.42, 'rgba(255,230,205,0.86)','rgba(205,130,80,0.60)',0.45);
+
+        // ears (triangular upright)
+        const earA=placeDog(dog,{x:bodyW*0.55,y:hipY+bodyH*0.98,z:bodyLen*0.60});
+        const earB=placeDog(dog,{x:bodyW*0.46,y:hipY+bodyH*0.98,z:bodyLen*0.60});
+        function drawEar(p, sign){
+          const pr=project(p);
+          const tip={x:p.x+sign*0.08, y:p.y+0.18+dog.earLift, z:p.z+0.02};
+          const pti=project(tip);
+          ctx.save();
+          ctx.fillStyle='rgba(255,220,185,0.92)';
+          ctx.strokeStyle='rgba(90,35,15,0.25)';
+          ctx.lineWidth=2;
+          ctx.beginPath();
+          ctx.moveTo(pr.x,pr.y);
+          const mid={x:p.x+sign*0.03, y:p.y+0.10+dog.earLift*0.4, z:p.z+0.01};
+          const pm=project(mid);
+          ctx.lineTo(pm.x,pm.y);
+          ctx.lineTo(pti.x,pti.y);
+          ctx.closePath();
+          ctx.fill(); ctx.stroke();
+          ctx.fillStyle='rgba(230,150,95,0.35)';
+          ctx.beginPath();
+          ctx.moveTo(pm.x,pm.y);
+          ctx.lineTo(lerp(pr.x,pm.x,0.55), lerp(pr.y,pm.y,0.55));
+          ctx.lineTo(lerp(pti.x,pm.x,0.50), lerp(pti.y,pm.y,0.50));
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+        drawEar(earA,+1); drawEar(earB,-1);
+
+        // eyes & nose (dark expressive)
+        const eyeL=placeDog(dog,{x:0.18,y:hipY+bodyH*0.85,z:bodyLen*0.62});
+        const eyeR=placeDog(dog,{x:-0.18,y:hipY+bodyH*0.85,z:bodyLen*0.62});
+        function drawEye(p){
+          const pr=project(p);
+          ctx.save();
+          ctx.fillStyle='rgba(255,255,255,0.85)';
+          ctx.beginPath(); ctx.arc(pr.x,pr.y,3.5*pr.s*0.10+2.4*pr.s*0.04,0,Math.PI*2); ctx.fill();
+          ctx.fillStyle='#1a0f12';
+          ctx.beginPath(); ctx.arc(pr.x,pr.y,1.8*pr.s*0.12+1.0*pr.s*0.04,0,Math.PI*2); ctx.fill();
+          ctx.fillStyle='rgba(255,255,255,0.9)';
+          ctx.beginPath(); ctx.arc(pr.x-0.3*pr.s*0.1, pr.y-0.4*pr.s*0.1, 0.9*pr.s*0.12+0.6*pr.s*0.04,0,Math.PI*2); ctx.fill();
+          ctx.restore();
+        }
+        drawEye(eyeL); drawEye(eyeR);
+
+        const nose=placeDog(dog,{x:bodyW*0.40,y:hipY+bodyH*0.78,z:bodyLen*0.68});
+        const prN=project(nose);
+        ctx.save();
+        ctx.fillStyle='rgba(25,10,10,0.95)';
+        ctx.beginPath(); ctx.ellipse(prN.x,prN.y,4.0*prN.s*0.06+3,2.2*prN.s*0.06+1.8,0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='rgba(0,0,0,0.55)';
+        ctx.beginPath(); ctx.arc(prN.x-0.8*prN.s*0.06, prN.y, 1.2*prN.s*0.1+0.7,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+
+        // jaw / mouth open
+        const mouth=placeDog(dog,{x:bodyW*0.34,y:hipY+bodyH*0.74+dog.jawDrop,z:bodyLen*0.67});
+        const prm=project(mouth);
+        ctx.save();
+        ctx.globalAlpha=0.85;
+        ctx.fillStyle='rgba(50,25,15,0.55)';
+        const rx=8.2*prm.s*0.06+4, ry=(2.2+dog.jawDrop*1.4)*prm.s*0.06+2.4;
+        ctx.beginPath(); ctx.ellipse(prm.x,prm.y,rx,ry,0.1,0,Math.PI*2); ctx.fill();
+        ctx.strokeStyle='rgba(75,35,15,0.55)';
+        ctx.lineWidth=2;
+        ctx.beginPath();
+        ctx.moveTo(prm.x-4*prm.s*0.06, prm.y+1*prm.s*0.06);
+        ctx.quadraticCurveTo(prm.x, prm.y+3*prm.s*0.06, prm.x+4*prm.s*0.06, prm.y+1*prm.s*0.06);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    // Draw order: far then near, plus tail between based on its z distribution
+    // Split tail by sampling a couple points
+    const rootLocal={x: bodyW*0.68, y: hipY+bodyH*0.32, z:-bodyLen*0.46};
+    const root=placeDog(dog,rootLocal);
+    const tailNear=zFront(root.z);
+    if(!tailNear) drawTail(); // back tail
+    drawCore(false);
+    if(tailNear) drawTail(); // front tail
+    drawCore(true);
+  }
+
+  function drawBone(bone){
+    // bone: {pivot:{x,y,z}, dir:{x,z}} in world
+    if(!bone) return;
+    const b = bone;
+    const dir=b.dir;
+    const l=Math.hypot(dir.x,dir.z)+1e-6;
+    const dx=dir.x/l, dz=dir.z/l;
+
+    const len=0.50; // world
+    const p0={x:b.pivot.x - dx*len*0.5, y:b.pivot.y, z:b.pivot.z - dz*len*0.5};
+    const p1={x:b.pivot.x + dx*len*0.5, y:b.pivot.y, z:b.pivot.z + dz*len*0.5};
+
+    const q0=project(p0), q1=project(p1);
+    const axX=q1.x-q0.x, axY=q1.y-q0.y;
+    const L=Math.hypot(axX,axY)+1e-6;
+    const nx=-axY/L, ny=axX/L;
+
+    // body sections
+    const crossCount=10;
+    const sc=q0.s;
+    const wBase=12*sc*0.45;
+    function drawCross(center, t){
+      const taper=0.85+0.3*Math.cos((t-0.5)*Math.PI*2);
+      const rx=wBase*(0.45+taper*0.35);
+      const ry=rx*0.42;
+      const cx=center.x, cy=center.y;
+      ctx.save();
+      const gx=cx + nx*rx*0.35, gy=cy + ny*ry*0.25;
+      const g=ctx.createRadialGradient(gx,gy,0,cx,cy,Math.max(rx,ry));
+      g.addColorStop(0,'rgba(255,245,235,0.95)');
+      g.addColorStop(0.55,'rgba(225,200,170,0.9)');
+      g.addColorStop(1,'rgba(140,105,75,0.6)');
+      ctx.fillStyle=g;
+      ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2); ctx.fill();
+
+      ctx.globalAlpha=0.55;
+      ctx.strokeStyle='rgba(130,90,60,0.25)';
+      ctx.lineWidth=Math.max(1,2*sc*0.08);
+      for(let k=0;k<3;k++){
+        const ang=(t*7+k)*0.6;
+        const ox=(hash1(Math.floor(t*1000)+k*33)-0.5)*rx*0.15;
+        const oy=(hash1(Math.floor(t*1000)+k*44)-0.5)*ry*0.15;
+        ctx.beginPath();
+        ctx.moveTo(cx+ox-nx*rx*0.08, cy+oy-ny*ry*0.08);
+        ctx.lineTo(cx+ox+nx*rx*0.06, cy+oy+ny*ry*0.06);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    for(let i=0;i<=crossCount;i++){
+      const t=i/crossCount;
+      const cx=q0.x + axX*t;
+      const cy=q0.y + axY*t;
+      drawCross({x:cx,y:cy}, t);
+    }
+
+    // grooves + holes approximation
+    const center={x:(q0.x+q1.x)/2, y:(q0.y+q1.y)/2};
+    ctx.save();
+    ctx.strokeStyle='rgba(110,75,50,0.35)';
+    ctx.lineWidth=Math.max(1,2.2*sc*0.08);
+    const grooveLen=10*sc;
+    const gx0=center.x - nx*grooveLen*0.35, gy0=center.y - ny*grooveLen*0.35;
+    const gx1=center.x + nx*grooveLen*0.35, gy1=center.y + ny*grooveLen*0.35;
+    ctx.beginPath(); ctx.moveTo(gx0,gy0); ctx.lineTo(gx1,gy1); ctx.stroke();
+
+    ctx.globalAlpha=0.85;
+    ctx.fillStyle='rgba(100,70,45,0.25)';
+    const endR=4.8*sc;
+    ctx.beginPath(); ctx.arc(q0.x+nx*endR*0.15, q0.y+ny*endR*0.15, endR,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(q1.x-nx*endR*0.15, q1.y-ny*endR*0.15, endR,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  let houseDrawn=false;
+  function ensureHouse(){
+    if(houseDrawn) return;
+    // draw once; we'll redraw frame anyway, so just set storage by calling storeHouse which draws too
+    // But we need it per-frame, because dog moves over it. We'll redraw house each frame.
+    houseDrawn=true;
+  }
+
+  function drawHouseEachFrame(){
+    // storeHouse draws and sets __house.
+    // It must be deterministic and safe. We'll just call storeHouse each frame.
+    storeHouse();
+  }
+
+  function renderFrame(timeSeconds){
+    const t = timeSeconds<0 ? 0 : (timeSeconds>12?12:timeSeconds);
+    ctx.clearRect(0,0,W,H);
+
+    drawSky();
+    drawGround();
+    drawHouseEachFrame();
+
+    const house = window.__house;
+
+    // Dog timeline:
+    // 0-1 notice (near yard)
+    // 1-3 run to doorway
+    // 3-4.5 enter
+    // 4.5-6 grab (bone moves once from rest to mouth)
+    // 6-8 back out carrying
+    // 8-10 turn to viewer
+    // 10-12 settle in front-facing
+
+    const dogStart = {x:-6.6, y:0, z:2.2};
+    const doorCenter = {x:(house.doorX0+house.doorX1)/2, y:0, z:house.doorPlaneZ-0.15};
+    const insideTarget = {x:(house.doorX0+house.doorX1)/2-0.15, y:0, z:house.boneRest.z-0.2};
+
+    const yawFaceViewer = -Math.PI*0.10;
+
+    // state outputs
+    let pos={...dogStart};
+    let yaw= Math.PI*0.65;
+    let speedN=0;
+    let pitch=0;
+    let roll=0;
+    let jawDrop=0;
+    let earLift=0;
+    let tailAng=0.3;
+    let tailPhase=0;
+    let gaitPhase = t*0.1;
+
+    // Bone state
+    let showInsideBone = t<4.5;
+    let boneRest = house.boneRest;
+    let boneHeld = null;
+
+    const localMouth = () => {
+      // local mouth point in the simplified drawDog space (tuned visually)
+      const hipY=0.28, bodyH=0.62, bodyLen=1.35, bodyW=0.62;
+      return {x: bodyW*0.55, y: hipY + bodyH*(0.74), z: bodyLen*0.66};
+    };
+
+    function moveDogAndSet(t){
+      const p01 = (a,b)=>easeInOutCubic((t-a)/(b-a));
+      if(t<1){
+        const k=p01(0,1);
+        pos={x:lerp(dogStart.x,dogStart.x+0.15,k), y:0, z:lerp(dogStart.z,dogStart.z+0.05,k)};
+        yaw=lerp(Math.PI*0.70, Math.PI*0.20, k);
+        speedN=0.06+0.08*k;
+        pitch=lerp(0.02,-0.01,k);
+        jawDrop=0.01;
+        earLift=lerp(0.00,0.03,k);
+        tailAng=lerp(0.25,0.32,k);
+        tailPhase=t*2.2;
+      } else if(t<3){
+        const k=(t-1)/2;
+        const kk=easeInOutCubic(k);
+        pos={x:lerp(dogStart.x,doorCenter.x-0.1,kk), y:0, z:lerp(dogStart.z,doorCenter.z,kk)};
+        yaw=lerp(Math.PI*0.20, Math.PI*0.05, kk);
+        speedN=0.95;
+        pitch=lerp(-0.02,-0.06,smoothstep(0.6,1,k));
+        jawDrop=0.0+0.01*Math.sin(kk*8);
+        earLift=0.02+0.01*Math.sin(kk*10);
+        tailAng=0.40+0.10*Math.sin(t*2.0);
+        tailPhase=t*10.5;
+      } else if(t<4.5){
+        const k=(t-3)/1.5;
+        const kk=easeInOutCubic(k);
+        pos={x:lerp(doorCenter.x-0.1,insideTarget.x,kk), y:0, z:lerp(doorCenter.z,insideTarget.z,kk)};
+        yaw=lerp(Math.PI*0.05, Math.PI*0.02, kk);
+        speedN=0.35;
+        pitch=lerp(-0.05,-0.08,kk);
+        jawDrop=0.0;
+        earLift=lerp(0.02,0.00,kk);
+        tailAng=0.45-0.12*kk;
+        tailPhase=t*8.3;
+      } else if(t<6){
+        const k=(t-4.5)/1.5;
+        const kk=easeInOutCubic(k);
+        pos={x:lerp(insideTarget.x,insideTarget.x+0.05,kk), y:0, z:lerp(insideTarget.z,insideTarget.z+0.15,kk)};
+        yaw=lerp(Math.PI*0.02, Math.PI*0.01, kk);
+        speedN=0.18;
+        pitch=lerp(-0.08,-0.02,smoothstep(0.0,0.6,kk));
+        jawDrop=lerp(0.03,0.14, smoothstep(0.15,0.45,kk));
+        earLift=lerp(0.00,0.015,smoothstep(0.0,0.4,kk));
+        tailAng=0.32+0.06*Math.sin(t*6.2);
+        tailPhase=t*7.1;
+
+        // grab bone: move once from rest to mouth by rigid lock
+        const grabT = smoothstep(0.35,0.92,kk); // when bone leaves rest
+        const mouthWorld = (() => {
+          const mouthLocal = localMouth();
+          // rotate local around dog yaw
+          const r = rotY(mouthLocal, yaw);
+          return {x:pos.x + r.x, y:mouthLocal.y, z:pos.z + r.z};
+        })();
+
+        const axisDir = (() => {
+          const d = rot2D(0,1,yaw); // forward along local +z
+          return {x:d.x, z:d.z};
+        })();
+
+        boneRest = house.boneRest;
+        boneHeld = {
+          pivot:{
+            x:lerp(house.boneRest.x, mouthWorld.x, grabT),
+            y:lerp(house.boneRest.y, mouthWorld.y-0.05, grabT),
+            z:lerp(house.boneRest.z, mouthWorld.z, grabT)
+          },
+          dir:axisDir
+        };
+
+        showInsideBone = t<4.55; // keep discoverable but quickly transition
+      } else if(t<8){
+        const k=(t-6)/2;
+        const kk=easeInOutCubic(k);
+        pos={x:lerp(insideTarget.x,doorCenter.x-0.05,kk), y:0, z:lerp(insideTarget.z+0.20,doorCenter.z-0.18,kk)};
+        yaw=lerp(Math.PI*0.01, Math.PI*0.07, kk);
+        speedN=0.8;
+        pitch=lerp(-0.02,0.00,smoothstep(0.2,1,k));
+        jawDrop=lerp(0.14,0.06,smoothstep(0.0,0.35,kk));
+        earLift=lerp(0.015,0.03,smoothstep(0.2,1,k));
+        tailAng=0.50+0.10*Math.sin(t*1.6);
+        tailPhase=t*9.6;
+
+        const mouthLocal = localMouth();
+        const r = rotY(mouthLocal, yaw);
+        const mouthWorld = {x:pos.x+r.x, y:mouthLocal.y, z:pos.z+r.z};
+        const d = rot2D(0,1,yaw);
+        boneHeld = {pivot:{x:mouthWorld.x, y:mouthWorld.y-0.05, z:mouthWorld.z}, dir:{x:d.x,z:d.z}};
+        showInsideBone=false;
+      } else if(t<10){
+        const k=(t-8)/2;
+        const kk=easeInOutCubic(k);
+        pos={x:lerp(doorCenter.x-0.05,doorCenter.x+0.45,kk), y:0, z:lerp(doorCenter.z-0.18,doorCenter.z+0.05,kk)};
+        yaw=lerp(Math.PI*0.07, yawFaceViewer, kk);
+        speedN=0.25;
+        pitch=lerp(0.00,0.02,kk);
+        jawDrop=lerp(0.06,0.05,kk);
+        earLift=lerp(0.03,0.01,kk);
+        tailAng=0.55-0.12*kk;
+        tailPhase=t*6.2;
+
+        const mouthLocal = localMouth();
+        const r = rotY(mouthLocal, yaw);
+        const mouthWorld = {x:pos.x+r.x, y:mouthLocal.y, z:pos.z+r.z};
+        const d = rot2D(0,1,yaw);
+        boneHeld = {pivot:{x:mouthWorld.x, y:mouthWorld.y-0.05, z:mouthWorld.z}, dir:{x:d.x,z:d.z}};
+        showInsideBone=false;
+      } else {
+        // settle 10-12
+        const k=(t-10)/2;
+        const kk=easeInOutCubic(k);
+        pos={x:lerp(doorCenter.x+0.45,doorCenter.x+0.40,kk), y:0, z:lerp(doorCenter.z+0.05,doorCenter.z+0.00,kk)};
+        yaw=yawFaceViewer;
+        speedN=0.08;
+        pitch=0.015*Math.sin(t*2.0);
+        jawDrop=0.03 + 0.01*Math.sin(t*2.1)*0.6;
+
+        earLift=0.012 + 0.01*Math.sin(t*2.2);
+        tailAng=0.46 + 0.05*Math.sin(t*1.2);
+        tailPhase=t*2.8;
+        const breath=0.02*Math.sin((t-10)*Math.PI*2*0.75);
+        const mouthLocal = {...localMouth(), y: localMouth().y + breath*0.6};
+        const r = rotY(mouthLocal, yaw);
+        const mouthWorld = {x:pos.x+r.x, y:mouthLocal.y, z:pos.z+r.z};
+        const d = rot2D(0,1,yaw);
+        boneHeld = {pivot:{x:mouthWorld.x, y:mouthWorld.y-0.05 + breath*0.2, z:mouthWorld.z}, dir:{x:d.x,z:d.z}};
+        showInsideBone=false;
+      }
+    }
+    moveDogAndSet(t);
+
+    // Build dog object for drawDog
+    const dog = {
+      x:pos.x,
+      y:0,
+      z:pos.z,
+      yaw:yaw,
+      speedN:speedN,
+      pitch:pitch,
+      roll:roll,
+      jawDrop:jawDrop,
+      earLift:earLift,
+      tailAng:tailAng,
+      tailPhase:tailPhase,
+      gaitPhase:gaitPhase,
+      t:t
+    };
+
+    // When entering and passing doorway, occlusion with doorway rim:
+    // We'll draw dog in two passes split by doorway plane and clip bone when behind the doorway frame.
+    const doorZ = house.doorPlaneZ;
+
+    // Bone inside rest (discoverable)
+    if(t<4.5){
+      const rest = {pivot:{...house.boneRest}, dir:{x:1,z:-0.15}};
+      // faint dim as it's inside
+      ctx.save();
+      ctx.globalAlpha=0.85;
+      drawBone(rest);
+      ctx.restore();
+    } else if(t>=4.5 && boneHeld){
+      // clip bone to doorway opening during the transition/backing phases for believable occlusion
+      const shouldClip = (t>=4.5 && t<8.2); // near doorway most of the carry
+      if(shouldClip){
+        const poly = house.doorPoly;
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(poly[0].x,poly[0].y);
+        ctx.lineTo(poly[1].x,poly[1].y);
+        ctx.lineTo(poly[2].x,poly[2].y);
+        ctx.lineTo(poly[3].x,poly[3].y);
+        ctx.closePath();
+        ctx.clip();
+        drawBone(boneHeld);
+        ctx.restore();
+      } else {
+        drawBone(boneHeld);
+      }
+    }
+
+    // Draw dog with internal occlusion relative to door plane
+    // (Our drawDog already splits head/body/legs by zFront for doorway feel.)
+    drawDog(dog);
+
+    // Extra subtle mouth/bone contact shadow when held
+    if(boneHeld){
+      const p=project(boneHeld.pivot);
+      ctx.save();
+      ctx.globalAlpha=0.32;
+      ctx.fillStyle='rgba(0,0,0,0.35)';
+      ctx.beginPath();
+      ctx.ellipse(p.x+2*p.s*0.02, p.y+6*p.s*0.02, 10*p.s*0.07, 4*p.s*0.07, 0,0,Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  window.renderFrame = renderFrame;
+  renderFrame(0);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,537 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Pomeranian Motion</title>
+<style>
+  html,body{height:100%;margin:0;background:#88bcd6}
+  canvas{display:block;margin:0 auto;}
+</style>
+</head>
+<body>
+<canvas id="stage" width="960" height="540"></canvas>
+<script>
+(function(){
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d', { alpha: false });
+const W = canvas.width, H = canvas.height;
+
+const DURATION = 12;
+const yard = { groundY: 420, backFenceY: 160 };
+
+const dogBase = {
+  startX: 160, startZ: 0.32, startYGround: yard.groundY,
+  scaleBase: 1.0
+};
+
+const boneModel = { length: 42, radius: 8, color: '#efe7d0' };
+
+const house = {
+  x: 520, y: yard.groundY - 120, w: 220, h: 140, doorW: 90, doorH: 100, color: '#7b4f26', trim: '#5a3618', floorDepth: 18
+};
+
+function rnd(seed) {
+  let s = seed|0;
+  return function() {
+    s = (s * 1664525 + 1013904223) | 0;
+    return ((s >>> 0) / 4294967295);
+  };
+}
+
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+function lerp(a,b,t){ return a + (b-a)*t; }
+function smoothstep(t){ return t*t*(3-2*t); }
+function easeInOut(t){ return t<0.5? 2*t*t : -1 + (4-2*t)*t; }
+function deg(d){ return d*Math.PI/180; }
+
+function project(worldX, groundY, z, sizeScale=1) {
+  const zClamp = clamp(z, 0, 1);
+  const perspectiveScale = lerp(0.6, 1.05, zClamp);
+  const screenX = worldX;
+  const screenY = groundY - (1 - perspectiveScale) * 60 * sizeScale;
+  return { x: screenX, y: screenY, s: perspectiveScale * sizeScale };
+}
+
+function drawContactShadow(x,y,s,alpha=0.28, rx=32, ry=12) {
+  ctx.save();
+  ctx.translate(x, y+6);
+  ctx.scale(s, 1);
+  const g = ctx.createLinearGradient(-rx,0,rx,0);
+  g.addColorStop(0, `rgba(0,0,0,0)`);
+  g.addColorStop(0.3, `rgba(0,0,0,${alpha*0.85})`);
+  g.addColorStop(1, `rgba(0,0,0,0)`);
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+function drawHouse() {
+  ctx.fillStyle = house.color;
+  roundRect(ctx, house.x, house.y, house.w, house.h, 8);
+  ctx.fill();
+
+  ctx.fillStyle = '#5a3a22';
+  ctx.beginPath();
+  ctx.moveTo(house.x - 20, house.y);
+  ctx.lineTo(house.x + house.w/2, house.y - 46);
+  ctx.lineTo(house.x + house.w + 20, house.y);
+  ctx.closePath();
+  ctx.fill();
+
+  const doorX = house.x + (house.w - house.doorW)/2;
+  const doorY = house.y + house.h - house.doorH - 10;
+  ctx.fillStyle = '#24180f';
+  roundRect(ctx, doorX, doorY, house.doorW, house.doorH, 8);
+  ctx.fill();
+
+  ctx.fillStyle = '#2b1d12';
+  ctx.fillRect(doorX, doorY + house.doorH - house.floorDepth, house.doorW, house.floorDepth);
+
+  ctx.fillStyle = house.trim;
+  roundRect(ctx, doorX-6, doorY-6, house.doorW+12, house.doorH+12, 10);
+  ctx.fill();
+}
+
+function roundedRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+function drawBone(screen, angle, color, scale=1) {
+  ctx.save();
+  ctx.translate(screen.x, screen.y);
+  ctx.rotate(angle);
+  ctx.scale(scale, scale);
+  ctx.fillStyle = color;
+  roundedRect(ctx, -boneModel.length/2, -6, boneModel.length, 12, 6);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(-boneModel.length/2 - 10, 0, 12, 10, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(boneModel.length/2 + 10, 0, 12, 10, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  const g = ctx.createLinearGradient(-boneModel.length/2, -8, boneModel.length/2, 8);
+  g.addColorStop(0, 'rgba(255,255,255,0.07)');
+  g.addColorStop(1, 'rgba(0,0,0,0.06)');
+  ctx.fillStyle = g;
+  roundedRect(ctx, -boneModel.length/2, -6, boneModel.length, 12, 6);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawDog(state) {
+  const seed = 12345;
+  const rand = rnd(seed);
+
+  const worldX = state.x;
+  const z = state.z;
+  const proj = project(worldX, dogBase.startYGround, z, state.scale);
+  const baseS = proj.s;
+
+  const spineLen = 86 * baseS;
+  const spineAngle = state.bodyAngle;
+  const chest = { x: worldX + Math.cos(spineAngle) * 14 * baseS, y: proj.y + Math.sin(spineAngle) * 6 * baseS };
+  const pelvis = { x: chest.x - Math.cos(spineAngle) * spineLen, y: chest.y - Math.sin(spineAngle) * spineLen };
+  const headPivot = { x: chest.x + Math.cos(spineAngle) * 32 * baseS, y: chest.y + Math.sin(spineAngle) * 12 * baseS };
+
+  function legIK(hipX, hipY, phase, reach, stance) {
+    const stepForward = Math.cos(phase) * reach * baseS;
+    const footX = hipX + stepForward;
+    const footY = dogBase.startYGround - (1 - proj.s)*40;
+    const lift = Math.max(0, Math.sin(phase)) * 18 * baseS * stance;
+    return { hipX, hipY, footX, footY - lift };
+  }
+
+  const lf = legIK(chest.x, chest.y + 14*baseS, state.gaitPhase + Math.PI*1.0, 28, 1.0);
+  const rf = legIK(chest.x, chest.y + 14*baseS, state.gaitPhase + Math.PI*0.0, 28, 1.0);
+  const lb = legIK(pelvis.x, pelvis.y + 14*baseS, state.gaitPhase + Math.PI*0.0, 30, 1.0);
+  const rb = legIK(pelvis.x, pelvis.y + 14*baseS, state.gaitPhase + Math.PI*1.0, 30, 1.0);
+
+  const headAngle = state.headAngle;
+  const headScale = 0.9 * baseS;
+  const headCenter = { x: headPivot.x + Math.cos(headAngle) * 18 * headScale, y: headPivot.y + Math.sin(headAngle) * 6 * headScale };
+
+  const tailBase = { x: pelvis.x - Math.cos(spineAngle)*8*baseS, y: pelvis.y - Math.sin(spineAngle)*8*baseS };
+  const tailCurl = state.tailCurl;
+  const tailLength = 46 * baseS;
+
+  drawContactShadow(proj.x, proj.y + 28 * baseS, 0.9 + state.z*0.3, 0.26, 56*baseS, 18*baseS);
+  [lf, rf, lb, rb].forEach(f => drawContactShadow(f.footX, f.footY + 6, 0.9 + state.z*0.3, 0.22, 18*baseS, 8*baseS));
+
+  // Rear fur
+  ctx.save();
+  const coatA = '#f1b16b';
+  const coatB = '#f8e3c5';
+  const ruff = '#ffd99f';
+  ctx.fillStyle = coatA;
+  ctx.beginPath();
+  ctx.ellipse(pelvis.x, pelvis.y, 44*baseS, 30*baseS, spineAngle, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.lineCap = 'round';
+  for (let i=0;i<60;i++) {
+    const t = i/59;
+    const ang = spineAngle - Math.PI/2 + (t-0.5)*0.6;
+    const len = lerp(12,28, 1-Math.abs(t-0.5)*2) * baseS;
+    const ox = pelvis.x + Math.cos(spineAngle+ (t-0.5)*0.8) * 36*baseS * (0.6 + t*0.5);
+    const oy = pelvis.y + Math.sin(spineAngle+ (t-0.5)*0.8) * 22*baseS * (0.6 + t*0.5);
+    ctx.strokeStyle = (i%6===0) ? coatB : coatA;
+    ctx.lineWidth = lerp(1.2, 3.2, rand());
+    ctx.beginPath();
+    ctx.moveTo(ox, oy);
+    ctx.lineTo(ox + Math.cos(ang)*len, oy + Math.sin(ang)*len);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  function drawLeg(leg, isFront) {
+    ctx.save();
+    ctx.strokeStyle = '#b86f2f';
+    ctx.fillStyle = '#b86f2f';
+    ctx.lineWidth = 6 * baseS;
+    const hipX = isFront ? chest.x : pelvis.x;
+    const hipY = isFront ? chest.y + 14*baseS : pelvis.y + 14*baseS;
+    const kneeX = lerp(hipX, leg.footX, 0.46);
+    const kneeY = lerp(hipY, leg.footY, 0.46);
+    ctx.beginPath();
+    ctx.lineCap = 'round';
+    ctx.moveTo(hipX, hipY);
+    ctx.lineTo(kneeX, kneeY);
+    ctx.stroke();
+    ctx.lineWidth = 5 * baseS;
+    ctx.beginPath();
+    ctx.moveTo(kneeX, kneeY);
+    ctx.lineTo(leg.footX, leg.footY);
+    ctx.stroke();
+    ctx.fillStyle = '#3b2a1b';
+    ctx.beginPath();
+    ctx.ellipse(leg.footX, leg.footY + 4*baseS, 8*baseS, 6*baseS, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  drawLeg(lb, false);
+  drawLeg(rb, false);
+
+  ctx.save();
+  ctx.fillStyle = coatB;
+  ctx.beginPath();
+  ctx.ellipse((pelvis.x + chest.x)/2 - Math.cos(spineAngle)*6*baseS, (pelvis.y + chest.y)/2 - Math.sin(spineAngle)*6*baseS, 54*baseS, 34*baseS, spineAngle, 0, Math.PI*2);
+  ctx.fill();
+
+  const ruffX = chest.x + Math.cos(spineAngle)*8*baseS;
+  const ruffY = chest.y + Math.sin(spineAngle)*6*baseS;
+  ctx.fillStyle = ruff;
+  for (let i=0;i<22;i++) {
+    const a = spineAngle - 0.8 + i*(1.6/21);
+    const rx = ruffX + Math.cos(a) * lerp(10,26, Math.abs(i-11)/11) * baseS;
+    const ry = ruffY + Math.sin(a) * lerp(6,22, Math.abs(i-11)/11) * baseS;
+    ctx.beginPath();
+    ctx.ellipse(rx, ry, lerp(6,20, Math.abs(i-11)/11)*baseS, lerp(4,14, Math.abs(i-11)/11)*baseS, a+Math.PI/6, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  drawLeg(lf, true);
+  drawLeg(rf, true);
+
+  ctx.save();
+  ctx.translate(tailBase.x, tailBase.y);
+  ctx.rotate(tailCurl);
+  for (let i=0;i<16;i++){
+    const t = i/15;
+    ctx.beginPath();
+    ctx.strokeStyle = (i%3===0)? coatB : coatA;
+    ctx.lineWidth = lerp(6, 18, 1-t) * baseS;
+    ctx.moveTo(Math.cos(0)*t*10*baseS, Math.sin(0)*t*4*baseS);
+    ctx.lineTo(Math.cos(0)*(t*tailLength + 8) , Math.sin(0)*(t*8));
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  ctx.save();
+  ctx.translate(headCenter.x, headCenter.y);
+  ctx.rotate(headAngle);
+  const headW = 46 * headScale;
+  const headH = 40 * headScale;
+  ctx.fillStyle = coatA;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, headW, headH, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.fillStyle = '#e7c397';
+  ctx.beginPath();
+  ctx.ellipse(headW*0.18, headH*0.06, 18*headScale, 14*headScale, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.fillStyle = '#d07a31';
+  ctx.beginPath();
+  ctx.moveTo(-18*headScale, -18*headScale);
+  ctx.lineTo(-32*headScale, -42*headScale);
+  ctx.lineTo(-6*headScale, -30*headScale);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(18*headScale, -18*headScale);
+  ctx.lineTo(6*headScale, -42*headScale);
+  ctx.lineTo(36*headScale, -30*headScale);
+  ctx.closePath();
+  ctx.fill();
+
+  const eyeY = -2*headScale;
+  ctx.fillStyle = '#2a1f18';
+  ctx.beginPath();
+  ctx.ellipse(-8*headScale, eyeY, 5*headScale, 6*headScale, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(10*headScale, eyeY, 5*headScale, 6*headScale, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.fillStyle = 'rgba(255,255,255,0.24)';
+  ctx.beginPath();
+  ctx.ellipse(-6*headScale, eyeY-2*headScale, 2*headScale, 3*headScale, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.fillStyle = '#1e1410';
+  ctx.beginPath();
+  ctx.ellipse(18*headScale, 6*headScale, 5*headScale, 4*headScale, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  const bite = state.biting;
+  ctx.save();
+  ctx.translate(8*headScale, 12*headScale);
+  ctx.rotate( bite * 0.08 );
+  ctx.fillStyle = '#b16a39';
+  ctx.beginPath();
+  ctx.ellipse(0, 6*headScale, 16*headScale, 8*headScale, 0, 0, Math.PI);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalAlpha = 0.7;
+  for (let i=0;i<6;i++){
+    ctx.fillStyle = i%2? coatB : coatA;
+    const off = (Math.sin(state.time*2 + i)*1.8) * baseS;
+    ctx.beginPath();
+    ctx.ellipse(chest.x - Math.cos(spineAngle)*8*baseS + off, chest.y - Math.sin(spineAngle)*6*baseS + i*2*baseS, 18*baseS - i*1.8*baseS, 10*baseS - i*1.2*baseS, spineAngle, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  const mouthWorld = {
+    x: headCenter.x + Math.cos(headAngle)*22*headScale,
+    y: headCenter.y + Math.sin(headAngle)*8*headScale
+  };
+
+  return { mouthWorld, headAngle, headScale };
+}
+
+function dogStateAt(t) {
+  const tc = clamp(t, 0, DURATION);
+  const startX = dogBase.startX;
+  const approachX = house.x + house.w/2 - 22;
+  const insideX = approachX + 10;
+  const exitX = approachX - 6;
+
+  let x = startX;
+  let z = dogBase.startZ;
+  let bodyAngle = 0;
+  let headAngle = 0;
+  let tailCurl = -0.9;
+  let gaitPhase = 0;
+  let scale = 1.0;
+  let biting = 0;
+  let time = tc;
+
+  if (tc < 1.0) {
+    const p = smoothstep(tc/1.0);
+    x = startX;
+    bodyAngle = lerp(0.02, 0.0, p);
+    headAngle = lerp(0.12, 0.06, p);
+    gaitPhase = 0;
+    tailCurl = -0.75;
+  } else if (tc < 3.0) {
+    const p = (tc - 1.0)/2.0;
+    const sp = easeInOut(p);
+    x = lerp(startX, approachX - 8, sp);
+    bodyAngle = lerp(0.06, 0.00, sp);
+    headAngle = lerp(0.06, -0.02, sp);
+    tailCurl = lerp(-0.7, -1.0, sp);
+    gaitPhase = (tc - 1.0) * 10.0;
+    z = lerp(dogBase.startZ, dogBase.startZ + 0.04, sp);
+    scale = lerp(1.0, 1.02, sp);
+  } else if (tc < 4.5) {
+    const p = (tc - 3.0)/1.5;
+    const sp = smoothstep(p);
+    x = lerp(approachX - 8, insideX, sp);
+    z = lerp(dogBase.startZ + 0.04, 0.165, sp);
+    bodyAngle = lerp(0.0, -0.06, sp);
+    headAngle = lerp(-0.02, 0.12, sp);
+    tailCurl = lerp(-1.0, -0.5, sp);
+    gaitPhase = (tc - 3.0)*6;
+    scale = lerp(1.02, 0.98, sp);
+  } else if (tc < 6.0) {
+    const p = clamp((tc - 4.5) / 1.5, 0, 1);
+    x = lerp(insideX, insideX, p);
+    z = lerp(0.175, 0.165, p);
+    bodyAngle = -0.06;
+    headAngle = lerp(0.12, 0.28, p);
+    tailCurl = -0.45;
+    gaitPhase = (tc - 4.5) * 1.8;
+    biting = smoothstep(p);
+    scale = 0.98;
+  } else if (tc < 8.0) {
+    const p = clamp((tc - 6.0) / 2.0, 0, 1);
+    const sp = smoothstep(p);
+    x = lerp(insideX, exitX, sp);
+    z = lerp(0.165, dogBase.startZ + 0.02, sp);
+    bodyAngle = lerp(-0.04, 0.02, sp);
+    headAngle = lerp(0.28, 0.06, sp);
+    tailCurl = lerp(-0.4, -0.95, sp);
+    gaitPhase = (tc - 6.0) * 6.0;
+    biting = 1.0;
+    scale = lerp(0.98, 1.01, sp);
+  } else if (tc < 10.0) {
+    const p = clamp((tc - 8.0)/2.0, 0, 1);
+    const sp = smoothstep(p);
+    x = lerp(exitX, 420, sp);
+    z = lerp(dogBase.startZ + 0.02, 0.42, sp);
+    bodyAngle = lerp(0.02, 0.0, sp);
+    headAngle = lerp(0.06, 0.0, sp);
+    tailCurl = lerp(-0.95, -1.4, sp);
+    gaitPhase = (tc - 8.0) * 3.5;
+    biting = 1.0;
+    scale = lerp(1.01, 1.06, sp);
+  } else {
+    const p = clamp((tc - 10.0) / 2.0, 0, 1);
+    x = lerp(420, 420, p);
+    z = lerp(0.42, 0.44, p);
+    bodyAngle = 0.0;
+    headAngle = 0.0;
+    tailCurl = -1.45;
+    gaitPhase = (tc - 10.0)*1.2;
+    biting = 1.0;
+    scale = 1.08;
+  }
+
+  let headingT;
+  if (tc < 8.0) headingT = 0;
+  else headingT = clamp((tc - 8.0)/2.0, 0, 1);
+
+  const state = {
+    x, z, bodyAngle, headAngle: headAngle - headingT*0.18, tailCurl: tailCurl + headingT* -0.35,
+    gaitPhase: gaitPhase, scale: scale, biting: biting, time: time, headingT: headingT
+  };
+  return state;
+}
+
+window.renderFrame = function(timeSeconds) {
+  const t = (typeof timeSeconds === 'number') ? timeSeconds : 0;
+  const tc = (t < 0) ? 0 : (t > DURATION ? DURATION : t);
+
+  ctx.fillStyle = '#88bcd6';
+  ctx.fillRect(0,0,W,H);
+
+  ctx.fillStyle = '#5b8a3a';
+  ctx.fillRect(0, yard.backFenceY, W, 40);
+
+  const grd = ctx.createLinearGradient(0, yard.groundY, 0, H);
+  grd.addColorStop(0, '#7bb86b');
+  grd.addColorStop(1, '#5f8c4e');
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, yard.groundY, W, H - yard.groundY);
+
+  ctx.save();
+  ctx.fillStyle = '#d7cfae';
+  ctx.beginPath();
+  ctx.ellipse(house.x + house.w/2, yard.groundY + 22, 120, 32, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+
+  drawHouse();
+
+  const doorCenterX = house.x + house.w/2;
+  const doorFloorY = house.y + house.h - 12;
+  const boneStartWorld = { x: doorCenterX + 6, y: doorFloorY - 8, z: 0.165 };
+
+  const dstate = dogStateAt(tc);
+
+  const tGrabStart = 4.5;
+  const tGrabEnd = 4.9;
+  let boneWorldPos = { ...boneStartWorld };
+  let boneHeld = false;
+
+  if (tc < tGrabStart) {
+    boneHeld = false;
+    boneWorldPos = boneStartWorld;
+  } else if (tc < tGrabEnd) {
+    const p = smoothstep((tc - tGrabStart)/(tGrabEnd - tGrabStart));
+    const approxState = dstate;
+    const mouthApproxX = approxState.x + Math.cos(approxState.headAngle) * 26 * approxState.scale;
+    const mouthApproxY = dogBase.startYGround - (1 - approxState.z)*60 + Math.sin(approxState.headAngle)*16*approxState.scale;
+    boneWorldPos.x = lerp(boneStartWorld.x, mouthApproxX, p);
+    boneWorldPos.y = lerp(boneStartWorld.y, mouthApproxY, p);
+    boneWorldPos.z = lerp(boneStartWorld.z, approxState.z, p);
+    boneHeld = p > 0.6;
+  } else {
+    boneHeld = true;
+    const st = dstate;
+    const proj = project(st.x, dogBase.startYGround, st.z, st.scale);
+    const spineLen = 86 * proj.s;
+    const spineAngle = st.bodyAngle;
+    const chest = { x: st.x + Math.cos(spineAngle) * 14 * proj.s, y: proj.y + Math.sin(spineAngle) * 6 * proj.s };
+    const headPivot = { x: chest.x + Math.cos(spineAngle) * 32 * proj.s, y: chest.y + Math.sin(spineAngle) * 12 * proj.s };
+    const headAngle = st.headAngle;
+    const headScale = 0.9 * proj.s;
+    const mouthX = headPivot.x + Math.cos(headAngle) * 22 * headScale;
+    const mouthY = headPivot.y + Math.sin(headAngle) * 8 * headScale;
+    boneWorldPos = { x: mouthX, y: mouthY, z: st.z };
+  }
+
+  const mouthInfo = drawDog({ x: dstate.x, z: dstate.z, bodyAngle: dstate.bodyAngle, headAngle: dstate.headAngle, tailCurl: dstate.tailCurl, gaitPhase: dstate.gaitPhase, scale: dstate.scale, biting: dstate.biting, time: dstate.time });
+
+  if (!boneHeld) {
+    const boneProj = project(boneWorldPos.x, boneWorldPos.y, boneWorldPos.z, 1.0);
+    drawBone(boneProj, deg(-10), boneModel.color, 1.0);
+  } else {
+    const boneScreen = project(boneWorldPos.x, boneWorldPos.y, boneWorldPos.z, 1.0);
+    const angle = mouthInfo.headAngle + 0.12;
+    drawBone(boneScreen, angle, boneModel.color, 1.0);
+  }
+
+  const doorX = house.x + (house.w - house.doorW)/2;
+  const doorY = house.y + house.h - house.doorH - 10;
+  ctx.fillStyle = house.trim;
+  roundRect(ctx, doorX-6, doorY-6, house.doorW+12, house.doorH+12, 10);
+  ctx.fill();
+
+  if (tc >= 10) {
+    ctx.save();
+    ctx.globalAlpha = 0.12;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.ellipse(dstate.x + 8, dogBase.startYGround - 160 * dstate.scale, 40 * dstate.scale, 12 * dstate.scale, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+};
+
+window.renderFrame(0);
+
+})();
+</script>
+</body>
+</html>

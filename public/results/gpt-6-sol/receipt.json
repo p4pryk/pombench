@@ -1,0 +1,14 @@
+{
+  "modelId": "gpt-6-sol",
+  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
+  "sourceHash": "fbc35b9ca73faae120e99d029f520e6807c72c7dcf4998f2f42bf7b381132863",
+  "responseHash": "1194d12883535f7564a5f306003aa39225b9e8627969d64d7dff0355fa6be5fa",
+  "requestHash": "9706b2849168b7c798370768c7a4378b3b35608192b4afc619d626dc23833b7e",
+  "streamHash": "1cbcad5f85134972fcfae5012ff18dcdd105ecee323f7c536a726988808016a2",
+  "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
+  "submission": 1,
+  "tools": [],
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+}

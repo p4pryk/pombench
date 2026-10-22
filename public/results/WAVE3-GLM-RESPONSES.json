@@ -1,0 +1,7 @@
+{
+  "at": "2026-10-22T13:36:07.998984+00:00",
+  "modelId": "FW-GLM-5.3",
+  "scriptHash": "fddb093b43e8f2b4dcdf50e573a9973783f7a32eba59a8072eb70860092107a2",
+  "requestRoute": "AI Foundry API /openai/v1/responses",
+  "policy": "Provider chat streams ended without terminal receipts twice. Same pinned deployment, byte-identical existing rescue prompt, 65536 total output allowance and low effort. Use the official Responses route verified by separate tiny compatibility probe. Non-streaming avoids lost streaming terminal receipts. Preserve and flag all unknown transport costs. Final response only, no aesthetic selection."
+}

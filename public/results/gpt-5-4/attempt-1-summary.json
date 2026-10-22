@@ -1,0 +1,37 @@
+{
+  "status": "render-error",
+  "technicalChecks": {
+    "contract": true,
+    "renders": false,
+    "visible": false,
+    "motion": false,
+    "deterministic": false,
+    "offline": true
+  },
+  "technicalPassed": 2,
+  "technicalTotal": 6,
+  "visualScore": null,
+  "visualReview": "Not reviewed. Technical checks do not verify anatomy, foot contact, bone contact or doghouse occlusion or task compliance.",
+  "metrics": {},
+  "errors": [
+    "earL is not a function",
+    "page.evaluate: TypeError: earL is not a function\n    at Object.draw (http://127.0.0.1:58244/:616:75)\n    at drawDog (http://127.0.0.1:58244/:658:25)\n    at window.renderFrame (http://127.0.0.1:58244/:695:3)\n    at eval (eval at evaluate (:370:30), <anonymous>:1:25)\n    at UtilityScript.evaluate (<anonymous>:372:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)"
+  ],
+  "blockedRequests": [],
+  "cspViolations": [],
+  "capture": {
+    "frames": 0,
+    "fps": 30,
+    "durationSeconds": null,
+    "width": 960,
+    "height": 540,
+    "complete": false,
+    "isolation": "Separate offline Chromium process, service workers and downloads disabled, CSP, all post-bootstrap network blocked. Organizer measures screenshot pixels; candidate reports are ignored.",
+    "sourceHash": "7508fc8f10e87a3bf45e0805ad09840e199be2a2e894b84263bf77ef93c2a62a",
+    "frameEvidenceHash": "1a49898f8cefd83f61a6d77065cbae3935852b0bc70f25dc14b43ce9dd8fcb05"
+  },
+  "contactSheet": [],
+  "evidenceHashes": {
+    "capture.json": "1a49898f8cefd83f61a6d77065cbae3935852b0bc70f25dc14b43ce9dd8fcb05"
+  }
+}

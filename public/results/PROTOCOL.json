@@ -1,0 +1,66 @@
+{
+  "id": "pom-motion-v3",
+  "title": "The Pomeranian and the bone",
+  "durationSeconds": 12,
+  "width": 960,
+  "height": 540,
+  "captureFps": 30,
+  "submissionsPerModel": 2,
+  "maxOutputTokens": 32768,
+  "maxSourceBytes": 180000,
+  "exactSamePrompt": true,
+  "tools": [],
+  "feedback": "One conditional execution repair, no aesthetic feedback",
+  "servingVariants": "Standard preferred; one model/version, no Fast duplicate",
+  "technicalChecks": [
+    "contract",
+    "renders",
+    "visible",
+    "motion",
+    "deterministic",
+    "offline"
+  ],
+  "thresholds": {
+    "visibleLumaStd": 2,
+    "motionFraction": 0.001,
+    "motionIntervals": 8,
+    "loopPixelRmse": 0.2
+  },
+  "repeatTimes": [
+    0.75,
+    5.5,
+    10.25
+  ],
+  "contactSheetTimes": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10.5,
+    11.966666666666667
+  ],
+  "visualScoring": "Qualitative film inspection; no automatic aesthetic points or local review form",
+  "infrastructureFailure": "Unavailable, never a fabricated rendering failure or zero aesthetic score",
+  "capture": "Offline isolated Chromium; actual viewport screenshots, not model telemetry; deterministic offline capture encoded at 30 fps",
+  "outputLimitPolicy": "32768 requested; GPT-4o and GPT-4o mini provider maximum 16384",
+  "thinkingPolicy": "Low where supported; Haiku optional thinking disabled; native settings otherwise",
+  "visualCriteria": [
+    "Pomeranian identity & anatomy",
+    "Grounded running and reverse gait",
+    "Doghouse entry & occlusion",
+    "Bone grip & object permanence",
+    "Coherent front-facing turn",
+    "Fur, light & final presentation"
+  ],
+  "subject": "Pomeranian",
+  "loopRequired": false,
+  "analysisScript": "scripts/analyze-pomeranian.py",
+  "captureScript": "scripts/capture.mjs",
+  "posterSampleIndex": 9
+}

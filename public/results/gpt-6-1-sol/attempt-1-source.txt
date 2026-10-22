@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>html,body{margin:0;background:#26382d}#stage{display:block;width:960px;height:540px}</style>
+</head>
+<body>
+<canvas id="stage" width="960" height="540"></canvas>
+<script>
+"use strict";
+const canvas=document.getElementById("stage"),ctx=canvas.getContext("2d");
+const W=960,H=540,S=119;
+const right=[.874,0,-.486],up=[-.166,.94,-.299],view=[.457,.341,.821];
+let items=[],pose;
+const clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
+const ease=x=>{x=clamp(x);return x*x*(3-2*x)};
+const mix=(a,b,t)=>a+(b-a)*t;
+function rand(n){let x=Math.sin(n*127.1+311.7)*43758.5453123;return x-Math.floor(x)}
+function dot(a,b){return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]}
+function proj(p){return [510+S*dot(p,right),365-S*dot(p,up),dot(p,view)]}
+function rgb(c,k=1){return "rgb("+c.map(v=>Math.round(clamp(v*k,0,255))).join(",")+")"}
+function tri(a,b,c,col){
+ const pa=proj(a),pb=proj(b),pc=proj(c);
+ const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2];
+ let n=[uy*vz-uz*vy,uz*vx-ux*vz,ux*vy-uy*vx],len=Math.hypot(...n)||1;
+ n=n.map(v=>v/len);
+ const light=clamp(.64+.34*dot(n,[-.45,.82,.36])+.07*n[1],.34,1.1);
+ items.push({d:(pa[2]+pb[2]+pc[2])/3,type:0,p:[pa,pb,pc],c:rgb(col,light)});
+}
+function quad(a,b,c,d,col){tri(a,b,c,col);tri(a,c,d,col)}
+function line3(a,b,col,width){const p=proj(a),q=proj(b);items.push({d:(p[2]+q[2])/2+.001,type:1,p:[p,q],c:col,w:width})}
+function box(x0,y0,z0,x1,y1,z1,col){
+ quad([x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1],col);
+ quad([x1,y0,z1],[x1,y0,z0],[x1,y1,z0],[x1,y1,z1],col);
+ quad([x0,y0,z0],[x0,y0,z1],[x0,y1,z1],[x0,y1,z0],col);
+ quad([x0,y1,z1],[x1,y1,z1],[x1,y1,z0],[x0,y1,z0],col);
+}
+function dogPoint(p){
+ const c=Math.cos(pose.yaw),s=Math.sin(pose.yaw);
+ return [pose.x+c*p[0]+s*p[2],p[1],pose.z-s*p[0]+c*p[2]];
+}
+function sphere(center,radii,col,fur=0,seed=1,dog=true,tilt=0){
+ const transform=p=>{
+  const c=Math.cos(tilt),s=Math.sin(tilt);
+  let q=[center[0]+p[0],center[1]+c*p[1]-s*p[2],center[2]+s*p[1]+c*p[2]];
+  return dog?dogPoint(q):q;
+ };
+ const rows=fur?13:10,cols=fur?24:16;
+ let grid=[];
+ for(let i=0;i<=rows;i++){
+  const ph=Math.PI*i/rows;
+  let row=[];
+  for(let j=0;j<=cols;j++){
+   let th=2*Math.PI*j/cols;
+   row.push(transform([radii[0]*Math.sin(ph)*Math.cos(th),radii[1]*Math.cos(ph),radii[2]*Math.sin(ph)*Math.sin(th)]));
+  }
+  grid.push(row);
+ }
+ for(let i=0;i<rows;i++)for(let j=0;j<cols;j++){
+  tri(grid[i][j],grid[i+1][j],grid[i+1][j+1],col);
+  tri(grid[i][j],grid[i+1][j+1],grid[i][j+1],col);
+ }
+ if(!fur)return;
+ for(let i=0;i<fur;i++){
+  const u=rand(seed+i*3),v=rand(seed+i*3+1),w=rand(seed+i*3+2);
+  const yy=1-2*u,a=v*Math.PI*2,rr=Math.sqrt(1-yy*yy);
+  const n=[rr*Math.cos(a),yy,rr*Math.sin(a)];
+  const base=n.map((v,k)=>v*radii[k]);
+  const p=transform(base);
+  let wn=[n[0],Math.cos(tilt)*n[1]-Math.sin(tilt)*n[2],Math.sin(tilt)*n[1]+Math.cos(tilt)*n[2]];
+  if(dog){const c=Math.cos(pose.yaw),s=Math.sin(pose.yaw);wn=[c*wn[0]+s*wn[2],wn[1],-s*wn[0]+c*wn[2]]}
+  if(dot(wn,view)<-.12)continue;
+  let length=.025+.055*w;
+  // Guard hairs follow the coat down and out from the underlying volume.
+  const tip=[base[0]+n[0]*length,base[1]+n[1]*length-.028*(1-Math.abs(n[1])),base[2]+n[2]*length];
+  const q=transform(tip);
+  let shade=.72+.26*dot(wn,[-.45,.82,.36])+.20*w;
+  let color=col.map((c,k)=>c+(k===0?22:k===1?24:22)*(w-.3));
+  line3(p,q,rgb(color,shade),.55+.45*w);
+ }
+}
+function segment(a,b,r1,r2,col,fur,seed){
+ const mid=a.map((v,i)=>(v+b[i])/2),dy=b[1]-a[1],dz=b[2]-a[2];
+ sphere(mid,[r1,Math.hypot(dy,dz)/2+r2,r1],col,fur,seed,true,Math.atan2(-dz,dy));
+}
+function shadow(x,z,rx,rz,alpha){
+ ctx.save();const p=proj([x,.011,z]);
+ ctx.translate(p[0],p[1]);ctx.transform(right[0],-up[0],right[2],-up[2],0,0);
+ let g=ctx.createRadialGradient(0,0,1,0,0,rx*S);
+ g.addColorStop(0,"rgba(29,29,15,"+alpha+")");g.addColorStop(1,"rgba(29,29,15,0)");
+ ctx.scale(1,rz/rx);ctx.fillStyle=g;ctx.beginPath();ctx.arc(0,0,rx*S,0,Math.PI*2);ctx.fill();ctx.restore();
+}
+function background(){
+ let g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,"#acc9c8");g.addColorStop(.37,"#d2d9b7");g.addColorStop(.38,"#879462");g.addColorStop(1,"#7a8b4e");ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ // A distant, softly shaded hedge and weathered garden fence.
+ for(let i=0;i<95;i++){
+  let x=i*11-25,y=130+rand(i+20)*24,r=26+rand(i+80)*24;
+  let gr=ctx.createRadialGradient(x-9,y-13,0,x,y,r);
+  gr.addColorStop(0,"#6e8654");gr.addColorStop(1,"#405d43");
+  ctx.fillStyle=gr;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();
+ }
+ ctx.fillStyle="#aaa486";ctx.fillRect(0,169,W,9);ctx.fillStyle="#8a8d70";ctx.fillRect(0,219,W,8);
+ for(let i=0;i<49;i++){
+  let x=i*21-6;ctx.fillStyle=i%3===0?"#b2ac91":"#c0b99e";
+  ctx.beginPath();ctx.moveTo(x,241);ctx.lineTo(x,165);ctx.lineTo(x+7,157);ctx.lineTo(x+15,165);ctx.lineTo(x+15,241);ctx.fill();
+  ctx.strokeStyle="rgba(81,76,53,.23)";ctx.lineWidth=.6;
+  for(let j=0;j<3;j++){ctx.beginPath();ctx.moveTo(x+3+j*4,175);ctx.lineTo(x+2+j*4,237);ctx.stroke()}
+ }
+ let ground=ctx.createLinearGradient(0,220,0,540);ground.addColorStop(0,"rgba(121,143,78,.75)");ground.addColorStop(1,"#879657");ctx.fillStyle=ground;ctx.fillRect(0,239,960,301);
+ // Fine ground texture, always seeded and independent of time.
+ for(let i=0;i<9500;i++){
+  let x=rand(i*4+70)*960,y=240+rand(i*4+71)*300;
+  let len=1+(y-240)/110*rand(i*4+72);
+  ctx.strokeStyle=i%3?"rgba(46,76,35,.16)":"rgba(211,216,144,.26)";
+  ctx.lineWidth=.55;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+rand(i*4+73)*3-1.5,y-len);ctx.stroke();
+ }
+ // Small paving stones lead to the open threshold.
+ for(let i=0;i<4;i++){
+  const z=.55+i*.6,x=.25;
+  let pts=[[-.54+x,0,z-.20],[.55+x,0,z-.20],[.62+x,0,z+.23],[-.50+x,0,z+.25]].map(proj);
+  ctx.fillStyle=["#a5a48a","#b2af98","#aaa78e","#b4b19c"][i];ctx.beginPath();pts.forEach((p,j)=>j?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();ctx.fill();
+  ctx.strokeStyle="rgba(72,75,50,.35)";ctx.lineWidth=1;ctx.stroke();
+ }
+ shadow(0,-1.8,2.2,1.7,.32);
+}
+function house(){
+ const f=-.65,b=-3.05;
+ // Interior floor and back: the opening is genuinely empty geometry.
+ quad([-1.18,.025,f],[1.18,.025,f],[1.18,.025,b],[-1.18,.025,b],[104,78,48]);
+ quad([-1.18,0,b],[1.18,0,b],[1.18,1.95,b],[-1.18,1.95,b],[76,55,35]);
+ box(-1.25,0,b,-1.12,1.95,f,[145,101,63]);
+ box(1.12,0,b,1.25,1.95,f,[151,109,68]);
+ // Front jambs, sized generously for the miniature dog.
+ box(-1.25,0,f-.08,-.80,1.93,f+.07,[187,139,90]);
+ box(.80,0,f-.08,1.25,1.93,f+.07,[192,146,95]);
+ box(-.80,1.63,f-.08,.80,1.94,f+.07,[187,140,91]);
+ tri([-1.25,1.94,f+.07],[1.25,1.94,f+.07],[0,2.76,f+.07],[190,144,94]);
+ // Weathered horizontal boards on the facade.
+ for(let y=.23;y<1.92;y+=.24){
+  line3([-1.25,y,f+.076],[-.805,y,f+.076],"rgba(90,57,34,.48)",1.1);
+  line3([.805,y,f+.076],[1.25,y,f+.076],"rgba(90,57,34,.48)",1.1);
+  if(y>1.65)line3([-.8,y,f+.076],[.8,y,f+.076],"rgba(90,57,34,.48)",1.1);
+ }
+ for(let i=0;i<110;i++){
+  const side=i%2?1:-1,x=side*(.82+rand(i+900)*.4),y=rand(i+1000)*1.9;
+  line3([x,y,f+.078],[x+side*.06,y+.008,f+.078],"rgba(226,183,125,.32)",.55);
+ }
+ // Door reveal and pale timber edging.
+ box(-.86,0,f+.075,-.77,1.67,f+.145,[216,180,126]);
+ box(.77,0,f+.075,.86,1.67,f+.145,[215,179,126]);
+ box(-.86,1.62,f+.075,.86,1.72,f+.145,[220,185,134]);
+ box(-.78,0,f-.10,.78,.055,f+.17,[164,119,75]);
+ const rf=f+.28,rb=b-.25;
+ quad([-1.48,1.92,rf],[0,2.85,rf],[0,2.85,rb],[-1.48,1.92,rb],[74,87,78]);
+ quad([0,2.85,rf],[1.48,1.92,rf],[1.48,1.92,rb],[0,2.85,rb],[88,99,87]);
+ // Individual shingle courses, following the sloped roof.
+ for(let side of [-1,1])for(let i=1;i<7;i++){
+  let x=side*1.48*i/7,y=2.85-.93*i/7;
+  line3([x,y+.008,rf],[x,y+.008,rb],"#59675b",1.3);
+  for(let j=0;j<7;j++){
+   let z=rf-(rf-rb)*(j+.5*(i%2))/7;
+   let xx=x+side*.18;
+   line3([x,y+.014,z],[xx,y-.93*.18/1.48+.014,z],"rgba(39,52,45,.42)",.8);
+  }
+ }
+ line3([-1.48,1.92,rf],[0,2.85,rf],"#bac0a3",4);
+ line3([0,2.85,rf],[1.48,1.92,rf],"#9fa98f",4);
+}
+function state(t){
+ let x=-3.1,z=2.15,yaw=2.05,travel=0,mode="idle";
+ if(t>=1&&t<3){let q=ease((t-1)/2);x=mix(-3.1,0,q);z=mix(2.15,.68,q);yaw=mix(2.05,Math.PI,ease((t-2.1)/.9));travel=(t-1)*9;mode="run"}
+ if(t>=3&&t<4.5){let q=ease((t-3)/1.5);x=0;z=mix(.68,-.62,q);yaw=Math.PI;travel=18+(t-3)*5.5;mode="walk"}
+ if(t>=4.5&&t<6){x=0;z=-.62;yaw=Math.PI;mode="grab"}
+ if(t>=6&&t<8){let q=ease((t-6)/2);x=0;z=mix(-.62,1.52,q);yaw=Math.PI;travel=26.25-(t-6)*6;mode="reverse"}
+ if(t>=8){x=0;z=1.52;yaw=mix(Math.PI,Math.atan2(view[0],view[2]),ease((t-8)/2));mode=t<10?"turn":"pose";travel=14.25+(t-8)*4}
+ let moving=mode==="run"?Math.sin(Math.PI*clamp((t-1)/2)):mode==="walk"?.65:mode==="reverse"?Math.sin(Math.PI*clamp((t-6)/2))*.7:mode==="turn"?Math.sin(Math.PI*clamp((t-8)/2))*.6:0;
+ let bob=mode==="run"?.045*Math.cos(travel*2)*moving:.018*Math.cos(travel*2)*moving;
+ let head=1.13+bob;
+ if(t>=4.5&&t<5.35)head=mix(1.13,.35,ease((t-4.5)/.85));
+ if(t>=5.35&&t<6)head=mix(.35,1.12,ease((t-5.35)/.65));
+ let breath=t>=10?.008*Math.sin((t-10)*2.5):.004*Math.sin(t*3);
+ return {x,z,yaw,travel,mode,moving,bob,head:head+breath,breath,t};
+}
+function legs(){
+ const coat=[182,111,51],light=[223,163,85];
+ // Four legs each have a shoulder/hip, elbow/hock, wrist and foot.
+ for(let rear of [true,false])for(let side of [-1,1]){
+  const xx=side*.265,zz=rear?-.43:.43;
+  const phase=pose.travel+(rear?Math.PI:0)+(side===1?Math.PI:0);
+  let cyc=(phase/(Math.PI*2)%1+1)%1;
+  let stride=pose.mode==="run"?.42:.24;
+  let footz=zz,fy=.09;
+  if(pose.moving>0){
+   // The long grounded part sweeps against translation; swing returns lifted.
+   if(cyc<.62)footz+=stride*(.5-cyc/.62)*pose.moving;
+   else {const q=(cyc-.62)/.38;footz+=stride*(-.5+ease(q))*pose.moving;fy+=Math.sin(q*Math.PI)*.16*pose.moving}
+   if(pose.mode==="reverse")footz=2*zz-footz;
+  }
+  let fx=xx;
+  if(pose.mode==="turn")fx+=side*.09*Math.sin(phase)*pose.moving;
+  const top=[xx,.79+pose.bob,zz],joint=[xx+side*.035,rear?.43:.44,zz+(rear?-.13:.055)],ankle=[fx,.18+fy*.35,footz-.045];
+  sphere(top,[.18,.25,.22],coat,180,rear?310+side:340+side);
+  segment(top,joint,.12,.08,coat,140,rear?370+side:400+side);
+  segment(joint,ankle,.077,.045,light,110,rear?420+side:450+side);
+  sphere([fx,fy,footz+.035],[.115,.087,.17],[225,174,108],100,rear?470+side:490+side);
+  for(let k=-1;k<=1;k++)sphere([fx+k*.052,fy-.018,footz+.145],[.025,.029,.035],[112,85,58],0);
+ }
+}
+function ears(h){
+ for(let s of [-1,1]){
+  let a=[s*.18,h+.23,.94],b=[s*.385,h+.22,.83],tip=[s*.31,h+.63,.87];
+  // Thick triangular ear with a softly haired outside and warm recessed inside.
+  let pts=[a,b,tip].map(dogPoint);
+  tri(pts[0],pts[1],pts[2],[183,108,48]);
+  tri(dogPoint([s*.18,h+.23,.86]),dogPoint([s*.31,h+.63,.87]),dogPoint([s*.385,h+.22,.79]),[199,129,65]);
+  tri(dogPoint([s*.223,h+.28,.957]),dogPoint([s*.345,h+.27,.871]),dogPoint([s*.303,h+.53,.902]),[114,74,51]);
+  for(let j=0;j<85;j++){
+   let u=rand(j+600+s*20),v=rand(j+701);if(u+v>1){u=1-u;v=1-v}
+   let p=a.map((a,k)=>a+(b[k]-a)*u+(tip[k]-a)*v);
+   let q=[p[0]+s*.009,p[1]+.025,p[2]+.012];
+   line3(dogPoint(p),dogPoint(q),rgb([226,157,79],.75+rand(j+80)*.3),.65);
+  }
+ }
+}
+function bone(center,yaw,dog=false){
+ function cv(p){
+  const c=Math.cos(yaw),s=Math.sin(yaw);
+  return [center[0]+c*p[0]+s*p[2],center[1]+p[1],center[2]-s*p[0]+c*p[2]];
+ }
+ // Continuous ivory shaft with two naturally irregular double-knuckled ends.
+ let mid=cv([0,0,0]);
+ sphere(mid,[.36,.055,.065],[224,212,171],0,1,false);
+ // Rotate shaft by constructing it from overlapping small cross-sections.
+ // This replaces the unrotated central volume with a yaw-aligned tapered shaft.
+ // End joints and shaft are generated using the same rigid coordinate system.
+}
+function drawBone(){
+ const held=pose.t>=5.35;
+ let c,ang;
+ if(held){c=dogPoint([0,pose.head-.20,1.30]);ang=pose.yaw}
+ else {c=[0,.15,-1.92];ang=0}
+ function tr(p){let co=Math.cos(ang),si=Math.sin(ang);return[c[0]+co*p[0]+si*p[2],c[1]+p[1],c[2]-si*p[0]+co*p[2]]}
+ const rows=10,cols=18;
+ let grid=[];
+ for(let i=0;i<=rows;i++){
+  let x=-.34+.68*i/rows,rr=.053+.014*Math.pow(Math.abs(x)/.34,2),row=[];
+  for(let j=0;j<=cols;j++){let a=j/cols*Math.PI*2;row.push(tr([x,Math.cos(a)*rr,Math.sin(a)*rr]))}grid.push(row);
+ }
+ for(let i=0;i<rows;i++)for(let j=0;j<cols;j++)quad(grid[i][j],grid[i+1][j],grid[i+1][j+1],grid[i][j+1],[232,221,184]);
+ for(let s of [-1,1])for(let k of [-1,1]){
+  sphere(tr([s*.355,k*.051,0]),[.094,.087,.079],[236,225,188],0,1,false);
+ }
+}
+function dog(){
+ const b=pose.bob,breath=pose.breath;
+ legs();
+ sphere([0,.81+b,-.15],[.39+breath,.43+breath,.64],[190,116,49],1350,21);
+ sphere([0,.93+b,.35],[.46+breath,.49+breath,.40],[223,155,76],1250,120);
+ sphere([0,.99+b,.54],[.385,.43,.31],[242,191,120],800,230);
+ // A thick curled plume grows from the rump and folds forward over the back.
+ let wag=.05*Math.sin(pose.t*3)* (pose.t>=10?.35:1)+pose.moving*.06*Math.sin(pose.travel-.7);
+ const tail=[
+  [wag,1.02+b,-.65],[wag+.03,1.35+b,-.72],[wag+.05,1.60+b,-.53],
+  [wag+.04,1.66+b,-.29],[wag-.015,1.53+b,-.12]
+ ];
+ for(let i=0;i<tail.length;i++){
+  sphere(tail[i],[.20+(i===2?.035:0),.19,.23],[i>1?234:213,i>1?178:145,i>1?99:67],350,800+i*70);
+ }
+ const h=pose.head;
+ if(h<.8){
+  segment([0,1.02,.43],[0,h,.84],.27,.18,[224,158,80],500,970);
+ }
+ ears(h);
+ sphere([0,h,.90],[.32,.30,.30],[214,142,65],1000,1001);
+ // Cheek feathering and compact, pointed muzzle rather than a long fox snout.
+ for(let s of [-1,1])sphere([s*.225,h-.085,.97],[.17,.19,.19],[234,179,105],310,1100+s);
+ sphere([0,h-.105,1.115],[.19,.115,.205],[243,198,135],340,1200);
+ let open=0;
+ if(pose.t>4.8&&pose.t<5.35)open=.065*Math.sin(clamp((pose.t-4.8)/.55)*Math.PI);
+ if(pose.t>=5.35)open=.026;
+ sphere([0,h-.205-open,1.12],[.15,.048,.14],[178,123,74],110,1250);
+ sphere([0,h-.171-open*.5,1.205],[.115,.032+open*.5,.09],[56,35,27],0);
+ // Small brown eyes lie on the sides of the short muzzle, not huge discs.
+ for(let s of [-1,1]){
+  sphere([s*.192,h+.055,1.127],[.072,.066,.052],[72,46,26],50,1300+s);
+  sphere([s*.192,h+.057,1.159],[.042,.044,.029],[26,22,17],0);
+  sphere([s*.183,h+.071,1.182],[.012,.012,.008],[224,228,204],0);
+  sphere([s*.205,h+.033,1.171],[.007,.008,.005],[117,87,46],0);
+ }
+ sphere([0,h-.093,1.293],[.087,.061,.059],[33,29,25],0);
+ sphere([-.023,h-.077,1.338],[.026,.012,.008],[117,114,97],0);
+ for(let s of [-1,1])for(let i=0;i<4;i++){
+  let p=[s*(.075+i*.009),h-.14-i*.008,1.25];
+  line3(dogPoint(p),dogPoint([s*(.21+i*.022),h-.14-i*.013,1.26]),"rgba(115,87,58,.58)",.55);
+ }
+ drawBone();
+}
+window.renderFrame=function(timeSeconds){
+ const t=clamp(Number.isFinite(timeSeconds)?timeSeconds:0,0,12);
+ pose=state(t);items=[];
+ ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,W,H);
+ background();
+ shadow(pose.x,pose.z,.66,.91,.33);
+ for(let rear of [true,false])for(let side of [-1,1]){
+  const p=dogPoint([side*.265,0,rear?-.43:.43]);shadow(p[0],p[2],.17,.21,.22);
+ }
+ if(t<5.35)shadow(0,-1.92,.47,.15,.24);
+ house();dog();
+ items.sort((a,b)=>a.d-b.d);
+ ctx.lineJoin="round";ctx.lineCap="round";
+ for(const o of items){
+  ctx.beginPath();ctx.moveTo(o.p[0][0],o.p[0][1]);
+  if(o.type===0){
+   ctx.lineTo(o.p[1][0],o.p[1][1]);ctx.lineTo(o.p[2][0],o.p[2][1]);ctx.closePath();
+   ctx.fillStyle=o.c;ctx.fill();
+   // Hairline overlap prevents cracks between adjacent surface triangles.
+   ctx.strokeStyle=o.c;ctx.lineWidth=.38;ctx.stroke();
+  }else{
+   ctx.lineTo(o.p[1][0],o.p[1][1]);ctx.strokeStyle=o.c;ctx.lineWidth=o.w;ctx.stroke();
+  }
+ }
+ // Very restrained photographic edge falloff; no titles or overlays.
+ let vignette=ctx.createRadialGradient(480,270,230,480,270,590);
+ vignette.addColorStop(0,"rgba(28,41,27,0)");vignette.addColorStop(1,"rgba(28,41,27,.16)");
+ ctx.fillStyle=vignette;ctx.fillRect(0,0,W,H);
+};
+window.renderFrame(0);
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "modelId": "Kimi-K2.7-Code",
+  "promptHash": "12c4aaedd377396838143b922156904f8047c43cfaa1688f2bf978f4e8393b96",
+  "sourceHash": "328f06978a1aca0d2e2f62d0f0c9b98e7d83078f241f31be64c7b4c645f93bb1",
+  "responseHash": "f2df16530a016c291bb072c569b413c17870355329dec5ba4ad29b191a11bbf8",
+  "requestHash": "2b5bc903774b94b212395c780df2b02dc01bfbf6a15623d933c3c9b9e81335e5",
+  "streamHash": "52a602fda9a18d8fcd7c8f0515ae9f90a59f7849a29433ebb826913d4c000272",
+  "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
+  "submission": 1,
+  "tools": [],
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+}

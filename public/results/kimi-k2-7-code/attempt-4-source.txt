@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>POM / MOTION — The Pomeranian and the bone</title>
+<style>
+body{margin:0;background:#000;overflow:hidden}
+canvas{display:block;width:960px;height:540px}
+</style>
+</head>
+<body>
+<canvas id="stage" width="960" height="540"></canvas>
+<script>
+const W=960,H=540;
+const c=document.getElementById('stage');
+const x=c.getContext('2d');
+
+const V=(a,b,d)=>({x:a,y:b,z:d});
+const add=(a,b)=>V(a.x+b.x,a.y+b.y,a.z+b.z);
+const sub=(a,b)=>V(a.x-b.x,a.y-b.y,a.z-b.z);
+const mul=(a,s)=>V(a.x*s,a.y*s,a.z*s);
+const dot=(a,b)=>a.x*b.x+a.y*b.y+a.z*b.z;
+const cross=(a,b)=>V(a.y*b.z-a.z*b.y,a.z*b.x-a.x*b.z,a.x*b.y-a.y*b.x);
+const len=a=>Math.sqrt(dot(a,a));
+const norm=a=>{const l=len(a);return l?mul(a,1/l):a;};
+const lerp=(a,b,u)=>a+(b-a)*u;
+const lerpV=(a,b,u)=>V(lerp(a.x,b.x,u),lerp(a.y,b.y,u),lerp(a.z,b.z,u));
+const clamp=(a,b,d)=>a<b?b:a>d?d:a;
+const smooth=u=>{u=clamp(u,0,1);return u*u*(3-2*u);};
+
+const E=V(-260,170,-360),T=V(50,10,180);
+const cF=norm(sub(T,E));
+const cR=norm(cross(cF,V(0,1,0)));
+const cU=cross(cR,cF);
+const FOCAL=620;
+const SUN=norm(V(-0.4,0.85,0.25));
+
+function project(P){
+  const v=sub(P,E);
+  const xx=dot(v,cR),yy=dot(v,cU),zz=dot(v,cF);
+  return {x:W/2+xx*(FOCAL/zz),y:H/2-yy*(FOCAL/zz),s:FOCAL/zz,z:zz};
+}
+
+function matYPR(y,p,r){
+  const cy=Math.cos(y),sy=Math.sin(y),cp=Math.cos(p),sp=Math.sin(p),cr=Math.cos(r),sr=Math.sin(r);
+  return {x:V(cy*cp,sp,-sy*cp),y:V(cy*sp*sr-sy*cr,cp*cr,sy*sp*sr+cy*cr),z:V(cy*sp*cr+sy*sr,-cp*sr,sy*sp*cr-cy*sr)};
+}
+function transform(p,o,R){return add(o,add(mul(R.x,p.x),add(mul(R.y,p.y),mul(R.z,p.z))));}
+function matMul(A,B){return {x:transform(B.x,V(0,0,0),A),y:transform(B.y,V(0,0,0),A),z:transform(B.z,V(0,0,0),A)};}
+
+function genSphere(n){
+  const a=[],g=2.39996323;
+  for(let i=1;i<=n;i++){
+    const y=1-2*i/(n+1),r=Math.sqrt(1-y*y),th=i*g;
+    a.push(norm(V(r*Math.cos(th),y,r*Math.sin(th))));
+  }
+  return a;
+}
+const furBody=genSphere(90),furBelly=genSphere(70),furRump=genSphere(90),furNeck=genSphere(80),furHead=genSphere(55),furMuzzle=genSphere(25),furTail=genSphere(45);
+
+const COL={
+  body:{hl:'#EBA86E',base:'#D6823A',dk:'#9A5A22',fur:'#B06224'},
+  cream:{hl:'#FFF2D1',base:'#F2D6A0',dk:'#C9A96D',fur:'#C4A66C'},
+  white:{hl:'#FFF',base:'#FFFDF5',dk:'#E0DCC8',fur:'#DED9C5'},
+  nose:{hl:'#333',base:'#1A120B',dk:'#000',fur:'#000'},
+  bone:{hl:'#FFF',base:'#F2E6C7',dk:'#C9B896',fur:'#C9B896'},
+  wall:'#E4E0D4',wallDk:'#B8B4A8',roof:'#B94E48',roofL:'#D06A60',grass1:'#7DB86A',grass2:'#4A823A'
+};
+
+function addSphere(items,C,r,col,dirs,len,R,furCol){
+  const pc=project(C),sr=r*pc.s,hl=project(add(C,mul(SUN,r)));
+  items.push({z:pc.z,draw($){
+    const g=$.createRadialGradient(hl.x,hl.y,sr*0.2,pc.x,pc.y,sr);
+    g.addColorStop(0,col.hl);g.addColorStop(0.5,col.base);g.addColor

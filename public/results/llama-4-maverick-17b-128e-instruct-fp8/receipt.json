@@ -1,0 +1,14 @@
+{
+  "modelId": "Llama-4-Maverick-17B-128E-Instruct-FP8",
+  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
+  "sourceHash": "9884bb39018ca7080750f57ccc6e746b6b48d7bce581a2d901e1e89947763a87",
+  "responseHash": "2d8f840c2cce89173dbc91697b35b76e2a8f3629c21b662ba8144b83e7ea6c89",
+  "requestHash": "e1397fdf49062f2127c97ceadaa960e33ddfed186b99cad374baedd59bf4458c",
+  "streamHash": "436d509ff25947ce0d068e57a047cddc9e8c4e8377fa56093d7d7b7e1ff48188",
+  "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
+  "submission": 1,
+  "tools": [],
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+}

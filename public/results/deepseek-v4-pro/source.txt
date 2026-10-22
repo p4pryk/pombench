@@ -1,0 +1,557 @@
+This is a complete HTML document that creates a realistic 12-second animation of a Pomeranian retrieving a bone from a doghouse, rendered on a canvas.
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Pomeranian and the bone · realistic canvas animation</title>
+  <style>
+    body {
+      margin: 0;
+      background: #1a1a1a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+      width: 960px;
+      height: 540px;
+      box-shadow: 0 0 28px rgba(0,0,0,0.7);
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="stage" width="960" height="540"></canvas>
+  <script>
+    (function() {
+      const canvas = document.getElementById('stage');
+      const ctx = canvas.getContext('2d');
+
+      // ---------- fixed scene constants ----------
+      const W = 960, H = 540;
+
+      // ground & sky
+      const SKY_COLOR = '#b7d9f0';
+      const GRASS_COLOR = '#5e8243';
+      const GRASS_DARK = '#3f5a2b';
+
+      // doghouse geometry (perspective-ish, three‐quarter view)
+      const HOUSE_BASE_X = 590;
+      const HOUSE_BASE_Y = 360; // base of front wall on ground
+      const HOUSE_WIDTH = 220;
+      const HOUSE_DEPTH = 190;
+      const HOUSE_HEIGHT = 170;
+      const ROOF_PEAK_Y = HOUSE_BASE_Y - HOUSE_HEIGHT - 35;
+      const DOOR_WIDTH = 68;
+      const DOOR_HEIGHT = 95;
+      const DOOR_X = HOUSE_BASE_X + 38;      // left side of doorway
+      const DOOR_Y = HOUSE_BASE_Y - DOOR_HEIGHT;
+
+      // interior depth (darkness inside)
+      const INTERIOR_BACK_OFFSET = 38;
+
+      // bone original position (inside the doghouse)
+      const BONE_REST_X = DOOR_X + DOOR_WIDTH/2 - 5;
+      const BONE_REST_Y = DOOR_Y + DOOR_HEIGHT - 28; // on floor inside
+
+      // ---------- deterministic pseudo-random (for fur texture / noise) ----------
+      let seed = 42;
+      function seededRandom() {
+        seed = (seed * 16807 + 0) % 2147483647;
+        return (seed - 1) / 2147483646;
+      }
+
+      // ---------- helper: draw textured fur patch (directional strokes) ----------
+      function drawFurPatch(cx, cy, radius, baseColor, directionAngle, intensity = 0.7) {
+        ctx.save();
+        const steps = Math.floor(radius * 1.8);
+        for (let i = 0; i < steps; i++) {
+          const t = (i / steps) * 1.2 - 0.1;
+          const r = radius * (0.45 + t * 0.6);
+          const angleOffset = (seededRandom() - 0.5) * 0.9;
+          const angle = directionAngle + angleOffset;
+          const len = radius * (0.55 + seededRandom() * 0.6);
+          const sx = cx + Math.cos(angle) * r * 0.7;
+          const sy = cy + Math.sin(angle) * r * 0.7;
+          const ex = sx + Math.cos(angle) * len;
+          const ey = sy + Math.sin(angle) * len;
+
+          const alpha = 0.18 + seededRandom() * 0.25 * intensity;
+          const shade = seededRandom() * 0.2;
+          const variant = `rgba(${180 + shade * 60}, ${110 + shade * 40}, ${50 + shade * 35}, ${alpha})`;
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(ex, ey);
+          ctx.strokeStyle = variant;
+          ctx.lineWidth = 0.9 + seededRandom() * 1.5;
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      // ---------- Pomeranian body drawing (parameterized by pose) ----------
+      function drawPomeranian(bodyX, bodyY, bodyAngle, headAngle, legPhases, tailCurl, mouthOpen, boneInMouth, boneTransform) {
+        ctx.save();
+        ctx.translate(bodyX, bodyY);
+        ctx.rotate(bodyAngle);
+
+        // ---- main body (compact, thick coat) ----
+        const bodyLen = 64;
+        const bodyHeight = 38;
+        const chestRadius = 24;
+        const rumpRadius = 22;
+
+        // body fill (orange/cream double coat)
+        const coatBase = '#e5a049';
+        const coatShadow = '#bc7a2b';
+        const coatLight = '#f7d08a';
+
+        // body oval
+        ctx.save();
+        ctx.beginPath();
+        ctx.ellipse(0, 0, bodyLen/2, bodyHeight/2, 0, 0, Math.PI*2);
+        ctx.fillStyle = coatBase;
+        ctx.fill();
+        // shading
+        const grad = ctx.createLinearGradient(-bodyLen/2, -8, bodyLen/2, 8);
+        grad.addColorStop(0, coatLight);
+        grad.addColorStop(0.55, coatBase);
+        grad.addColorStop(1, coatShadow);
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // fur texture on body
+        for (let s = -1; s <= 1; s+=2) {
+          drawFurPatch(s * 8, -6, 18, coatBase, -0.4 + s*0.3, 0.9);
+          drawFurPatch(s * 12, 4, 17, coatBase, 0.2 + s*0.25, 0.85);
+        }
+        drawFurPatch(-18, -2, 15, coatBase, -0.7, 0.8);
+        drawFurPatch(19, 1, 15, coatBase, 0.5, 0.8);
+        ctx.restore();
+
+        // ---- neck ruff (pronounced) ----
+        ctx.save();
+        ctx.beginPath();
+        ctx.ellipse(-18, -5, 21, 17, 0.1, 0, Math.PI*2);
+        ctx.fillStyle = '#f3c27b';
+        ctx.fill();
+        drawFurPatch(-20, -7, 19, '#eeb45a', -0.15, 0.95);
+        drawFurPatch(-16, -4, 18, '#f5c884', 0.15, 0.9);
+        ctx.restore();
+
+        // ---- head (short pointed muzzle, dark eyes) ----
+        const headX = -bodyLen/2 - 10;
+        const headY = -6;
+        ctx.save();
+        ctx.translate(headX, headY);
+        ctx.rotate(headAngle); // head rotation relative to body
+
+        // skull
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 16, 14, 0, 0, Math.PI*2);
+        ctx.fillStyle = '#e29b41';
+        ctx.fill();
+        drawFurPatch(2, -4, 11, '#e39c44', 0.7, 0.8);
+
+        // muzzle
+        ctx.beginPath();
+        ctx.ellipse(-13, 3, 9, 7.5, 0.05, 0, Math.PI*2);
+        ctx.fillStyle = '#f0bc74';
+        ctx.fill();
+        // nose
+        ctx.beginPath();
+        ctx.ellipse(-21, 2.5, 3.2, 2.8, 0, 0, Math.PI*2);
+        ctx.fillStyle = '#1e1a17';
+        ctx.fill();
+
+        // eyes
+        ctx.fillStyle = '#14100c';
+        ctx.beginPath();
+        ctx.arc(-8, -6.5, 3.2, 0, Math.PI*2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(-8, -2.2, 3.2, 0, Math.PI*2);
+        ctx.fill();
+        // eye highlights
+        ctx.fillStyle = '#fefefe';
+        ctx.beginPath();
+        ctx.arc(-9.2, -7.4, 1.1, 0, Math.PI*2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(-9.2, -3.1, 1.1, 0, Math.PI*2);
+        ctx.fill();
+
+        // small upright triangular ears
+        const earBaseX = -3, earBaseY = -13;
+        ctx.fillStyle = '#c27e32';
+        ctx.beginPath();
+        ctx.moveTo(earBaseX-2, earBaseY+2);
+        ctx.lineTo(earBaseX-9, earBaseY-17);
+        ctx.lineTo(earBaseX+5, earBaseY-5);
+        ctx.fill();
+        ctx.fillStyle = '#deb887';
+        ctx.beginPath();
+        ctx.moveTo(earBaseX+1, earBaseY-1);
+        ctx.lineTo(earBaseX-6, earBaseY-16);
+        ctx.lineTo(earBaseX+7, earBaseY-4);
+        ctx.fill();
+
+        // mouth opening / bone
+        if (mouthOpen > 0.1) {
+          ctx.save();
+          ctx.translate(-20, 4);
+          ctx.rotate(-0.1);
+          ctx.fillStyle = '#2f2218';
+          ctx.beginPath();
+          ctx.ellipse(0, 1, 6.5, 4.2, 0, 0, Math.PI*2);
+          ctx.fill();
+          ctx.restore();
+          if (boneInMouth && boneTransform) {
+            ctx.save();
+            ctx.translate(boneTransform.x, boneTransform.y);
+            ctx.rotate(boneTransform.angle);
+            drawBone(0, 0, 0.9);
+            ctx.restore();
+          }
+        }
+        ctx.restore(); // head
+
+        // ---- legs (4 articulated, with paws) ----
+        const legShoulderX = -14;
+        const legHipX = 20;
+        const legBaseY = bodyHeight/2 - 3;
+
+        function drawLeg(originX, originY, phase, isFront) {
+          ctx.save();
+          const upperLen = 14;
+          const lowerLen = 12;
+          const pawSize = 4.2;
+
+          const strideScale = 8.2;
+          const swing = Math.sin(phase * Math.PI * 2) * strideScale;
+          const stance = isFront ? 0.2 : -0.15;
+
+          const kneeX = originX + (isFront ? -3 : 3) + swing * 0.3;
+          const kneeY = originY + upperLen * 0.7;
+          const pawX = kneeX + swing * 0.7;
+          const pawY = kneeY + lowerLen - 2;
+
+          ctx.beginPath();
+          ctx.moveTo(originX, originY);
+          ctx.lineTo(kneeX, kneeY);
+          ctx.lineTo(pawX, pawY);
+          ctx.strokeStyle = '#c58a3c';
+          ctx.lineWidth = 7;
+          ctx.stroke();
+          // fur on legs
+          drawFurPatch((originX+kneeX)/2, (originY+kneeY)/2, 7, '#d49444', 0.5, 0.7);
+          drawFurPatch((kneeX+pawX)/2, (kneeY+pawY)/2, 6.5, '#b87732', 0.4, 0.7);
+
+          // paw
+          ctx.beginPath();
+          ctx.ellipse(pawX, pawY, pawSize, pawSize*0.8, 0, 0, Math.PI*2);
+          ctx.fillStyle = '#dba55a';
+          ctx.fill();
+          ctx.fillStyle = '#3e2e1e';
+          ctx.beginPath();
+          ctx.ellipse(pawX-1.2, pawY-1.2, 1.8, 1.3, 0, 0, Math.PI*2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // phases: 0-1 cycle, offset for gait
+        drawLeg(legShoulderX, legBaseY, legPhases[0], true);
+        drawLeg(legShoulderX+4, legBaseY-1, legPhases[1], true);
+        drawLeg(legHipX, legBaseY, legPhases[2], false);
+        drawLeg(legHipX+4, legBaseY-1, legPhases[3], false);
+
+        // ---- tail (plumed, curled over back) ----
+        ctx.save();
+        ctx.translate(bodyLen/2 - 5, -6);
+        ctx.rotate(tailCurl);
+        drawFurPatch(0, 0, 16, '#edb067', 0.9, 1.0);
+        ctx.beginPath();
+        ctx.ellipse(0, -6, 10, 16, 0.2, 0, Math.PI*2);
+        ctx.fillStyle = '#e8a64b';
+        ctx.fill();
+        drawFurPatch(2, -8, 13, '#f5c281', 1.2, 0.9);
+        ctx.restore();
+
+        ctx.restore(); // body transform
+      }
+
+      function drawBone(x, y, scale = 1.0) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+        ctx.fillStyle = '#f5e7d3';
+        ctx.strokeStyle = '#b89b7a';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(-14, -3.5);
+        ctx.lineTo(14, -3.5);
+        ctx.lineTo(14, 3.5);
+        ctx.lineTo(-14, 3.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        // knobs
+        ctx.beginPath();
+        ctx.ellipse(-15, -3.5, 4.5, 3.8, 0, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.ellipse(-15, 3.5, 4.5, 3.8, 0, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.ellipse(15, -3.5, 4.5, 3.8, 0, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.ellipse(15, 3.5, 4.5, 3.8, 0, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawDoghouse() {
+        ctx.save();
+        // walls
+        ctx.fillStyle = '#b08968';
+        ctx.beginPath();
+        ctx.rect(HOUSE_BASE_X, HOUSE_BASE_Y - HOUSE_HEIGHT, HOUSE_WIDTH, HOUSE_HEIGHT);
+        ctx.fill();
+        ctx.fillStyle = '#9c7a5c';
+        ctx.beginPath();
+        ctx.rect(HOUSE_BASE_X + 12, HOUSE_BASE_Y - HOUSE_HEIGHT - 6, HOUSE_WIDTH-14, HOUSE_HEIGHT-8);
+        ctx.fill();
+
+        // roof
+        ctx.fillStyle = '#8b5a3c';
+        ctx.beginPath();
+        ctx.moveTo(HOUSE_BASE_X - 12, HOUSE_BASE_Y - HOUSE_HEIGHT);
+        ctx.lineTo(HOUSE_BASE_X + HOUSE_WIDTH/2, ROOF_PEAK_Y);
+        ctx.lineTo(HOUSE_BASE_X + HOUSE_WIDTH + 12, HOUSE_BASE_Y - HOUSE_HEIGHT);
+        ctx.fill();
+        ctx.fillStyle = '#6d4128';
+        ctx.beginPath();
+        ctx.moveTo(HOUSE_BASE_X - 8, HOUSE_BASE_Y - HOUSE_HEIGHT + 4);
+        ctx.lineTo(HOUSE_BASE_X + HOUSE_WIDTH/2, ROOF_PEAK_Y + 5);
+        ctx.lineTo(HOUSE_BASE_X + HOUSE_WIDTH + 8, HOUSE_BASE_Y - HOUSE_HEIGHT + 4);
+        ctx.fill();
+
+        // doorway
+        ctx.fillStyle = '#2a221c';
+        ctx.beginPath();
+        ctx.rect(DOOR_X, DOOR_Y, DOOR_WIDTH, DOOR_HEIGHT);
+        ctx.fill();
+        // interior depth
+        ctx.fillStyle = '#1b1410';
+        ctx.beginPath();
+        ctx.rect(DOOR_X + 4, DOOR_Y + 4, DOOR_WIDTH-8, DOOR_HEIGHT-8);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawGroundAndShadows(dogShadowX, dogShadowY, boneShadowX, boneShadowY) {
+        ctx.save();
+        // sky gradient
+        const skyGrad = ctx.createLinearGradient(0, 0, 0, H*0.7);
+        skyGrad.addColorStop(0, SKY_COLOR);
+        skyGrad.addColorStop(1, '#d4e6f5');
+        ctx.fillStyle = skyGrad;
+        ctx.fillRect(0, 0, W, H*0.65);
+
+        // grass
+        ctx.fillStyle = GRASS_COLOR;
+        ctx.beginPath();
+        ctx.rect(0, H*0.5, W, H*0.5);
+        ctx.fill();
+        ctx.fillStyle = GRASS_DARK;
+        for (let i=0;i<18;i++) {
+          ctx.beginPath();
+          ctx.ellipse(30 + i*55, H*0.52 + (i%3)*9, 38, 12, 0, 0, Math.PI*2);
+          ctx.fill();
+        }
+        // contact shadows
+        ctx.fillStyle = 'rgba(30,20,10,0.35)';
+        ctx.beginPath();
+        ctx.ellipse(dogShadowX, dogShadowY, 28, 11, 0, 0, Math.PI*2);
+        ctx.fill();
+        if (boneShadowX) {
+          ctx.beginPath();
+          ctx.ellipse(boneShadowX, boneShadowY, 18, 6, 0, 0, Math.PI*2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      // ---------- animation state computation ----------
+      function computeState(t) {
+        if (t < 0) t = 0;
+        if (t > 12) t = 12;
+
+        // key positions
+        const startX = 190, startY = 390;
+        const houseFrontX = DOOR_X + DOOR_WIDTH/2 - 8;
+        const houseFrontY = DOOR_Y + DOOR_HEIGHT - 6;
+        const insideX = DOOR_X + DOOR_WIDTH/2 + 2;
+        const insideY = DOOR_Y + DOOR_HEIGHT - 12;
+
+        let bodyX, bodyY, bodyAngle, headAngle, legPhases, tailCurl, mouthOpen, boneInMouth, boneTransform;
+        let dogVisible = true;
+        let boneWorldX, boneWorldY, boneAngleWorld;
+        let boneResting = true;
+
+        const runSpeed = 0.9;
+        const phaseOffset = t * 6.5; // leg cycle
+
+        if (t < 0.2) {
+          // idle notice
+          bodyX = startX; bodyY = startY; bodyAngle = 0.15;
+          headAngle = -0.12; legPhases = [0.1,0.25,0.1,0.25]; tailCurl = 0.9;
+          mouthOpen = 0.0; boneInMouth = false;
+          boneWorldX = BONE_REST_X; boneWorldY = BONE_REST_Y; boneAngleWorld = 0.1;
+        } else if (t < 2.8) {
+          // running toward doghouse
+          const prog = (t - 0.2) / 2.6;
+          bodyX = startX + (houseFrontX - startX) * prog;
+          bodyY = startY + (houseFrontY - startY) * prog - Math.sin(prog*Math.PI)*6;
+          bodyAngle = 0.15 + prog * 0.2;
+          headAngle = -0.12 + prog * 0.1;
+          legPhases = [phaseOffset, phaseOffset+0.25, phaseOffset+0.5, phaseOffset+0.75];
+          tailCurl = 0.9 + Math.sin(prog*8)*0.2;
+          mouthOpen = 0.0; boneInMouth = false;
+          boneWorldX = BONE_REST_X; boneWorldY = BONE_REST_Y; boneAngleWorld = 0.1;
+        } else if (t < 4.2) {
+          // entering doghouse (partial occlusion)
+          const enterProg = (t - 2.8) / 1.4;
+          bodyX = houseFrontX + (insideX - houseFrontX) * enterProg * 0.9;
+          bodyY = houseFrontY + (insideY - houseFrontY) * enterProg * 0.85;
+          bodyAngle = 0.35;
+          headAngle = -0.2;
+          legPhases = [phaseOffset*0.7, phaseOffset*0.7+0.3, phaseOffset*0.7+0.5, phaseOffset*0.7+0.7];
+          tailCurl = 1.15;
+          mouthOpen = 0.0; boneInMouth = false;
+          boneWorldX = BONE_REST_X; boneWorldY = BONE_REST_Y; boneAngleWorld = 0.1;
+        } else if (t < 5.8) {
+          // grabbing bone inside
+          const grabProg = (t - 4.2) / 1.6;
+          bodyX = insideX; bodyY = insideY;
+          bodyAngle = 0.35; headAngle = -0.4;
+          legPhases = [0.2,0.25,0.5,0.55];
+          tailCurl = 1.2;
+          mouthOpen = Math.min(1, grabProg * 2.2);
+          boneInMouth = grabProg > 0.35;
+          boneWorldX = BONE_REST_X; boneWorldY = BONE_REST_Y; boneAngleWorld = 0.1;
+          if (boneInMouth) {
+            boneTransform = { x: -22, y: 4.5, angle: 0.25 };
+          } else {
+            boneTransform = null;
+          }
+        } else if (t < 7.8) {
+          // backing out
+          const backProg = (t - 5.8) / 2.0;
+          bodyX = insideX + (houseFrontX - insideX) * backProg * 0.7;
+          bodyY = insideY + (houseFrontY - insideY) * backProg * 0.65;
+          bodyAngle = 0.35 - backProg * 0.25;
+          headAngle = -0.4 + backProg * 0.2;
+          legPhases = [0.5 + backProg, 0.6+backProg, 0.1+backProg, 0.2+backProg];
+          tailCurl = 1.2 - backProg*0.3;
+          mouthOpen = 1.0; boneInMouth = true;
+          boneTransform = { x: -22, y: 4.5, angle: 0.25 };
+        } else if (t < 10.0) {
+          // turning toward viewer
+          const turnProg = (t - 7.8) / 2.2;
+          bodyX = houseFrontX + 18 + turnProg * 28;
+          bodyY = houseFrontY + 6 + turnProg * 12;
+          bodyAngle = 0.1 + turnProg * 1.5; // rotate to face camera
+          headAngle = -0.2 + turnProg * 0.55;
+          legPhases = [0.7 + turnProg*0.3, 0.8+turnProg*0.3, 0.3+turnProg*0.3, 0.4+turnProg*0.3];
+          tailCurl = 0.9 + turnProg * 0.35;
+          mouthOpen = 1.0; boneInMouth = true;
+          boneTransform = { x: -22, y: 4.5, angle: 0.25 };
+        } else {
+          // final pose (frontal, subtle breathing)
+          const settle = Math.min(1, (t - 10.0) / 0.8);
+          bodyX = houseFrontX + 48;
+          bodyY = houseFrontY + 22;
+          bodyAngle = 1.65 + settle * 0.05;
+          headAngle = 0.35;
+          legPhases = [0.9, 0.95, 0.45, 0.5];
+          tailCurl = 1.25 + Math.sin(t*5)*0.04;
+          mouthOpen = 0.95; boneInMouth = true;
+          boneTransform = { x: -21, y: 4.2, angle: 0.28 };
+        }
+
+        return {
+          bodyX, bodyY, bodyAngle, headAngle, legPhases, tailCurl, mouthOpen, boneInMouth, boneTransform,
+          boneWorldX, boneWorldY, boneAngleWorld, dogVisible
+        };
+      }
+
+      // ---------- main render function ----------
+      window.renderFrame = function(timeSeconds) {
+        const t = timeSeconds;
+        const state = computeState(t);
+
+        ctx.clearRect(0, 0, W, H);
+
+        // ground and sky first
+        drawGroundAndShadows(state.bodyX, state.bodyY + 18, 
+          state.boneInMouth ? state.bodyX-2 : BONE_REST_X, 
+          state.boneInMouth ? state.bodyY+12 : BONE_REST_Y+12);
+
+        // draw doghouse (behind dog, but occludes when dog inside)
+        drawDoghouse();
+
+        // decide occlusion: if dog is partially inside, we draw dog after house but clip doorway
+        const insideThreshold = 4.0;
+        const dogInside = (t >= 3.4 && t < 7.3);
+
+        if (!dogInside) {
+          // dog fully outside: draw dog normally
+          drawPomeranian(state.bodyX, state.bodyY, state.bodyAngle, state.headAngle, 
+                         state.legPhases, state.tailCurl, state.mouthOpen, state.boneInMouth, state.boneTransform);
+        } else {
+          // dog entering/inside: draw house, then dog with clipping at doorway
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(DOOR_X, DOOR_Y, DOOR_WIDTH, DOOR_HEIGHT);
+          ctx.clip();
+          drawPomeranian(state.bodyX, state.bodyY, state.bodyAngle, state.headAngle, 
+                         state.legPhases, state.tailCurl, state.mouthOpen, state.boneInMouth, state.boneTransform);
+          ctx.restore();
+
+          // redraw doorway frame to cover interior edges
+          ctx.save();
+          ctx.strokeStyle = '#6d4f38';
+          ctx.lineWidth = 5;
+          ctx.strokeRect(DOOR_X, DOOR_Y, DOOR_WIDTH, DOOR_HEIGHT);
+          ctx.restore();
+        }
+
+        // draw bone if resting and not yet grabbed
+        if (!state.boneInMouth && t < 5.5) {
+          drawBone(BONE_REST_X, BONE_REST_Y, 0.95);
+        }
+
+        // additional fur detail on dog after clipping (for outside view)
+        if (!dogInside && t > 8.0) {
+          drawFurPatch(state.bodyX-10, state.bodyY-14, 13, '#e7a84b', 0.2, 0.6);
+        }
+      };
+
+      // initial call
+      renderFrame(0);
+    })();
+  </script>
+</body>
+</html>
+```

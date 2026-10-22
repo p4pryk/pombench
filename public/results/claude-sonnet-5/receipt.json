@@ -1,0 +1,14 @@
+{
+  "modelId": "claude-sonnet-5",
+  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
+  "sourceHash": "47dd44db618a0ba91f932193e3a143eeca452536faaa85801959feda9829679f",
+  "responseHash": "cc1c071b41cb4e9ab4281719d42703643446438e6721fed707d09b2e89c92262",
+  "requestHash": "8bbbe1ceda52facf1b62c57c0866c6f360f7fd1cded76cb5f1cadd4641d94fda",
+  "streamHash": "1fa3598f99bdf6fbaf77c2562eb175e144210c1fb169777de97fe19a6bfe1408",
+  "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
+  "submission": 1,
+  "tools": [],
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+}

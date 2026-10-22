@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pomeranian and the Bone</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+<canvas id="stage" width="960" height="540"></canvas>
+<script>
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+
+const doghouse = {
+    x: 600,
+    y: 200,
+    width: 200,
+    height: 150,
+    doorWidth: 50,
+    doorHeight: 75
+};
+
+const bone = {
+    x: 650,
+    y: 250,
+    width: 20,
+    height: 10
+};
+
+const dog = {
+    x: 100,
+    y: 300,
+    width: 50,
+    height: 30,
+    earWidth: 10,
+    earHeight: 20,
+    eyeRadius: 3,
+    tailLength: 20
+};
+
+function drawDog(t) {
+    ctx.save();
+    ctx.translate(dog.x, dog.y);
+    if (t >= 1 && t < 3) {
+        const runDistance = (t - 1) * 400;
+        ctx.translate(runDistance, 0);
+    } else if (t >= 3 && t < 4.5) {
+        ctx.translate(400, 0);
+        ctx.translate(-dog.width / 2, -dog.height / 2);
+        ctx.rotate(Math.PI / 2);
+        ctx.translate(-dog.width / 2, -dog.height / 2);
+    } else if (t >= 4.5 && t < 6) {
+        ctx.translate(400, 0);
+        ctx.translate(-dog.width / 2, -dog.height / 2);
+        ctx.rotate(Math.PI / 2);
+        ctx.translate(-dog.width / 2, -dog.height / 2);
+        ctx.translate(0, -dog.height / 2);
+    } else if (t >= 6 && t < 8) {
+        ctx.translate(400, 0);
+        ctx.translate(-dog.width / 2, -dog.height / 2);
+        ctx.rotate(Math.PI / 2);
+        ctx.translate(-dog.width / 2, -dog.height / 2);
+        ctx.translate(0, -dog.height / 2);
+        ctx.translate(0, dog.height / 2);
+        ctx.translate(-400, 0);
+    } else if (t >= 8 && t < 10) {
+        ctx.translate(400, 0);
+        ctx.translate(-dog.width / 2, -dog.height / 2);
+        ctx.rotate(Math.PI / 2);
+        ctx.translate(-dog.width / 2, -dog.height / 2);
+        ctx.translate(0, -dog.height / 2);
+        ctx.translate(0, dog.height / 2);
+        ctx.translate(-400, 0);
+        ctx.rotate((t - 8) * Math.PI / 4);
+    } else if (t >= 10 && t < 12) {
+        ctx.translate(400, 0);
+        ctx.translate(-dog.width / 2, -dog.height / 2);
+        ctx.rotate(Math.PI / 2);
+        ctx.translate(-dog.width / 2, -dog.height / 2);
+        ctx.translate(0, -dog.height / 2);
+        ctx.translate(0, dog.height / 2);
+        ctx.translate(-400, 0);
+        ctx.rotate(Math.PI / 4);
+    }
+
+    // Body
+    ctx.fillStyle = '#FFA500';
+    ctx.fillRect(-dog.width / 2, -dog.height / 2, dog.width, dog.height);
+
+    // Head
+    ctx.fillRect(-dog.width / 4, -dog.height / 2 - 10, dog.width / 2, 10);
+
+    // Ears
+    ctx.fillRect(-dog.width / 4 - dog.earWidth, -dog.height / 2 - dog.earHeight, dog.earWidth, dog.earHeight);
+    ctx.fillRect(dog.width / 4, -dog.height / 2 - dog.earHeight, dog.earWidth, dog.earHeight);
+
+    // Eyes
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.arc(-dog.width / 8, -dog.height / 2 - 5, dog.eyeRadius, 0, Math.PI * 2);
+    ctx.arc(dog.width / 8, -dog.height / 2 - 5, dog.eyeRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Tail
+    ctx.beginPath();
+    ctx.moveTo(dog.width / 2, -dog.height / 2);
+    ctx.lineTo(dog.width / 2 + dog.tailLength, -dog.height / 2 - dog.tailLength);
+    ctx.stroke();
+
+    // Bone
+    if (t >= 4.5 && t < 12) {
+        ctx.fillStyle = '#8B4513';
+        ctx.fillRect(dog.width / 4, -dog.height / 2 - 15, bone.width, bone.height);
+    }
+
+    ctx.restore();
+}
+
+function drawDoghouse() {
+    ctx.fillStyle = '#A0522D';
+    ctx.fillRect(doghouse.x, doghouse.y, doghouse.width, doghouse.height);
+    ctx.fillStyle = '#8B4513';
+    ctx.fillRect(doghouse.x + (doghouse.width - doghouse.doorWidth) / 2, doghouse.y, doghouse.doorWidth, doghouse.doorHeight);
+}
+
+function drawBone() {
+    ctx.fillStyle = '#8B4513';
+    ctx.fillRect(bone.x, bone.y, bone.width, bone.height);
+}
+
+function drawBackyard() {
+    ctx.fillStyle = '#7CFC00';
+    ctx.fillRect(0, 400, 960, 140);
+}
+
+function renderFrame(t) {
+    ctx.clearRect(0, 0, 960, 540);
+    drawBackyard();
+    drawDoghouse();
+    drawBone();
+    drawDog(t);
+}
+
+window.renderFrame = renderFrame;
+renderFrame(0);
+</script>
+</body>
+</html>

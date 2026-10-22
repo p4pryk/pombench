@@ -1,0 +1,14 @@
+{
+  "modelId": "claude-haiku-4-5",
+  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
+  "sourceHash": "f02bc1d5f95b67f8350b58b979c1ccd13617f47033eaf6fdf7a0873406cf84f5",
+  "responseHash": "43ed4f712e8926a17a2c86e283406492b17346bb1b962b4957c33acb072f5d20",
+  "requestHash": "55243043224d3bb2c942605689993028b9430d6ccb0fe92f20267ef379276e8f",
+  "streamHash": "ed27efb8fb5b34a5b4326dd9e0f8312fa276fdbd49cd4cc7dad442dd25a54a3c",
+  "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
+  "submission": 1,
+  "tools": [],
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+}

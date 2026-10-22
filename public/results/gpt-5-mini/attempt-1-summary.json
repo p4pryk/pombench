@@ -1,0 +1,47 @@
+{
+  "status": "render-error",
+  "technicalChecks": {
+    "contract": false,
+    "renders": false,
+    "visible": false,
+    "motion": false,
+    "deterministic": false,
+    "offline": true
+  },
+  "technicalPassed": 1,
+  "technicalTotal": 6,
+  "visualScore": null,
+  "visualReview": "Not reviewed. Technical checks do not verify anatomy, foot contact, bone contact or doghouse occlusion or task compliance.",
+  "metrics": {
+    "sampleColorStd": [
+      0.8804621696472168
+    ]
+  },
+  "errors": [
+    "Unexpected token '-'"
+  ],
+  "blockedRequests": [],
+  "cspViolations": [],
+  "capture": {
+    "frames": 0,
+    "fps": 30,
+    "durationSeconds": null,
+    "width": 960,
+    "height": 540,
+    "complete": false,
+    "isolation": "Separate offline Chromium process, service workers and downloads disabled, CSP, all post-bootstrap network blocked. Organizer measures screenshot pixels; candidate reports are ignored.",
+    "sourceHash": "fa00d56e7c91a85f25a64d95b1fefb53a3697ae1ac6b9adf782900da5938aed2",
+    "frameEvidenceHash": "290783af4a6d475561f9e85e86154f68b23ec43a3513557a2db0db9c6d880e55"
+  },
+  "contactSheet": [
+    {
+      "time": 0,
+      "frame": "initial.png"
+    }
+  ],
+  "evidenceHashes": {
+    "capture.json": "290783af4a6d475561f9e85e86154f68b23ec43a3513557a2db0db9c6d880e55",
+    "poster.png": "c529323ee364d3e8e877c37bdf0cf0e5266cd09091832b255fea2aaea5dac449",
+    "contact-sheet.jpg": "411cf935ac51a7c2a111f7e8ca229c89b1657f400eb07051dcbcc180c3586a84"
+  }
+}

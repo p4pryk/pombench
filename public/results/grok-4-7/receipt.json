@@ -1,0 +1,14 @@
+{
+  "modelId": "grok-4.7",
+  "promptHash": "20bb5d3d46815a7296b7ab81172f7127a28d8553f04042ad75c68518b86265b3",
+  "sourceHash": "494517316f096c8d26e23aee4553f4023e334c743ee21e5dd4e13e7378a0c5d6",
+  "responseHash": "d338c51359bc98785cfbb67b42d37ca16fe54b2eeae0b539eddc86e75dea1dbb",
+  "requestHash": "368440612b836d3cd756d06d2572227d95897bef68425da50be212c4fa386dbc",
+  "streamHash": "9f9cd10435bb40d30b5a948204aeb8b1bff9ef2e630e554237b98f48a48154c4",
+  "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
+  "submission": 1,
+  "tools": [],
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+}

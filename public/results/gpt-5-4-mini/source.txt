@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pomeranian Bone Motion</title>
+<style>
+  html, body { margin:0; width:100%; height:100%; background:#111; overflow:hidden; }
+  canvas { display:block; width:960px; height:540px; margin:0 auto; image-rendering:auto; }
+</style>
+</head>
+<body>
+<canvas id="stage" width="960" height="540"></canvas>
+<script>
+(() => {
+  const c = document.getElementById('stage');
+  const g = c.getContext('2d');
+
+  const W = 960, H = 540;
+  const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+  const lerp = (a,b,t)=>a+(b-a)*t;
+  const ease = t => t*t*(3-2*t);
+  const easeIn = t => t*t;
+  const easeOut = t => 1-(1-t)*(1-t);
+  const mixColor = (a,b,t)=>[
+    Math.round(lerp(a[0],b[0],t)),
+    Math.round(lerp(a[1],b[1],t)),
+    Math.round(lerp(a[2],b[2],t))
+  ];
+  const rgb = (c,a=1)=>`rgba(${c[0]},${c[1]},${c[2]},${a})`;
+
+  function bg() {
+    const sky = g.createLinearGradient(0,0,0,H);
+    sky.addColorStop(0, '#9cc2e1');
+    sky.addColorStop(0.48, '#c9dfef');
+    sky.addColorStop(1, '#e3e0cf');
+    g.fillStyle = sky;
+    g.fillRect(0,0,W,H);
+
+    // soft distant trees / hedges
+    g.save();
+    g.globalAlpha = 0.55;
+    g.fillStyle = '#6f8f63';
+    for (let i=0;i<10;i++){
+      const x = i*110 - 30 + (i%2)*12;
+      g.beginPath();
+      g.ellipse(x+25, 150 + (i%3)*8, 55, 18, 0, 0, Math.PI*2);
+      g.fill();
+      g.beginPath();
+      g.ellipse(x+65, 145 + (i%2)*7, 48, 16, 0, 0, Math.PI*2);
+      g.fill();
+    }
+    g.restore();
+
+    // yard
+    const ground = g.createLinearGradient(0,220,0,H);
+    ground.addColorStop(0, '#6f8c52');
+    ground.addColorStop(0.55, '#789659');
+    ground.addColorStop(1, '#5f7c49');
+    g.fillStyle = ground;
+    g.fillRect(0,220,W,H-220);
+
+    // texture
+    g.save();
+    g.globalAlpha = 0.12;
+    for (let i=0;i<1800;i++){
+      const x = (i*73)%W;
+      const y = 220 + ((i*131)% (H-220));
+      const w = 1 + ((i*17)%3);
+      const h = 1 + ((i*19)%3);
+      g.fillStyle = (i%3===0)?'#d5e4b4':(i%3===1)?'#40592d':'#9ab56d';
+      g.fillRect(x,y,w,h);
+    }
+    g.restore();
+
+    // subtle shadow gradient
+    const fog = g.createRadialGradient(520,300,100,520,300,520);
+    fog.addColorStop(0,'rgba(255,255,255,0.04)');
+    fog.addColorStop(1,'rgba(0,0,0,0.0)');
+    g.fillStyle = fog;
+    g.fillRect(0,0,W,H);
+  }
+
+  function drawDoghouse() {
+    const x = 615, y = 190, w = 245, h = 205;
+    const roofH = 72;
+    // shadow
+    g.save();
+    g.fillStyle = 'rgba(0,0,0,0.18)';
+    g.beginPath();
+    g.ellipse(x+w*0.5, y+h+15, 145, 24, 0, 0, Math.PI*2);
+    g.fill();
+    g.restore();
+
+    // body
+    g.save();
+    g.translate(x,y);
+
+    // back wall
+    g.fillStyle = '#8e6246';
+    g.fillRect(0,roofH, w, h-roofH);
+    // wood texture lines
+    g.globalAlpha = 0.23;
+    g.strokeStyle = '#5c3828';
+    for (let i=0;i<9;i++){
+      g.beginPath();
+      g.moveTo(0, roofH + 18 + i*18);
+      g.lineTo(w, roofH + 18 + i*18);
+      g.stroke();
+    }
+    g.globalAlpha = 1;
+
+    // roof
+    const roof = g.createLinearGradient(0,0,0,roofH);
+    roof.addColorStop(0,'#b07650');
+    roof.addColorStop(1,'#7f5038');
+    g.fillStyle = roof;
+    g.beginPath();
+    g.moveTo(-10,roofH);
+    g.lineTo(w*0.5,0);
+    g.lineTo(w+10,roofH);
+    g.closePath();
+    g.fill();
+
+    // roof shingles suggestion
+    g.save();
+    g.globalAlpha = 0.17;
+    g.strokeStyle = '#4d2b1f';
+    for (let i=0;i<8;i++){
+      g.beginPath();
+      g.moveTo(40+i*24, roofH-8 - i*1.5);
+      g.lineTo(22+i*24, 14 + i*1.5);
+      g.stroke();
+    }
+    g.restore();
+
+    // trim
+    g.strokeStyle = '#d9b28d';
+    g.lineWidth = 3;
+    g.strokeRect(0,roofH,w,h-roofH);
+
+    // doorway
+    const dx = 72, dy = roofH+20, dw = 102, dh = 108;
+    g.save();
+    g.fillStyle = '#5b3b2c';
+    g.beginPath();
+    g.roundRect(dx,dy,dw,dh, 42);
+    g.fill();
+    g.fillStyle = '#2b1c15';
+    g.beginPath();
+    g.roundRect(dx+9,dy+8,dw-18,dh-16, 36);
+    g.fill();
+    const inner = g.createLinearGradient(dx,dy,dx+dw,dy+dh);
+    inner.addColorStop(0,'rgba(0,0,0,0.8)');
+    inner.addColorStop(1,'rgba(0,0,0,0.45)');
+    g.fillStyle = inner;
+    g.beginPath();
+    g.roundRect(dx+12,dy+10,dw-24,dh-20, 30);
+    g.fill();
+    g.restore();
+
+    // front frame and side wall perspective
+    g.fillStyle = '#a36d4b';
+    g.beginPath();
+    g.moveTo(w,roofH);
+    g.lineTo(w+52,roofH+16);
+    g.lineTo(w+52,h+6);
+    g.lineTo(w,h);
+    g.closePath();
+    g.fill();
+    g.globalAlpha = 0.35;
+    g.strokeStyle = '#5b3b2c';
+    g.beginPath(); g.moveTo(w+10,roofH+6); g.lineTo(w+10,h-5); g.stroke();
+    g.restore();
+
+    return {x,y,w,h,roofH,door:{x:x+72,y:y+roofH+20,w:102,h:108}};
+  }
+
+  function drawBone(x,y,s,rot,alpha=1){
+    g.save();
+    g.translate(x,y);
+    g.rotate(rot);
+    g.scale(s,s);
+    g.globalAlpha = alpha;
+    // shadow
+    g.save();
+    g.translate(0, 16);
+    g.fillStyle = 'rgba(0,0,0,0.13)';
+    g.beginPath();
+    g.ellipse(0,0,20,5,0,0,Math.PI*2); g.fill();
+    g.restore();
+
+    const grad = g.createLinearGradient(-28,-8,28,8);
+    grad.addColorStop(0,'#f0e0b6');
+    grad.addColorStop(0.5,'#fff3d5');
+    grad.addColorStop(1,'#ceb785');
+    g.fillStyle = grad;
+
+    function end(xc){
+      g.beginPath();
+      g.arc(xc, -1, 10, 0, Math.PI*2);
+      g.fill();
+      g.beginPath();
+      g.arc(xc, -1, 5.2, 0, Math.PI*2);
+      g.fillStyle = '#d8c191';
+      g.fill();
+      g.fillStyle = grad;
+    }
+
+    g.beginPath();
+    g.roundRect(-18,-6,36,12,6); g.fill();
+    end(-24); end(24);
+    g.restore();
+  }
+
+  function drawFurEllipse(x,y,rx,ry,fill,stroke,alpha=1,rot=0){
+    g.save();
+    g.translate(x,y);
+    g.rotate(rot);
+    g.globalAlpha = alpha;
+    g.fillStyle = fill;
+    g.beginPath();
+    g.ellipse(0,0,rx,ry,0,0,Math.PI*2);
+    g.fill();
+    if (stroke) {
+      g.strokeStyle = stroke;
+      g.lineWidth = 1;
+      g.globalAlpha *= 0.9;
+      for (let i=0;i<16;i++){
+        const a = (i/16)*Math.PI*2;
+        const px = Math.cos(a)*rx, py = Math.sin(a)*ry;
+        const nx = Math.cos(a)*(rx+6), ny = Math.sin(a)*(ry+6);
+        g.beginPath();
+        g.moveTo(px,py);
+        g.lineTo(nx,ny);
+        g.stroke();
+      }
+    }
+    g.restore();
+  }
+
+  function drawDog(t, house){
+    const dogStart = {x: 130, y: 395};
+    const dogDoor = {x: house.door.x+34, y: house.door.y+40};
+    let x,y,rot,scale=1,frontness=0,backness=0,inside=0,entry=0,reverse=0,turn=0,final=0;
+    if (t < 1) {
+      const u = ease(clamp(t/1,0,1));
+      x = lerp(dogStart.x, 195, u); y = lerp(dogStart.y, 395, u); rot = -0.03;
+    } else if (t < 3) {
+      const u = ease((t-1)/2);
+      x = lerp(195, 490, u); y = 395 + Math.sin(t*6)*1.6;
+      rot = 0.02*Math.sin(t*4);
+    } else if (t < 4.5) {
+      const u = ease((t-3)/1.5);
+      x = lerp(490, 575, u); y = lerp(395, 392, u);
+      rot = lerp(0.02, -0.15, u);
+      entry = u;
+    } else if (t < 6) {
+      x = 570; y = 394;
+      rot = -0.1;
+      inside = ease((t-4.5)/1.5);
+    } else if (t < 8) {
+      const u = ease((t-6)/2);
+      x = lerp(570, 500, u); y = 394 + u*1;
+      rot = lerp(-0.06, 0.08, u);
+      reverse = u;
+    } else if (t < 10) {
+      const u = ease((t-8)/2);
+      x = lerp(500, 610, u); y = 394 + Math.sin(u*Math.PI)*2;
+      rot = lerp(0.08, 1.48, u);
+      turn = u;
+    } else {
+      x = 610; y = 392;
+      rot = 1.55;
+      final = 1;
+    }
+
+    if (t < 1) { frontness = 0.12; }
+    else if (t < 3) { frontness = 0.1; }
+    else if (t < 4.5) { frontness = 0.15 + entry*0.3; }
+    else if (t < 6) { frontness = 0.2; inside=1; }
+    else if (t < 8) { frontness = 0.18; }
+    else if (t < 10) { frontness = 0.2 + turn*0.8; }
+    else { frontness = 1; }
+
+    // world transform
+    const sx = 1.05, sy = 1.0;
+    g.save();
+    g.translate(x,y);
+    g.scale(sx,sy);
+
+    // body pose dependent
+    const stride = t<3 ? Math.sin(t*8) : (t<8 ? Math.sin(t*7) : Math.sin((t-8)*6));
+    const bob = t<3 ? Math.max(0, Math.sin(t*8))*2.2 : 0;
+    g.translate(0, bob);
+
+    // shadow
+    g.save();
+    g.globalAlpha = 0.24;
+    g.fillStyle = '#000';
+    g.beginPath();
+    g.ellipse(0, 28, 42, 13, 0, 0, Math.PI*2);
+    g.fill();
+    g.restore();
+
+    const coat = '#c87f33', coat2 = '#e6bf7b', coat3 = '#f3e0bc', dark = '#80502e', eye = '#1a1110';
+
+    // legs order, back legs first
+    function leg(side, phase, front, hidden, lift, backLeg=false){
+      const sign = side;
+      const up = Math.sin(phase)*18*lift;
+      const knee = Math.sin(phase+0.7)*12*lift;
+      const x0 = backLeg ? (sign*10 + (front? 8:-2)) : (sign*18 + (front? 5:-5));
+      const y0 = backLeg ? 11 : 8;
+      const upper = 24, lower = 24;
+      g.save();
+      g.translate(x0, y0);
+      g.rotate(sign*0.04 + (front?0.1:-0.05) + (backLeg? -0.1 : 0));
+      // upper
+      g.strokeStyle = coat;
+      g.lineWidth = 11;
+      g.lineCap = 'round';
+      g.beginPath();
+      g.moveTo(0,0);
+      g.lineTo(sign*4, upper*0.9 + up*0.5);
+      g.stroke();
+      // lower
+      g.beginPath();
+      g.moveTo(sign*4, upper*0.9 + up*0.5);
+      g.lineTo(sign*1, upper+lower + knee);
+      g.stroke();
+      // paws
+      g.fillStyle = '#d8b37b';
+      g.beginPath();
+      g.ellipse(sign*1, upper+lower+6+knee, 5, 3, 0, 0, Math.PI*2);
+      g.fill();
+      g.restore();
+    }
+
+    // rear then front with occlusion
+    const backBlend = clamp(1-frontness,0,1);
+    leg(-1, t*7, false, false, 0.95, true);
+    leg( 1, t*7+1.7, false, false, 0.95, true);
+
+    // torso / coat volume
+    const bodyRot = rot + (t<3 ? 0.08*Math.sin(t*3) : 0);
+    g.save();
+    g.rotate(bodyRot);
+    // lower flank shadow
+    const bodyGrad = g.createLinearGradient(-45,-20,55,30);
+    bodyGrad.addColorStop(0, coat2);
+    bodyGrad.addColorStop(0.45, coat);
+    bodyGrad.addColorStop(1, '#9f5d26');
+    drawFurEllipse(0,-1, 50, 28, bodyGrad, '#b9732d', 1, 0.04);
+    // chest/ruff
+    g.save();
+    g.translate(-31,-12);
+    g.fillStyle = coat3;
+    g.globalAlpha = 0.95;
+    g.beginPath();
+    g.moveTo(-7,0); g.quadraticCurveTo(1,-20,10,-1); g.quadraticCurveTo(2,14,-7,0); g.fill();
+    g.restore();
+    // fur spikes along back
+    g.save();
+    g.globalAlpha = 0.85;
+    g.strokeStyle = '#efcf95';
+    for (let i=0;i<16;i++){
+      const px = -38 + i*5.2;
+      const py = -18 + Math.sin(i*0.9 + t*2)*1.2;
+      g.beginPath(); g.moveTo(px,py); g.lineTo(px-1.5, py-6); g.stroke();
+    }
+    g.restore();
+    g.restore();
+
+    // tail
+    g.save();
+    const tailLift = t<3 ? 0.15 : (t<8 ? 0.12 : 0.2);
+    g.translate(-33, -25);
+    g.rotate(-0.2 + 0.25*Math.sin(t*3)*tailLift + (final?0.05:0));
+    g.strokeStyle = coat2;
+    g.lineWidth = 11;
+    g.lineCap = 'round';
+    g.beginPath();
+    g.moveTo(0,0);
+    g.quadraticCurveTo(-20,-18,-2,-36);
+    g.stroke();
+    g.lineWidth = 8;
+    g.strokeStyle = coat3;
+    g.beginPath();
+    g.moveTo(-1,-2);
+    g.quadraticCurveTo(-14,-18,-4,-31);
+    g.stroke();
+    g.restore();
+
+    // front legs and chest in front
+    leg(-1, t*7+0.8, true, false, 1.0, false);
+    leg( 1, t*7+2.5, true, false, 1.0, false);
+
+    // neck / head
+    g.save();
+    g.translate(28, -22);
+    g.rotate(frontness*0.25 + (t<8 ? -0.05 : 0.02));
+    // neck ruff
+    g.fillStyle = coat3;
+    g.beginPath();
+    g.ellipse(0,12, 20, 18, 0, 0, Math.PI*2);
+    g.fill();
+    for (let i=0;i<16;i++){
+      const a = (i/16)*Math.PI*2;
+      const px = Math.cos(a)*18, py = 12+Math.sin(a)*14;
+      g.beginPath(); g.moveTo(px,py); g.lineTo(px+Math.cos(a)*6, py+Math.sin(a)*6); g.strokeStyle = '#f4e3bf'; g.stroke();
+    }
+    // head
+    const headTilt = (t<8 ? -0.05 : lerp(-0.05,0.12, clamp((t-8)/2,0,1)));
+    g.rotate(headTilt);
+    const faceScale = lerp(0.95, 1.0, final);
+    g.scale(faceScale, faceScale);
+    const headGrad = g.createLinearGradient(-25,-20,30,25);
+    headGrad.addColorStop(0, '#e6bf7b');
+    headGrad.addColorStop(0.55, '#c97f34');
+    headGrad.addColorStop(1, '#a35c28');
+    drawFurEllipse(18, 0, 24, 18, headGrad, '#d89a49', 1, 0);
+    // muzzle
+    g.fillStyle = '#e7d0a8';
+    g.beginPath();
+    g.ellipse(35, 6, 12, 8, 0, 0, Math.PI*2);
+    g.fill();
+    g.fillStyle = '#7d5431';
+    g.beginPath();
+    g.arc(45, 6, 2.4, 0, Math.PI*2);
+    g.fill();
+    // eye
+    g.fillStyle = eye;
+    g.beginPath();
+    g.arc(28, -4, 2.9, 0, Math.PI*2);
+    g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.8)';
+    g.beginPath();
+    g.arc(29, -5, 0.9, 0, Math.PI*2);
+    g.fill();
+    // ear
+    g.fillStyle = '#c97f34';
+    g.beginPath(); g.moveTo(18,-18); g.lineTo(24,-34); g.lineTo(31,-18); g.closePath(); g.fill();
+    g.fillStyle = '#d8b37b';
+    g.beginPath(); g.moveTo(21,-19); g.lineTo(24,-29); g.lineTo(27,-19); g.closePath(); g.fill();
+    // other ear
+    g.save();
+    g.globalAlpha = 0.92;
+    g.translate(6,-16);
+    g.rotate(-0.12);
+    g.fillStyle = '#b86f2d';
+    g.beginPath(); g.moveTo(-2,-1); g.lineTo(4,-16); g.lineTo(12,-2); g.closePath(); g.fill();
+    g.fillStyle = '#d8b37b';
+    g.beginPath(); g.moveTo(2,-2); g.lineTo(4,-11); g.lineTo(8,-2); g.closePath(); g.fill();
+    g.restore();
+
+    // bone in mouth / hidden/revealed depending on phase
+    const boneVisible = t>=4.7;
+    const boneGrip = t < 6 ? clamp((t-4.7)/1.0,0,1) : 1;
+    if (boneVisible) {
+      const rotBone = t < 8 ? -0.15 : lerp(-0.12, 0.05, clamp((t-8)/2,0,1));
+      drawBone(45, 8, 0.82, rotBone, t<5.2 ? 0.9 : 1);
+    }
+
+    g.restore();
+
+    // side fur tufts for volume, and occluding body edge
+    g.save();
+    g.globalAlpha = 0.7;
+    g.strokeStyle = '#f1d9ae';
+    for (let i=0;i<18;i++){
+      const xk = -30 + i*4.2;
+      const yk = -10 + Math.sin(i*1.1 + t*2)*1.2;
+      g.beginPath(); g.moveTo(xk, yk); g.lineTo(xk-2, yk-5); g.stroke();
+    }
+    g.restore();
+
+    // if in entry / inside, use doghouse doorway occlusion by redrawing house front over body parts
+    g.restore();
+
+    return {x,y,rot,inside,entry,reverse,turn,final,frontness,boneVisible,boneGrip};
+  }
+
+  function drawDogWithOcclusion(t, house) {
+    // draw dog behind door frame when needed
+    const s = drawDog(t, house);
+    // door occlusion: a front frame overlay that naturally hides body entering doorway
+    g.save();
+    // dark inner threshold to increase depth
+    g.fillStyle = '#2b1c15';
+    g.beginPath();
+    g.roundRect(house.door.x+3, house.door.y+3, house.door.w-6, house.door.h-6, 38);
+    g.fill();
+    g.globalAlpha = 0.92;
+    const innerGlow = g.createLinearGradient(house.door.x,house.door.y,house.door.x+house.door.w,house.door.y+house.door.h);
+    innerGlow.addColorStop(0,'rgba(0,0,0,0.35)');
+    innerGlow.addColorStop(1,'rgba(0,0,0,0.65)');
+    g.fillStyle = innerGlow;
+    g.beginPath();
+    g.roundRect(house.door.x+8, house.door.y+8, house.door.w-16, house.door.h-16, 34);
+    g.fill();
+
+    // front lip / frame
+    g.globalAlpha = 1;
+    g.strokeStyle = '#d0a079';
+    g.lineWidth = 5;
+    g.beginPath();
+    g.roundRect(house.door.x, house.door.y, house.door.w, house.door.h, 42);
+    g.stroke();
+    g.restore();
+
+    return s;
+  }
+
+  function setupRoundRect(){
+    if (!CanvasRenderingContext2D.prototype.roundRect) {
+      CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,r){
+        if (typeof r === 'number') r = {tl:r,tr:r,br:r,bl:r};
+        else if (Array.isArray(r)) r = {tl:r[0],tr:r[1],br:r[2],bl:r[3]};
+        else r = {tl:r?.tl||0,tr:r?.tr||0,br:r?.br||0,bl:r?.bl||0};
+        this.beginPath();
+        this.moveTo(x+r.tl,y);
+        this.lineTo(x+w-r.tr,y);
+        this.quadraticCurveTo(x+w,y,x+w,y+r.tr);
+        this.lineTo(x+w,y+h-r.br);
+        this.quadraticCurveTo(x+w,y+h,x+w-r.br,y+h);
+        this.lineTo(x+r.bl,y+h);
+        this.quadraticCurveTo(x,y+h,x,y+h-r.bl);
+        this.lineTo(x,y+r.tl);
+        this.quadraticCurveTo(x,y,x+r.tl,y);
+        return this;
+      }
+    }
+  }
+  setupRoundRect();
+
+  function drawScene(tRaw){
+    const t = tRaw < 0 ? 0 : (tRaw >= 12 ? 12 : tRaw);
+    g.clearRect(0,0,W,H);
+    bg();
+    const house = drawDoghouse();
+
+    // foreground grass blades around base
+    g.save();
+    g.globalAlpha = 0.25;
+    g.strokeStyle = '#35512d';
+    for (let i=0;i<140;i++){
+      const x = (i*31)%W;
+      const y = 410 + (i%3)*16 + (i*17)%65;
+      g.beginPath();
+      g.moveTo(x,y);
+      g.lineTo(x+((i%2)*2-1)*2, y-8-(i%5));
+      g.stroke();
+    }
+    g.restore();
+
+    // path / worn area
+    g.save();
+    const pathGrad = g.createRadialGradient(430,390,20,430,390,230);
+    pathGrad.addColorStop(0,'rgba(133,107,78,0.28)');
+    pathGrad.addColorStop(1,'rgba(133,107,78,0.0)');
+    g.fillStyle = pathGrad;
+    g.beginPath();
+    g.ellipse(430, 395, 280, 92, -0.12, 0, Math.PI*2);
+    g.fill();
+    g.restore();
+
+    // bone initially inside doghouse floor, discoverable
+    if (t < 4.7) {
+      drawBone(house.door.x+53, house.door.y+80, 0.8, -0.1, 1);
+    }
+
+    // dog and occlusion
+    const s = drawDog(t, house);
+
+    // override doghouse front to occlude dog entering/inside
+    if (t >= 3 && t < 8) {
+      g.save();
+      // front wall overlay in house area, but keep doorway cutout
+      g.fillStyle = '#9d6948';
+      g.beginPath();
+      g.moveTo(house.x, house.y+house.roofH);
+      g.lineTo(house.x+house.w, house.y+house.roofH+16);
+      g.lineTo(house.x+house.w, house.y+house.h+6);
+      g.lineTo(house.x, house.y+house.h);
+      g.closePath();
+      g.fill();
+
+      // doorway cutout re-paint dark interior
+      g.globalCompositeOperation = 'destination-out';
+      g.beginPath();
+      g.roundRect(house.door.x, house.door.y, house.door.w, house.door.h, 42);
+      g.fill();
+      g.globalCompositeOperation = 'source-over';
+      g.fillStyle = '#1f1511';
+      g.beginPath();
+      g.roundRect(house.door.x+10, house.door.y+10, house.door.w-20, house.door.h-20, 36);
+      g.fill();
+      g.restore();
+    }
+
+    // final front-facing presentation: slightly stronger front highlight and ground shadow
+    if (t >= 10) {
+      g.save();
+      g.globalAlpha = 0.18;
+      const lg = g.createLinearGradient(480,320,520,470);
+      lg.addColorStop(0,'rgba(255,255,255,0.24)');
+      lg.addColorStop(1,'rgba(255,255,255,0)');
+      g.fillStyle = lg;
+      g.fillRect(0,0,W,H);
+      g.restore();
+    }
+
+    // subtle breathing / stillness finish
+    if (t >= 10) {
+      g.save();
+      g.fillStyle = 'rgba(255,255,255,0.08)';
+      g.beginPath();
+      g.ellipse(610,392,54,32,0,0,Math.PI*2);
+      g.fill();
+      g.restore();
+    }
+  }
+
+  window.renderFrame = function(timeSeconds){
+    drawScene(timeSeconds);
+  };
+
+  window.renderFrame(0);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>html,body{margin:0;padding:0;background:#222}canvas{display:block}</style>
+</head>
+<body>
+<canvas id="stage" width="960" height="540"></canvas>
+<script>
+const cv=document.getElementById('stage');
+const ctx=cv.getContext('2d');
+const PI=Math.PI;
+function clamp(v,a,b){return v<a?a:(v>b?b:v);}
+function S(t,a,b){let x=clamp((t-a)/(b-a),0,1);return x*x*(3-2*x);}
+function lerp(a,b,u){return a+(b-a)*u;}
+
+// ---- dog state ----
+function dogState(t){
+  let x;
+  if(t<1)x=170;
+  else if(t<3)x=lerp(170,560,S(t,1,3));
+  else if(t<4.5)x=lerp(560,615,S(t,3,4.5));
+  else if(t<6)x=615;
+  else if(t<8)x=lerp(615,545,S(t,6,8));
+  else if(t<10)x=lerp(545,460,S(t,8,10));
+  else x=460;
+  let ori=0;
+  if(t>=8&&t<10)ori=lerp(0,-PI/2,S(t,8,10));
+  else if(t>=10)ori=-PI/2;
+  let pitch=0;
+  if(t<4.3)pitch=0;
+  else if(t<5.2)pitch=lerp(0,1.1,S(t,4.3,5.2));
+  else if(t<6)pitch=lerp(1.1,0.2,S(t,5.2,6));
+  else pitch=0.2;
+  return {x:x,ori:ori,pitch:pitch,t:t};
+}
+const stride=36;
+const scale=1.5;
+const groundY=430;
+
+function projS(st,X,Y,Z){
+  const ca=Math.cos(st.ori),sa=Math.sin(st.ori);
+  const hx=X*ca-Z*sa;
+  const depth=X*sa+Z*ca;
+  return {sx:st.x+hx*scale, sy:groundY-Y*scale, depth:depth};
+}
+// pivot head
+function headPoint(st,ox,oy,z){
+  const p=st.pitch,cp=Math.cos(p),sp=Math.sin(p);
+  const rx=ox*cp+oy*sp;
+  const ry=-ox*sp+oy*cp;
+  return projS(st,30+rx,42+ry,z);
+}
+function mouthWorld(st){return headPoint(st,24,-4,0);}
+function mouthFront(st){return headPoint(st,40,-4,0);}
+
+const tc=5.2;
+const restBone=(function(){return mouthWorld(dogState(tc));})();
+
+// ---- leg IK ----
+function legPoints(st,hipX,hipY,Z,offset,speedSign){
+  const phase=st.x/stride + offset;
+  let p=phase-Math.floor(phase);
+  const stanceFrac=0.6, Samp=12, liftH=7;
+  let sx,fy;
+  if(p<stanceFrac){let u=p/stanceFrac;sx=(0.5-u)*Samp;fy=0;}
+  else{let u=(p-stanceFrac)/(1-stanceFrac);sx=(-0.5+u)*Samp;fy=Math.sin(PI*u)*liftH;}
+  // if essentially not moving, keep neutral-ish (phase const anyway)
+  const fx=hipX+sx;
+  const L1=14,L2=14;
+  let dx=fx-hipX, dy=(fy)-hipY;
+  let d=Math.hypot(dx,dy); d=clamp(d,0.1,L1+L2-0.2);
+  let aa=Math.acos(clamp((L1*L1+d*d-L2*L2)/(2*L1*d),-1,1));
+  let base=Math.atan2(dy,dx);
+  let bend=(hipX>0)?-1:1;
+  let ka=base+bend*aa;
+  let kx=hipX+L1*Math.cos(ka), ky=hipY+L1*Math.sin(ka);
+  return {hip:projS(st,hipX,hipY,Z),knee:projS(st,kx,ky,Z),foot:projS(st,fx,fy,Z)};
+}
+
+function blobFn(ctx,px,py,r,c1,c2){
+  let g=ctx.createRadialGradient(px-r*0.3,py-r*0.35,r*0.1,px,py,r);
+  g.addColorStop(0,c1);g.addColorStop(1,c2);
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(px,py,r,0,2*PI);ctx.fill();
+}
+
+function drawBone(ctx,c,angle,len,r){
+  ctx.save();ctx.translate(c.sx,c.sy);ctx.rotate(angle);
+  ctx.fillStyle='#efe7d2';ctx.strokeStyle='#cbbfa3';ctx.lineWidth=1;
+  const h=len/2;
+  ctx.beginPath();ctx.moveTo(-h,-r*0.5);ctx.lineTo(h,-r*0.5);ctx.lineTo(h,r*0.5);ctx.lineTo(-h,r*0.5);ctx.closePath();ctx.fill();
+  for(let s=-1;s<=1;s+=2){
+    ctx.beginPath();ctx.arc(h*s,-r,r,0,2*PI);ctx.fill();ctx.stroke();
+    ctx.beginPath();ctx.arc(h*s,r,r,0,2*PI);ctx.fill();ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawDog(ctx,t){
+  const st=dogState(t);
+  // shadow
+  ctx.save();
+  ctx.globalAlpha=0.28;ctx.fillStyle='#2a2410';
+  ctx.beginPath();ctx.ellipse(st.x,groundY+6,42*scale*0.55,10,0,0,2*PI);ctx.fill();
+  ctx.restore();
+
+  const items=[];
+  function add(depth,fn){items.push({d:depth,f:fn});}
+
+  // legs
+  const legs=[
+    {hx:22,hy:28,z:-7,off:0.0},
+    {hx:22,hy:28,z:7,off:0.5},
+    {hx:-22,hy:26,z:-7,off:0.5},
+    {hx:-22,hy:26,z:7,off:0.0}
+  ];
+  for(const lg of legs){
+    const lp=legPoints(st,lg.hx,lg.hy,lg.z,lg.off,1);
+    add(lp.hip.depth+0.2,function(){
+      ctx.lineCap='round';ctx.lineJoin='round';
+      ctx.strokeStyle='#9c5f2b';ctx.lineWidth=8;
+      ctx.beginPath();ctx.moveTo(lp.hip.sx,lp.hip.sy);ctx.lineTo(lp.knee.sx,lp.knee.sy);ctx.lineTo(lp.foot.sx,lp.foot.sy);ctx.stroke();
+      ctx.strokeStyle='#b67b3d';ctx.lineWidth=5;
+      ctx.beginPath();ctx.moveTo(lp.hip.sx,lp.hip.sy);ctx.lineTo(lp.knee.sx,lp.knee.sy);ctx.lineTo(lp.foot.sx,lp.foot.sy);ctx.stroke();
+      // paw
+      ctx.fillStyle='#e6d2ac';ctx.beginPath();ctx.arc(lp.foot.sx,lp.foot.sy,4.5,0,2*PI);ctx.fill();
+    });
+  }
+
+  // tail plume
+  const tailPts=[[-26,33,0],[-28,40,0],[-26,47,0],[-20,52,0],[-13,52,0]];
+  const tbase=projS(st,-26,33,0);
+  add(tbase.depth-1,function(){
+    for(let i=0;i<tailPts.length;i++){
+      const sw=Math.sin(t*2+i)*0.8;
+      const pp=projS(st,tailPts[i][0]+sw,tailPts[i][1],tailPts[i][2]);
+      const r=(i<2?11:9);
+      blobFn(ctx,pp.sx,pp.sy,r,'#f2dcb4','#c97f36');
+    }
+  });
+
+  // body blobs
+  const breath=1+0.02*Math.sin(t*2)*(t>=10?1:0.3);
+  const bodyBlobs=[
+    [-24,30,0,15,'#e6a357','#b76e30'],
+    [-8,31,0,17,'#e6a357','#b76e30'],
+    [8,31,0,18*breath,'#eaab60','#bc7333'],
+    [20,32,0,17,'#eeb468','#c27a38']
+  ];
+  for(const b of bodyBlobs){const pp=projS(st,b[0],b[1],b[2]);add(pp.depth,function(){blobFn(ctx,pp.sx,pp.sy,b[3]*scale,b[4],b[5]);});}
+  // ruff
+  const ruff=projS(st,27,35,0);
+  add(ruff.depth-0.3,function(){blobFn(ctx,ruff.sx,ruff.sy,21*scale,'#f7e4c1','#d7a660');});
+
+  // head + face
+  const headC=headPoint(st,8,5,0);
+  add(headC.depth+0.1,function(){
+    // ears
+    for(const z of [-6,6]){
+      const b1=headPoint(st,2,14,z),b2=headPoint(st,9,13,z),tp=headPoint(st,5,24,z);
+      ctx.fillStyle='#c77f3a';ctx.beginPath();ctx.moveTo(b1.sx,b1.sy);ctx.lineTo(b2.sx,b2.sy);ctx.lineTo(tp.sx,tp.sy);ctx.closePath();ctx.fill();
+      const ti=headPoint(st,5,20,z);
+      ctx.fillStyle='#7d4a22';ctx.beginPath();ctx.moveTo((b1.sx+b2.sx)/2,(b1.sy+b2.sy)/2);ctx.lineTo(ti.sx,ti.sy);ctx.lineTo(b2.sx,b2.sy);ctx.closePath();ctx.fill();
+    }
+    // head mass
+    blobFn(ctx,headC.sx,headC.sy,13*scale,'#edb165','#c17c38');
+    // muzzle
+    const mz=headPoint(st,19,-1,0);
+    blobFn(ctx,mz.sx,mz.sy,8*scale,'#f0c27f','#c88a46');
+    // eyes
+    for(const z of [-4.5,4.5]){
+      const e=headPoint(st,11,6,z);
+      ctx.fillStyle='#241a10';ctx.beginPath();ctx.arc(e.sx,e.sy,3,0,2*PI);ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,0.8)';ctx.beginPath();ctx.arc(e.sx-1,e.sy-1,1,0,2*PI);ctx.fill();
+    }
+    // nose
+    const nz=headPoint(st,24,-1,0);
+    ctx.fillStyle='#1c140d';ctx.beginPath();ctx.arc(nz.sx,nz.sy,3.2,0,2*PI);ctx.fill();
+  });
+
+  // sort far->near
+  items.sort((a,b)=>b.d-a.d);
+  for(const it of items)it.f();
+
+  return st;
+}
+
+function drawHouseBack(ctx){
+  // interior dark (seen through door)
+  ctx.fillStyle='#241c13';
+  ctx.beginPath();ctx.moveTo(620,300);ctx.lineTo(720,300);ctx.lineTo(720,440);ctx.lineTo(620,440);ctx.closePath();ctx.fill();
+  // interior floor platform
+  ctx.fillStyle='#3a2c1a';
+  ctx.beginPath();ctx.moveTo(620,405);ctx.lineTo(720,405);ctx.lineTo(720,440);ctx.lineTo(620,440);ctx.closePath();ctx.fill();
+}
+function drawHouseFront(ctx){
+  // front wall with door hole (even-odd)
+  ctx.fillStyle='#9d5a3a';
+  ctx.beginPath();
+  ctx.rect(590,300,240,140);
+  // door hole (arch approx)
+  ctx.moveTo(720,440);
+  ctx.lineTo(720,350);
+  ctx.arc(670,350,50,0,PI,false);
+  ctx.lineTo(620,440);
+  ctx.closePath();
+  ctx.fill('evenodd');
+  // wall planks shading
+  ctx.strokeStyle='rgba(60,30,15,0.3)';ctx.lineWidth=2;
+  for(let yy=312;yy<440;yy+=16){ctx.beginPath();ctx.moveTo(590,yy);ctx.lineTo(830,yy);ctx.stroke();}
+  // door frame
+  ctx.strokeStyle='#6d3c25';ctx.lineWidth=5;
+  ctx.beginPath();ctx.moveTo(620,440);ctx.lineTo(620,350);ctx.arc(670,350,50,PI,0,false);ctx.lineTo(720,440);ctx.stroke();
+  // roof
+  ctx.fillStyle='#7a3f28';
+  ctx.beginPath();ctx.moveTo(575,305);ctx.lineTo(710,200);ctx.lineTo(845,305);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#8c4a30';
+  ctx.beginPath();ctx.moveTo(575,305);ctx.lineTo(710,205);ctx.lineTo(710,200);ctx.lineTo(575,300);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='rgba(50,25,12,0.4)';ctx.lineWidth=2;
+  for(let i=1;i<7;i++){ctx.beginPath();ctx.moveTo(575+ (710-575)*i/7,305-(305-200)*i/7*0);ctx.stroke();}
+}
+
+function drawBackground(ctx){
+  // sky
+  let g=ctx.createLinearGradient(0,0,0,340);
+  g.addColorStop(0,'#aad4f0');g.addColorStop(1,'#dcefe0');
+  ctx.fillStyle=g;ctx.fillRect(0,0,960,340);
+  // sun glow
+  let sg=ctx.createRadialGradient(150,80,10,150,80,120);
+  sg.addColorStop(0,'rgba(255,250,220,0.9)');sg.addColorStop(1,'rgba(255,250,220,0)');
+  ctx.fillStyle=sg;ctx.fillRect(0,0,400,260);
+  // distant fence
+  ctx.fillStyle='#b79a6b';ctx.fillRect(0,300,960,20);
+  ctx.fillStyle='#a88c5e';
+  for(let x=0;x<960;x+=26){ctx.fillRect(x,282,16,38);}
+  // grass
+  let gg=ctx.createLinearGradient(0,320,0,540);
+  gg.addColorStop(0,'#7db24e');gg.addColorStop(1,'#4f8a35');
+  ctx.fillStyle=gg;ctx.fillRect(0,320,960,220);
+  // grass texture tufts deterministic
+  for(let i=0;i<260;i++){
+    let x=(i*97+((i*i)%53))%960;
+    let y=330+((i*131)%200);
+    let h=4+((i*7)%6);
+    ctx.strokeStyle='rgba(40,80,25,0.35)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+2,y-h);ctx.stroke();
+    ctx.strokeStyle='rgba(150,200,90,0.3)';
+    ctx.beginPath();ctx.moveTo(x+1,y);ctx.lineTo(x-1,y-h+1);ctx.stroke();
+  }
+}
+
+window.renderFrame=function(time){
+  let t=time; if(t<0)t=0; if(t>12)t=12;
+  ctx.clearRect(0,0,960,540);
+  drawBackground(ctx);
+  drawHouseBack(ctx);
+
+  // resting bone (before grab) drawn before dog so dog covers it when reaching
+  if(t<tc){
+    drawBone(ctx,restBone,-0.15,22,4.2);
+    ctx.save();ctx.globalAlpha=0.3;ctx.fillStyle='#1a140c';
+    ctx.beginPath();ctx.ellipse(restBone.sx,restBone.sy+10,14,4,0,0,2*PI);ctx.fill();ctx.restore();
+  }
+
+  const st=drawDog(ctx,t);
+
+  // held bone after grab (on top, in mouth)
+  if(t>=tc){
+    const m=mouthWorld(st), f=mouthFront(st);
+    const ang=Math.atan2(f.sy-m.sy,f.sx-m.sx);
+    const len=clamp(Math.hypot(f.sx-m.sx,f.sy-m.sy)*2.2,10,26);
+    drawBone(ctx,m,ang,len,4.2);
+  }
+
+  drawHouseFront(ctx);
+};
+
+window.renderFrame(0);
+</script>
+</body>
+</html>

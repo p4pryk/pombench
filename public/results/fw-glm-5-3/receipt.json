@@ -1,0 +1,14 @@
+{
+  "modelId": "FW-GLM-5.3",
+  "promptHash": "9e1131eba5a9c74ac133a901e27d3e1ee1970571c230486e33612fe3204a6b48",
+  "sourceHash": "6b6482e411f2e8b41e2f00004f26467031cac9aa6646ff33980990ad897083d5",
+  "responseHash": "767d2188be2dfc54f68702f4f6c0509c39d289cf1f69d9a317aae34c85319c61",
+  "requestHash": "cd09c65c522542f0a4d274561c65dd074e572f588e2def635988d3a536962979",
+  "streamHash": null,
+  "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
+  "submission": 1,
+  "tools": [],
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+}

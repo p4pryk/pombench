@@ -1,0 +1,14 @@
+{
+  "modelId": "gpt-4.1-nano",
+  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
+  "sourceHash": "b6ac13f41854afb0f2bae3aa7f3b43c2799da30a4431d6468f325e9fcd46c5e6",
+  "responseHash": "4c1fefb7f87ed3117b19eec79a4db5b42c3a14dd86f87a62079d15799f5c9cc5",
+  "requestHash": "6831083d502f0d6dd1896072fa7b1aad01a329aaace581e0c6bc382fc28e8e35",
+  "streamHash": null,
+  "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
+  "submission": 1,
+  "tools": [],
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+}

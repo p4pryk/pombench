@@ -1,0 +1,14 @@
+{
+  "modelId": "MAI-Thinking-1",
+  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
+  "sourceHash": "a976289ada37696b1645347bdf35585d29235edec9fe17800082daf869f45abb",
+  "responseHash": "ef191e5fc232c1061e79656d040aaf4b3c09f7505efbd19d2edfd86fe9540cf5",
+  "requestHash": "d1a6e0eac343de687972d9926971054aba2334b645f233ad8d0170b433b88d1c",
+  "streamHash": null,
+  "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
+  "submission": 1,
+  "tools": [],
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+}

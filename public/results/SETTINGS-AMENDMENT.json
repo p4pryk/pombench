@@ -1,0 +1,22 @@
+{
+  "recordedAt": "2026-10-22T10:04:06.829746+00:00",
+  "models": {
+    "Mistral-Large-3": {
+      "maxOutputTokens": 32768
+    },
+    "grok-4.7": {
+      "api": "responses"
+    },
+    "FW-GLM-5.3": {
+      "api": "responses",
+      "reasoningEffort": "low"
+    }
+  },
+  "reason": "Catalog stated 4096 output tokens, but the endpoint accepted max_tokens=32768 in an independent small compatibility probe. Restore the common allowance before judging the model.",
+  "policy": "Capped responses retained as organizer setup calibration, all known usage charged, no source edits or quality selection. New run gets identical prompt and common execution repair policy.",
+  "scriptHash": "92777c0ee4152bd36d817fc52de473e9f966108f5feb9beb0b23714cd4e21ede",
+  "endpointCorrections": {
+    "grok-4.7": "Responses API advertised in official model card and independently accepted the low-effort compatibility probe. Chat animation requests never produced a completed response.",
+    "DeepSeek-V4-Pro-0813": "Explicit version deployment alias also returned backend unknown_model; temporary duplicate alias removed. Original approved deployment retained for diagnosis. No model output or quality judgement."
+  }
+}

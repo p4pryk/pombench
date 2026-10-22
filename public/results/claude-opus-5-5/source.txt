@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;background:#000}canvas{display:block;width:960px;height:540px}</style></head><body><canvas id="stage" width="960" height="540"></canvas><script>
+(function(){
+const c=document.getElementById('stage'),g=c.getContext('2d');
+function R(n){const x=Math.sin(n*127.1+311.7)*43758.5453;return x-Math.floor(x);}
+function cl(v,a,b){return v<a?a:v>b?b:v;}
+function ss(a,b,t){t=cl((t-a)/(b-a),0,1);return t*t*(3-2*t);}
+function lerp(a,b,t){return a+(b-a)*t;}
+// ground positions (screen, already perspective): doghouse door at x=690,y=330
+const DOOR={x:680,y:338};
+const START={x:170,y:430};
+const OUT={x:560,y:392};
+// grass blades precomputed
+const blades=[];for(let i=0;i<900;i++){const y=270+Math.pow(R(i),0.7)*270;blades.push([R(i+5)*960,y,R(i+9),R(i+13)]);}
+function bg(){
+ let s=g.createLinearGradient(0,0,0,270);s.addColorStop(0,'#8fb6d8');s.addColorStop(1,'#dfe8e6');g.fillStyle=s;g.fillRect(0,0,960,280);
+ // fence
+ for(let i=0;i<34;i++){const x=i*30-6;let f=g.createLinearGradient(x,0,x+26,0);f.addColorStop(0,'#b89a76');f.addColorStop(1,'#8f7357');g.fillStyle=f;g.fillRect(x,120,26,160);g.fillStyle='rgba(60,40,20,.25)';for(let k=0;k<4;k++)g.fillRect(x+4+R(i*7+k)*18,130+R(i+k)*120,1,24);
+ g.beginPath();g.moveTo(x,120);g.lineTo(x+13,108);g.lineTo(x+26,120);g.fillStyle='#a88a66';g.fill();}
+ g.fillStyle='#7b6046';g.fillRect(0,150,960,8);g.fillRect(0,235,960,8);
+ // bushes
+ for(let i=0;i<14;i++){const x=i*75+R(i)*30,y=272;g.fillStyle=`hsl(${100+R(i+2)*20},35%,${22+R(i+3)*10}%)`;g.beginPath();g.ellipse(x,y,50+R(i)*20,34,0,0,7);g.fill();}
+ let gr=g.createLinearGradient(0,265,0,540);gr.addColorStop(0,'#5d7f37');gr.addColorStop(1,'#46692a');g.fillStyle=gr;g.fillRect(0,265,960,275);
+ for(let i=0;i<70;i++){g.fillStyle=`rgba(${R(i)*40},${60+R(i+1)*50},20,.18)`;g.beginPath();g.ellipse(R(i+3)*960,290+R(i+4)*250,40+R(i)*80,8+R(i+6)*14,0,0,7);g.fill();}
+ g.lineWidth=1;
+ for(const b of blades){const k=(b[1]-260)/280;g.strokeStyle=`hsl(${80+b[2]*30},${35+b[3]*20}%,${25+b[3]*25}%)`;g.beginPath();g.moveTo(b[0],b[1]);g.lineTo(b[0]+(b[2]-.5)*6*k,b[1]-(3+b[3]*7)*k);g.stroke();}
+}
+// doghouse: front face facing viewer-left 3/4. door on front face.
+function houseBack(){
+ // shadow
+ g.fillStyle='rgba(20,30,10,.35)';g.beginPath();g.ellipse(720,350,140,26,0,0,7);g.fill();
+ // side wall (right, receding)
+ g.fillStyle='#8a3f2c';g.beginPath();g.moveTo(780,345);g.lineTo(850,300);g.lineTo(850,200);g.lineTo(780,230);g.closePath();g.fill();
+ for(let i=0;i<7;i++){g.strokeStyle='rgba(40,15,10,.35)';g.beginPath();g.moveTo(780,245+i*15);g.lineTo(850,212+i*14);g.stroke();}
+}
+function houseFront(){
+ // front wall with door hole (even-odd)
+ g.beginPath();g.moveTo(590,348);g.lineTo(780,345);g.lineTo(780,230);g.lineTo(685,150);g.lineTo(590,232);g.closePath();
+ g.moveTo(640,346);g.lineTo(640,268);g.quadraticCurveTo(680,236,720,268);g.lineTo(720,346);g.closePath();
+ let f=g.createLinearGradient(590,0,780,0);f.addColorStop(0,'#b85a3c');f.addColorStop(1,'#a14b31');g.fillStyle=f;g.fill('evenodd');
+ g.save();g.clip('evenodd');g.strokeStyle='rgba(50,20,10,.35)';for(let i=0;i<14;i++){g.beginPath();g.moveTo(590,240+i*8);g.lineTo(780,240+i*8);g.stroke();}g.restore();
+ g.strokeStyle='#e8dccb';g.lineWidth=5;g.beginPath();g.moveTo(640,346);g.lineTo(640,268);g.quadraticCurveTo(680,236,720,268);g.lineTo(720,346);g.stroke();g.lineWidth=1;
+ // roof
+ g.fillStyle='#4a4f5a';g.beginPath();g.moveTo(574,240);g.lineTo(685,138);g.lineTo(760,108);g.lineTo(866,198);g.lineTo(796,238);g.lineTo(685,146);g.closePath();g.fill();
+ g.fillStyle='#363a43';g.beginPath();g.moveTo(685,138);g.lineTo(760,108);g.lineTo(866,198);g.lineTo(796,238);g.closePath();g.fill();
+ g.strokeStyle='rgba(255,255,255,.12)';for(let i=1;i<6;i++){g.beginPath();g.moveTo(685+i*15,138-i*6);g.lineTo(796+i*14,238-i*8);g.stroke();}
+ g.fillStyle='#5b616d';g.beginPath();g.moveTo(574,240);g.lineTo(685,138);g.lineTo(690,146);g.lineTo(582,244);g.fill();
+}
+function interior(){
+ g.save();g.beginPath();g.moveTo(640,346);g.lineTo(640,268);g.quadraticCurveTo(680,236,720,268);g.lineTo(720,346);g.closePath();
+ let d=g.createRadialGradient(680,330,5,680,300,70);d.addColorStop(0,'#3a2a1e');d.addColorStop(1,'#120c08');g.fillStyle=d;g.fill();g.restore();
+}
+function bone(x,y,a,s){
+ g.save();g.translate(x,y);g.rotate(a);g.scale(s,s);
+ let b=g.createLinearGradient(0,-6,0,6);b.addColorStop(0,'#fbf3e0');b.addColorStop(1,'#cbb99a');g.fillStyle=b;
+ g.fillRect(-13,-3,26,6);for(const sx of[-1,1])for(const sy of[-1,1]){g.beginPath();g.arc(sx*14,sy*3.3,4.2,0,7);g.fill();}
+ g.restore();
+}
+// fur blob: ellipse with fringe strokes
+function fur(x,y,rx,ry,col,dark,seed,ang){
+ g.save();g.translate(x,y);g.rotate(ang||0);
+ let gr=g.createRadialGradient(-rx*.3,-ry*.5,1,0,0,Math.max(rx,ry));gr.addColorStop(0,col[0]);gr.addColorStop(.7,col[1]);gr.addColorStop(1,dark);
+ g.fillStyle=gr;g.beginPath();g.ellipse(0,0,rx,ry,0,0,7);g.fill();
+ g.lineWidth=1.2;const n=Math.floor((rx+ry)*1.3);
+ for(let i=0;i<n;i++){const a=R(seed+i)*6.283,r=.75+R(seed+i*3)*.3;const px=Math.cos(a)*rx*r,py=Math.sin(a)*ry*r;const l=3+R(seed+i*7)*4;
+  g.strokeStyle=py<0?col[0]:col[1];g.globalAlpha=.7;g.beginPath();g.moveTo(px,py);g.lineTo(px+Math.cos(a)*l+(-1)*l*.4,py+Math.sin(a)*l*.6+l*.3);g.stroke();}
+ g.globalAlpha=1;g.restore();
+}
+const OR=['#f7c27a','#e08f3a'],DK='#a85a1c',CR=['#fff2d8','#f0cf9a'];
+function leg(hx,hy,fx,fy,front,s,near){
+ // two-segment leg with knee
+ const mx=(hx+fx)/2+(front?-1:1)*3*s*0, my=(hy+fy)/2;
+ const kx=mx+(front?2:-4)*s;
+ g.strokeStyle=near?'#e9a253':'#c27a35';g.lineCap='round';
+ g.lineWidth=6*s;g.beginPath();g.moveTo(hx,hy);g.lineTo(kx,my);g.stroke();
+ g.lineWidth=4*s;g.beginPath();g.moveTo(kx,my);g.lineTo(fx,fy);g.stroke();
+ g.fillStyle=near?'#f3c78c':'#cf8f4a';g.beginPath();g.ellipse(fx+1.5*s,fy,3.6*s,2.2*s,0,0,7);g.fill();
+}
+// dog. yaw: 0 = facing +x (right, side), PI/2 = facing viewer. dir sign for side
+function dog(x,y,s,yaw,t,ph,run,head,mouth,carry,breath,clipDoor){
+ const cy=Math.cos(yaw),sy=Math.sin(yaw);
+ const bob=run*Math.abs(Math.sin(ph))*-3*s;
+ // shadow
+ g.fillStyle='rgba(15,25,8,.4)';g.beginPath();g.ellipse(x,y+1,(20*Math.abs(cy)+14)*s,6*s,0,0,7);g.fill();
+ const by=y-24*s+bob+breath;
+ const L=16*s*cy, D=6*s*sy; // body half length projection, depth
+ const hipX=x-L, shX=x+L;
+ const legsData=[];
+ for(let i=0;i<4;i++){const front=i<2,side=i%2?1:-1;const p=ph+(front?0:Math.PI*.6)+(side>0?0:Math.PI*.15);
+  const sw=Math.sin(p)*9*s*run, lift=Math.max(0,Math.cos(p))*5*s*run;
+  const bx=(front?shX:hipX)+side*5*s*sy*0+ (front?1:-1)*0;
+  const lateral=side*6*s*Math.abs(sy)*(cy>=0?1:1);
+  const depth=side*4*s*Math.abs(cy);
+  const hx=bx+lateral, hy=by+6*s-depth*0.5;
+  const fx=hx+sw*cy+ (front?2*s*cy:-2*s*cy), fy=y-lift-depth*.3;
+  legsData.push({hx,hy,fx,fy,front,near:side*(sy>.5?1:1)>0?depth<=0:depth<0,depth});}
+ legsData.sort((a,b)=>a.depth-b.depth);
+ // far legs (depth>0 i.e. higher on screen)
+ for(const l of legsData)if(l.depth>0||(Math.abs(cy)<.3&&!l.front))leg(l.hx,l.hy,l.fx,l.fy,l.front,s,false);
+ // tail behind body when facing viewer
+ const tw=Math.sin(t*2.3)*0.15*(1-run)+Math.sin(ph)*.2*run;
+ const tailX=hipX-4*s*cy, tailY=by-8*s;
+ function tail(){fur(tailX-6*s*cy+tw*6*s,tailY-6*s,13*s,10*s,['#ffe0a8','#eaa04e'],DK,77,-.6*cy+tw);}
+ if(sy>.6)tail();
+ // body
+ fur(x,by,(22*Math.abs(cy)+15*Math.abs(sy))*s,17*s,OR,DK,11,0);
+ fur(hipX+2*s*cy,by-1*s,13*s,14*s,OR,DK,23,0);
+ if(sy<=.6)tail();
+ // near legs
+ for(const l of legsData)if(!(l.depth>0||(Math.abs(cy)<.3&&!l.front)))leg(l.hx,l.hy,l.fx,l.fy,l.front,s,true);
+ // ruff + head
+ const hx=shX+8*s*cy+head.dx*s, hy=by-14*s+head.dy*s;
+ fur(shX+3*s*cy,by-6*s+sy*3*s,16*s,15*s,CR,'#d9a565',41,0);
+ // ears
+ const ex=8*s*Math.abs(sy)+4*s*Math.abs(cy);
+ for(const e of[-1,1]){const ox=hx+e*ex-3*s*cy+Math.sin(t*1.7+e)*.4*s;const oy=hy-12*s;
+  g.fillStyle='#d98636';g.beginPath();g.moveTo(ox-4*s,oy+5*s);g.lineTo(ox+e*1*s,oy-6*s);g.lineTo(ox+4*s,oy+5*s);g.fill();
+  g.fillStyle='#8a4a2a';g.beginPath();g.moveTo(ox-2*s,oy+4*s);g.lineTo(ox+e*.6*s,oy-2*s);g.lineTo(ox+2*s,oy+4*s);g.fill();}
+ fur(hx,hy,11*s,10*s,['#ffd79c','#ec9d4b'],DK,53,0);
+ // muzzle
+ const mx=hx+9*s*cy, my=hy+3*s+head.mdy*s+(sy>.6?2*s:0);
+ const mo=mouth*4*s;
+ // lower jaw
+ g.fillStyle='#e6b47a';g.beginPath();g.ellipse(mx,my+2*s+mo,(5.5-1.5*sy)*s,2.4*s,0,0,7);g.fill();
+ if(carry)carry(mx+1*s*cy,my+1.8*s+mo*.5);
+ g.fillStyle='#f5d6a6';g.beginPath();g.ellipse(mx,my,(6-2*sy)*s,3.6*s,0,0,7);g.fill();
+ g.fillStyle='#1b1210';g.beginPath();g.ellipse(mx+(5*cy)*s,my-1.5*s+sy*1*s,1.8*s,1.4*s,0,0,7);g.fill();
+ // eyes
+ for(const e of[-1,1]){const vis=sy>.3||e*cy>0||Math.abs(cy)>.5&&e>0;if(!vis&&sy<.3&&e<0)continue;
+  const exx=hx+e*4.5*s*Math.abs(sy)+3.5*s*cy-(sy<.3?e*.0:0), eyy=hy-2*s;
+  if(sy<.3&&e<0)continue;
+  g.fillStyle='#120a08';g.beginPath();g.ellipse(exx,eyy,1.7*s,1.9*s,0,0,7);g.fill();
+  g.fillStyle='rgba(255,255,255,.75)';g.beginPath();g.arc(exx-.5*s,eyy-.7*s,.5*s,0,7);g.fill();}
+}
+window.renderFrame=function(T){
+ let t=cl(+T||0,0,12);
+ g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,960,540);
+ bg();houseBack();interior();
+ // dog state
+ let x,y,yaw=0,run=0,ph=0,head={dx:0,dy:0,mdy:0},mouth=0,has=false,inside=0;
+ const scale=t=>lerp(1.25,1.0,cl((540-(t))/200,0,1));
+ if(t<1){x=START.x;y=START.y;run=0;ph=0;head.dy=-ss(.3,.8,t)*2;head.dx=ss(.3,.8,t)*2;}
+ else if(t<3){const u=ss(1,3,t);x=lerp(START.x,DOOR.x-70,u);y=lerp(START.y,DOOR.y+4,u);run=1-ss(2.6,3,t)*.6;ph=(t-1)*15;yaw=Math.atan2(-(START.y-DOOR.y)*.0,1)-.08;}
+ else if(t<4.5){const u=ss(3,4.5,t);x=lerp(DOOR.x-70,DOOR.x-6,u);y=DOOR.y+4;run=.35*(1-u);ph=(t-1)*10;inside=u;}
+ else if(t<6){x=DOOR.x-6;y=DOOR.y+4;head.dy=ss(4.6,5.2,t)*6-ss(5.6,6,t)*3;head.mdy=ss(4.6,5.2,t)*2;mouth=ss(4.8,5.1,t)-ss(5.2,5.45,t)*.6;inside=1;has=t>5.3;}
+ else if(t<8){const u=ss(6,8,t);x=lerp(DOOR.x-6,OUT.x+20,u);y=lerp(DOOR.y+4,OUT.y,u);ph=-(t-6)*7;run=.35*Math.sin(Math.PI*u);head.dy=3*(1-u);mouth=.4;has=true;inside=1-ss(6,7.2,t);}
+ else{x=OUT.x+20;y=OUT.y;const u=ss(8,10,t);yaw=u*Math.PI/2;ph=(t-8)*6*Math.PI*.5;run=.25*Math.sin(Math.PI*u);mouth=.4;has=true;head.dy=-ss(10,11,t)*1;}
+ const s=1.25-0.25*cl((START.y-y)/(START.y-DOOR.y),0,1);
+ const breath=Math.sin(t*5)*.6*(t>9.5?1:.3);
+ const boneRest={x:684,y:340};
+ const carry=has?(bx,by)=>bone(bx,by,(yaw>.7?0:.12)+Math.sin(t*3)*.02,0.75*s*Math.max(Math.abs(Math.cos(yaw)),1)*(yaw>.7?1:1)):null;
+ // bone at rest (inside, drawn after interior)
+ if(!has)bone(boneRest.x,boneRest.y,.1,.8);
+ if(inside>0){
+  // draw dog then front wall occludes; but tail/rear outside: wall covers only beyond door edge
+  g.save();
+  // clip region: everything except area of front wall outside door
+  g.beginPath();g.rect(0,0,960,540);g.moveTo(590,348);g.lineTo(590,232);g.lineTo(685,150);g.lineTo(780,230);g.lineTo(780,345);g.closePath();
+  g.moveTo(640,346);g.lineTo(720,346);g.lineTo(720,268);g.quadraticCurveTo(680,236,640,268);g.closePath();
+  g.clip('evenodd');
+  // darken inside part
+  dog(x,y,s,yaw,t,ph,run,head,mouth,carry,breath);
+  g.save();g.beginPath();g.moveTo(640,346);g.lineTo(640,250);g.lineTo(720,250);g.lineTo(720,346);g.closePath();g.clip();
+  g.fillStyle='rgba(15,8,4,.45)';g.fillRect(640,230,80,120);g.restore();
+  g.restore();
+  houseFront();
+ }else{houseFront();dog(x,y,s,yaw,t,ph,run,head,mouth,carry,breath);}
+ // light vignette
+ let v=g.createRadialGradient(480,300,200,480,300,620);v.addColorStop(0,'rgba(255,240,210,0)');v.addColorStop(1,'rgba(30,20,10,.35)');g.fillStyle=v;g.fillRect(0,0,960,540);
+};
+window.renderFrame(0);
+})();
+</script></body></html>

@@ -1,0 +1,16 @@
+{
+  "id": "foundry-api-only-v1",
+  "allowedRoutes": [
+    "responses",
+    "chat",
+    "mai",
+    "anthropic",
+    "anthropic-extended",
+    "foundry-chat"
+  ],
+  "allowedReceiptSources": [
+    "Actual Foundry API usage",
+    "Actual Foundry API usage recovered from already-received terminal response"
+  ],
+  "requirements": "Pinned model and deployment version; direct Foundry API route; preserved provider response, actual raw usage and matching response hash. No ChatGPT subscription authoring sessions, local inference, manual submissions, moving latest aliases or model routers. Unavailable API calls remain audit records, never fabricated films."
+}

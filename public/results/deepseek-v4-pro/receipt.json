@@ -1,0 +1,14 @@
+{
+  "modelId": "DeepSeek-V4-Pro",
+  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
+  "sourceHash": "a402cc50d453ee819c5eda4856ef4e4b24b2912b8851a89cd64c8bf880a7d431",
+  "responseHash": "49b0ffd3b99867b7a4ca893eb15a91bf41593b32ffeb17eb2abff76de71e32a5",
+  "requestHash": "5f8c3d4c4138ae9c112711b001a36e14f421b8b4eb0ba568427aafc728522fb3",
+  "streamHash": "15c6cf2ab7c34efbaf63803f12c27f08c8b932cb69d627b73a6866356eb5af9c",
+  "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
+  "submission": 1,
+  "tools": [],
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+}

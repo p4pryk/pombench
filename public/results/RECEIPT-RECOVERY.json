@@ -1,0 +1,6 @@
+{
+  "recordedAt": "2026-10-22T10:01:40.231383+00:00",
+  "cause": "Historical normalizer did not accept nullable provider token detail objects. Full terminal responses were received.",
+  "policy": "Recover every actual receipt without changing source. Count completed infrastructure replays and disclose unknown interrupted usage. Keep final received source, never best-of.",
+  "scriptHash": "9b5f3f251ef4b8d1880f452ab7abbc1711f2d930e795718e61c37015fdb66327"
+}

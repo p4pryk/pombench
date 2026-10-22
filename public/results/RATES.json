@@ -1,0 +1,378 @@
+{
+  "checkedAt": "2026-10-20",
+  "note": "Dated official API list-rate snapshot; not an Azure invoice. Same rate basis as Mars / Descent.",
+  "rates": {
+    "claude-opus-5-5": {
+      "input": 4,
+      "cached": 0.2,
+      "write": 5,
+      "output": 20,
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "context": "flat",
+      "fast": true
+    },
+    "claude-sonnet-5-5": {
+      "input": 2,
+      "cached": 0.1,
+      "write": 2.5,
+      "output": 10,
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "context": "flat",
+      "fast": false
+    },
+    "claude-haiku-5-5": {
+      "input": 0.1,
+      "cached": 0.01,
+      "write": 0.125,
+      "output": 0.5,
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "context": "haiku",
+      "fast": false
+    },
+    "claude-sonnet-5": {
+      "input": 2,
+      "cached": 0.2,
+      "write": 2.5,
+      "output": 10,
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "context": "flat",
+      "fast": false
+    },
+    "claude-opus-5": {
+      "input": 5,
+      "cached": 0.5,
+      "write": 6.25,
+      "output": 25,
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "context": "flat",
+      "fast": true
+    },
+    "claude-opus-4-8": {
+      "input": 5,
+      "cached": 0.5,
+      "write": 6.25,
+      "output": 25,
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "context": "flat",
+      "fast": true
+    },
+    "claude-haiku-4-5": {
+      "input": 1,
+      "cached": 0.1,
+      "write": 1.25,
+      "output": 5,
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "context": "flat",
+      "fast": false
+    },
+    "claude-opus-5-5-fast": {
+      "input": 8,
+      "cached": 0.4,
+      "write": 10,
+      "output": 40,
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "context": "flat",
+      "fast": false
+    },
+    "gpt-5-nano": {
+      "input": 0.05,
+      "cached": 0.005,
+      "write": 0,
+      "output": 0.4,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5-nano",
+      "context": "flat",
+      "noWrite": true,
+      "fast": false
+    },
+    "gpt-5-mini": {
+      "input": 0.25,
+      "cached": 0.025,
+      "write": 0,
+      "output": 2,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5-mini",
+      "context": "flat",
+      "noWrite": true,
+      "fast": false
+    },
+    "gpt-4.1-mini": {
+      "input": 0.4,
+      "cached": 0.1,
+      "write": 0,
+      "output": 1.6,
+      "source": "https://developers.openai.com/api/docs/models/gpt-4.1-mini",
+      "context": "flat",
+      "noWrite": true,
+      "fast": false
+    },
+    "gpt-4.1-nano": {
+      "input": 0.1,
+      "cached": 0.025,
+      "write": 0,
+      "output": 0.4,
+      "source": "https://developers.openai.com/api/docs/models/gpt-4.1-nano",
+      "context": "flat",
+      "noWrite": true,
+      "fast": false
+    },
+    "gpt-4o-mini": {
+      "input": 0.15,
+      "cached": 0.075,
+      "write": 0,
+      "output": 0.6,
+      "source": "https://developers.openai.com/api/docs/models/gpt-4o-mini",
+      "context": "flat",
+      "noWrite": true,
+      "fast": false
+    },
+    "gpt-5.4-nano": {
+      "input": 0.2,
+      "cached": 0.02,
+      "write": 0,
+      "output": 1.25,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5.4-nano",
+      "context": "flat",
+      "noWrite": true,
+      "fast": false
+    },
+    "MAI-Thinking-1": {
+      "input": 2,
+      "cached": 2,
+      "write": 0,
+      "output": 8,
+      "source": "https://techcommunity.microsoft.com/blog/azure-ai-foundry-blog/new-mai-models-in-microsoft-foundry-across-text-image-voice-and-speech/4524632",
+      "noLong": true,
+      "noWrite": true,
+      "fast": false
+    },
+    "gpt-5.4": {
+      "input": 2.5,
+      "cached": 0.25,
+      "write": 0,
+      "output": 15,
+      "source": "https://developers.openai.com/api/docs/pricing",
+      "noWrite": true
+    },
+    "gpt-6.1-sol": {
+      "input": 2,
+      "cached": 0.1,
+      "write": 2.5,
+      "output": 10,
+      "source": "https://developers.openai.com/api/docs/pricing"
+    },
+    "gpt-5.6-sol": {
+      "input": 4,
+      "cached": 0.4,
+      "write": 5,
+      "output": 20,
+      "source": "https://developers.openai.com/api/docs/pricing"
+    },
+    "gpt-5.6-terra": {
+      "input": 2,
+      "cached": 0.2,
+      "write": 2.5,
+      "output": 12,
+      "source": "https://developers.openai.com/api/docs/pricing"
+    },
+    "gpt-5.6-luna": {
+      "input": 0.2,
+      "cached": 0.02,
+      "write": 0.25,
+      "output": 1.2,
+      "source": "https://developers.openai.com/api/docs/pricing"
+    },
+    "gpt-6-luna": {
+      "input": 0.1,
+      "cached": 0.01,
+      "write": 0.125,
+      "output": 0.5,
+      "source": "https://developers.openai.com/api/docs/pricing"
+    },
+    "gpt-6-sol": {
+      "input": 2,
+      "cached": 0.2,
+      "write": 2.5,
+      "output": 10,
+      "source": "https://developers.openai.com/api/docs/models/gpt-6-sol"
+    },
+    "gpt-6-astra": {
+      "input": 10,
+      "cached": 1,
+      "write": 12.5,
+      "output": 50,
+      "source": "https://developers.openai.com/api/docs/pricing"
+    },
+    "grok-4.7": {
+      "input": 2,
+      "cached": 0.5,
+      "write": 0,
+      "output": 6,
+      "source": "https://docs.x.ai/developers/models/grok-4.7",
+      "checkedAt": "2026-10-22",
+      "basis": "Official provider standard list rates; not Azure invoice pricing."
+    },
+    "DeepSeek-V4-Pro-0813": {
+      "input": 1.32,
+      "cached": 0.044,
+      "write": 0,
+      "output": 3.96,
+      "source": "https://api-docs.deepseek.com/quick_start/pricing/",
+      "checkedAt": "2026-10-22",
+      "basis": "Official provider standard list rates; DeepSeek uses peak prices as a fixed comparison estimate, not execution-time or Azure invoice pricing."
+    },
+    "DeepSeek-V4.1-Flash": {
+      "input": 0.3,
+      "cached": 0.006,
+      "write": 0,
+      "output": 1.2,
+      "source": "https://api-docs.deepseek.com/quick_start/pricing/",
+      "checkedAt": "2026-10-22",
+      "basis": "Official provider standard list rates; DeepSeek uses peak prices as a fixed comparison estimate, not execution-time or Azure invoice pricing."
+    },
+    "Mistral-Large-3": {
+      "input": 0.5,
+      "cached": 0.5,
+      "write": 0,
+      "output": 1.5,
+      "source": "https://docs.mistral.ai/models/mistral-large-3-25-12",
+      "checkedAt": "2026-10-22",
+      "basis": "Official provider standard list rates; not Azure invoice pricing."
+    },
+    "claude-fable-5-1": {
+      "input": 10,
+      "cached": 0.25,
+      "write": 12.5,
+      "output": 50,
+      "source": "https://platform.claude.com/docs/en/models/fable-5-1/overview",
+      "checkedAt": "2026-10-22",
+      "basis": "Official provider standard list rates; not Azure invoice pricing."
+    },
+    "gpt-5.3-codex": {
+      "input": 1.75,
+      "cached": 0.175,
+      "write": 0,
+      "output": 14,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5.3-codex",
+      "checkedAt": "2026-10-22",
+      "basis": "Official provider standard list rates; not Azure invoice pricing."
+    },
+    "gpt-oss-120b": {
+      "input": 0.15,
+      "cached": 0.15,
+      "write": 0,
+      "output": 0.6,
+      "source": "https://prices.azure.com/api/retail/prices?%24filter=contains%28skuName%2C+%27gpt-oss%27%29&currencyCode=USD",
+      "checkedAt": "2026-10-22",
+      "basis": "Azure GlobalStandard retail USD, Sweden Central"
+    },
+    "Kimi-K2.7-Code": {
+      "input": 0.95,
+      "cached": 0.19,
+      "write": 0,
+      "output": 4,
+      "source": "https://www.kimi.ai/resources/kimi-k2-7-code",
+      "checkedAt": "2026-10-22",
+      "basis": "Official Kimi API list rates; not Azure invoice pricing."
+    },
+    "Llama-4-Maverick-17B-128E-Instruct-FP8": {
+      "input": 0.25,
+      "cached": 0.25,
+      "write": 0.25,
+      "output": 1,
+      "source": "https://prices.azure.com/api/retail/prices",
+      "checkedAt": "2026-10-22",
+      "context": "Standard API list-rate estimate; not an Azure invoice. Azure Global retail for Meta/Codestral; publisher API list rates for Mistral/OpenAI."
+    },
+    "Llama-4-Scout-17B-16E-Instruct": {
+      "input": 0.16,
+      "cached": 0.16,
+      "write": 0.16,
+      "output": 0.64,
+      "source": "https://prices.azure.com/api/retail/prices",
+      "checkedAt": "2026-10-22",
+      "context": "Standard API list-rate estimate; not an Azure invoice. Azure Global retail for Meta/Codestral; publisher API list rates for Mistral/OpenAI."
+    },
+    "Codestral-2501": {
+      "input": 0.3,
+      "cached": 0.3,
+      "write": 0.3,
+      "output": 0.9,
+      "source": "https://prices.azure.com/api/retail/prices",
+      "checkedAt": "2026-10-22",
+      "context": "Standard API list-rate estimate; not an Azure invoice. Azure Global retail for Meta/Codestral; publisher API list rates for Mistral/OpenAI."
+    },
+    "mistral-medium-3-5": {
+      "input": 1.5,
+      "cached": 0.15,
+      "write": 1.5,
+      "output": 7.5,
+      "source": "https://docs.mistral.ai/inference/pricing",
+      "checkedAt": "2026-10-22",
+      "context": "Standard API list-rate estimate; not an Azure invoice. Azure Global retail for Meta/Codestral; publisher API list rates for Mistral/OpenAI."
+    },
+    "gpt-5.4-mini": {
+      "input": 0.75,
+      "cached": 0.075,
+      "write": 0.75,
+      "output": 4.5,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5.4-mini",
+      "checkedAt": "2026-10-22",
+      "context": "Standard API list-rate estimate; not an Azure invoice. Azure Global retail for Meta/Codestral; publisher API list rates for Mistral/OpenAI."
+    },
+    "gpt-5.5": {
+      "input": 5,
+      "cached": 0.5,
+      "write": 5,
+      "output": 30,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5.5",
+      "checkedAt": "2026-10-22",
+      "context": "Standard, short context; official public API estimate, not an Azure invoice."
+    },
+    "gpt-5.4-pro": {
+      "input": 30,
+      "cached": 30,
+      "write": 30,
+      "output": 180,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5.4-pro",
+      "checkedAt": "2026-10-22",
+      "context": "Standard, short context; official public API estimate, not an Azure invoice."
+    },
+    "FW-Kimi-K3": {
+      "input": 3,
+      "cached": 0.3,
+      "write": 3,
+      "output": 15,
+      "checkedAt": "2026-10-22",
+      "source": "https://prices.azure.com/api/retail/prices",
+      "context": "Azure Fireworks Models; Sweden Central; Global Standard; USD/1M. Verified Azure Retail 1K meters multiplied by 1000.",
+      "meterIds": [
+        "90b6ce80-47c4-5648-947f-cd9c6d0bf2a9",
+        "48ccf2fd-c3e7-5a09-b8fb-f92bf3215634",
+        "f62764e4-31d5-523d-beca-d3b0b9797df1"
+      ]
+    },
+    "FW-GLM-5.3": {
+      "input": 1.75,
+      "cached": 0.325,
+      "write": 1.75,
+      "output": 5.5,
+      "checkedAt": "2026-10-22",
+      "source": "https://prices.azure.com/api/retail/prices",
+      "context": "Azure Fireworks Models; Sweden Central; Global Standard; USD/1M. Verified Azure Retail 1K meters multiplied by 1000.",
+      "meterIds": [
+        "5ec094cc-3903-5fb5-8f61-d38741606888",
+        "683461d6-7093-5c74-8ff8-f3e0778f7643",
+        "fa82610a-de2f-5e66-86a1-79b22a1c845b"
+      ]
+    }
+  },
+  "unverified": {
+    "DeepSeek-V4-Pro": {
+      "checkedAt": "2026-10-22",
+      "reason": "No verified rate for the pinned 2026-04-23 Azure deployment. Current publisher API prices identify the later 0813 version; the Azure Retail result identifies Fireworks Data Zone, a different offering. No substitute rate or zero cost is assigned.",
+      "sources": [
+        "https://api-docs.deepseek.com/quick_start/pricing/",
+        "https://prices.azure.com/api/retail/prices"
+      ]
+    }
+  }
+}
