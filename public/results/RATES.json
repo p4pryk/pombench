@@ -363,6 +363,56 @@
         "683461d6-7093-5c74-8ff8-f3e0778f7643",
         "fa82610a-de2f-5e66-86a1-79b22a1c845b"
       ]
+    },
+    "gemini-3.1-pro-preview": {
+      "input": 2,
+      "output": 12,
+      "cached": 0.2,
+      "write": 0,
+      "note": "Global Standard, input context at or below 200K tokens; longer contexts have different rates.",
+      "source": "https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing",
+      "checkedAt": "2026-10-22",
+      "currency": "USD",
+      "unit": "per million tokens",
+      "surface": "Google Vertex AI Global Standard"
+    },
+    "gemini-3.8-flash": {
+      "input": 0.75,
+      "output": 3.75,
+      "cached": 0.075,
+      "write": 0,
+      "promotionEnds": "2026-12-31",
+      "note": "Published introductory Global Standard rates; promotional credits may depend on eligibility. Standard post-promotion rates are $1.50 input / $7.50 output / $0.15 cached per million tokens.",
+      "source": "https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing",
+      "checkedAt": "2026-10-22",
+      "currency": "USD",
+      "unit": "per million tokens",
+      "surface": "Google Vertex AI Global Standard"
+    },
+    "gemini-4-argon": {
+      "input": 2,
+      "output": 10,
+      "cached": 0.1,
+      "write": 0,
+      "promotionEnds": "2026-11-30",
+      "note": "Published introductory Global Standard rates; Google describes promotional pricing as credits back on net eligible spend. Estimate assumes eligibility, not an invoice. Standard post-promotion rates are $4 input / $20 output / $0.20 cached per million tokens.",
+      "source": "https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing",
+      "checkedAt": "2026-10-22",
+      "currency": "USD",
+      "unit": "per million tokens",
+      "surface": "Google Vertex AI Global Standard"
+    },
+    "gemini-3.5-flash-lite": {
+      "input": 0.3,
+      "output": 2.5,
+      "cached": 0.03,
+      "write": 0,
+      "note": "Global Standard on-demand text, not Priority or Flex/Batch.",
+      "source": "https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing",
+      "checkedAt": "2026-10-22",
+      "currency": "USD",
+      "unit": "per million tokens",
+      "surface": "Google Vertex AI Global Standard"
     }
   },
   "unverified": {

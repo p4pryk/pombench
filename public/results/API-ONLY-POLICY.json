@@ -1,16 +1,18 @@
 {
-  "id": "foundry-api-only-v1",
+  "id": "direct-api-only-v2",
   "allowedRoutes": [
     "responses",
     "chat",
     "mai",
     "anthropic",
     "anthropic-extended",
-    "foundry-chat"
+    "foundry-chat",
+    "vertex-generate-content"
   ],
   "allowedReceiptSources": [
     "Actual Foundry API usage",
-    "Actual Foundry API usage recovered from already-received terminal response"
+    "Actual Foundry API usage recovered from already-received terminal response",
+    "Actual Vertex AI API usage"
   ],
-  "requirements": "Pinned model and deployment version; direct Foundry API route; preserved provider response, actual raw usage and matching response hash. No ChatGPT subscription authoring sessions, local inference, manual submissions, moving latest aliases or model routers. Unavailable API calls remain audit records, never fabricated films."
+  "requirements": "Direct Microsoft Foundry or Google Vertex AI API. Preserve actual response, raw usage, request/source/response hashes and provider-reported version. Foundry uses pinned deployment versions; Google uses named publisher identifiers with actual modelVersion retained. No subscription authoring, local inference, manual submissions, latest aliases or routers. See GOOGLE-VERTEX.json for the additional provider policy."
 }

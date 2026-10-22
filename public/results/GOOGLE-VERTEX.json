@@ -1,0 +1,35 @@
+{
+  "campaign": "pombench-gemini-20261022",
+  "at": "2026-10-22T18:20:56.339064+00:00",
+  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
+  "protocolHash": "f2db62cf2e64667c4c9e6d4c22a4d76a2c6b6a431f56e3c3db323395017a8b17",
+  "maxOutputTokens": 32768,
+  "reasoningEffort": "low",
+  "tools": [],
+  "submissionsPerModel": 2,
+  "deadlineSeconds": 1200,
+  "policy": "Byte-identical initial brief. One conditional execution repair, final response only; no aesthetic feedback or manual code edits. At most one unchanged retry for rejected 429/5xx or interrupted transport. Interrupted usage remains unknown.",
+  "versionPolicy": "Named Google publisher models; actual provider modelVersion retained in each response. No latest alias or router. Preview release remains explicitly named.",
+  "models": [
+    "gemini-4-argon",
+    "gemini-3.8-flash",
+    "gemini-3.1-pro-preview",
+    "gemini-3.5-flash-lite"
+  ],
+  "inferenceSource": "vertex-ai-api",
+  "recording": "Existing shared offline Chromium recorder and Pomeranian analyzer unchanged. 360 real frames, 30 fps, twelve seconds.",
+  "tokenAccounting": "output_tokens = candidatesTokenCount + thoughtsTokenCount; input_tokens = promptTokenCount including cached input. totalTokenCount must equal their sum. No reasoning double count. All completed creative replies and conditional execution repairs are included.",
+  "pricing": "Official Google Vertex AI Global Standard text rates, checked 2026-10-22. Introductory Argon/Flash prices may use credits back subject to eligibility; estimate is not an invoice. No Priority, Batch or Flex rates used.",
+  "releaseSource": "https://ai.google.dev/gemini-api/docs/changelog",
+  "priceSource": "https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing",
+  "recordingRecoveries": [
+    {
+      "at": "2026-10-22T18:29:20.666058+00:00",
+      "modelId": "gemini-4-argon",
+      "reason": "Organizer disk exhausted while writing frame 345. Incomplete original capture and diagnostics retained privately.",
+      "sourceHash": "b385064fbfdded277a968c1d1a69e9335ad178d0edf1f9fc48c7b76f5da4d285",
+      "action": "Repeat the unchanged offline recorder on the identical already-received source, without any new provider call or code changes.",
+      "generationRequestsAdded": 0
+    }
+  ]
+}
