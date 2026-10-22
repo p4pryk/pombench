@@ -99,9 +99,7 @@ npm run test:production
 
 Tests cover public receipt arithmetic, source hashes, catalog ordering, playback,
 synchronized comparison, mobile layout, private file exclusion, and production
-content security policy. The [GitHub Actions template](docs/github-actions.yml) runs the same public checks
-from a fresh checkout. Copy it into `.github/workflows/ci.yml` using a GitHub login
-with workflow permissions to enable CI.
+content security policy. Run these checks locally before publishing changes.
 The private generation archive and its additional audit tests are not needed.
 
 ## Publish on OVH
@@ -131,7 +129,6 @@ and private provider receipts outside the web root.
 | `public/assets/` | Website artwork |
 | `tests/` | Public-data and browser tests |
 | `scripts/` | Public build, privacy, and production checks |
-| `docs/github-actions.yml` | Optional GitHub Actions verification template |
 
 Private model-generation infrastructure is maintained separately. Its endpoint
 configuration, credentials, account identifiers, raw responses, and reasoning
