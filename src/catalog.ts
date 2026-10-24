@@ -1,4 +1,4 @@
-import type {Model} from './types';
+import type {Model} from './types.ts';
 export const generatedTokens=(model:Model)=>model.usage?.output_tokens;
 export function newestFirst(a:Model,b:Model){return (b.releasedAt??'').localeCompare(a.releasedAt??'')||a.name.localeCompare(b.name)}
 export function comparisonModels(models:Model[],ids:string[],count:number){const ready=publishedModels(models).sort(newestFirst),selected:Model[]=[];for(const id of ids){const m=ready.find(m=>m.id===id);if(m&&!selected.some(x=>x.id===id))selected.push(m);if(selected.length===count)break}for(const m of ready){if(selected.length>=count)break;if(!selected.some(x=>x.id===m.id))selected.push(m)}return selected}

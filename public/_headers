@@ -6,3 +6,12 @@
 /results/*/source.txt
   Content-Type: text/plain; charset=utf-8
   Content-Disposition: attachment
+
+/results/*.json
+  X-Robots-Tag: noindex
+/results/*.md
+  X-Robots-Tag: noindex
+/results/*/*.txt
+  X-Robots-Tag: noindex
+/results/*/*.json
+  X-Robots-Tag: noindex

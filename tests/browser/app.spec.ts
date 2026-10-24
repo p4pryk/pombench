@@ -49,3 +49,21 @@ test('a corrected recording refreshes an open model page even when the shared pr
  const old=await page.locator('#animation').elementHandle();corrected=true;await page.clock.runFor(16000);
  await expect(page.getByLabel('Generation correction')).toBeVisible();expect(await old!.evaluate((v:HTMLVideoElement)=>v.paused)).toBe(true);
 });
+
+test('clean model addresses expose unique metadata and keep legacy links working',async({page})=>{
+ const model=ready[0],url='/models/'+encodeURIComponent(model.id)+'/';const response=await page.goto(url);expect(response!.status()).toBe(200);
+ await expect(page.locator('.model-editorial')).toContainText(model.name);await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href','https://pombench.com'+url);await expect(page).toHaveTitle(model.name+': animation coding benchmark | PomBench');
+ await page.getByRole('navigation').getByRole('link',{name:'About the test',exact:true}).click();await expect(page).toHaveURL(/\/method\/$/);await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href','https://pombench.com/method/');
+ await page.goBack();await expect(page).toHaveURL(new RegExp('/models/'+encodeURIComponent(model.id)+'/'));await expect(page.locator('.model-editorial')).toContainText(model.name);
+ await page.goto('/#model/'+model.id);await expect(page).toHaveURL(new RegExp('/models/'+encodeURIComponent(model.id)+'/'));
+});
+test('model pages and gallery are readable with JavaScript disabled',async({browser})=>{
+ const context=await browser.newContext({javaScriptEnabled:false});const page=await context.newPage();const model=ready[0];
+ await page.goto('http://127.0.0.1:4175/models/'+encodeURIComponent(model.id)+'/');await expect(page.getByRole('heading',{name:model.name,exact:true})).toBeVisible();await expect(page.locator('video')).toHaveAttribute('src',model.video);await expect(page.locator('.model-editorial')).toContainText('independent offline browser');
+ await page.goto('http://127.0.0.1:4175/');await expect(page.locator('.model-card')).toHaveCount(ready.length);await expect(page.locator('.model-card a').first()).toHaveAttribute('href',/\/models\//);await context.close();
+});
+test('crawler entry points list only published films and unknown pages return real 404s',async({request,page})=>{
+ const robots=await request.get('/robots.txt');expect(await robots.text()).toContain('Sitemap: https://pombench.com/sitemap.xml');
+ const sitemap=await request.get('/sitemap.xml');const xml=await sitemap.text();expect(sitemap.status()).toBe(200);expect((xml.match(/<video:video>/g)||[]).length).toBe(ready.length);expect(xml).not.toContain('#model');
+ const response=await page.goto('/not-a-pombench-page/');expect(response!.status()).toBe(404);await expect(page.getByRole('heading',{name:'Page not found',exact:true})).toBeVisible();await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content','noindex,follow');
+});

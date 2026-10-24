@@ -1,3 +1,12 @@
+# Standalone static pages; unknown routes must return a real 404.
+DirectoryIndex index.html
+ErrorDocument 404 /404.html
+Options -Indexes
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTP_HOST} ^www\.pombench\.com$ [NC]
+  RewriteRule ^ https://pombench.com%{REQUEST_URI} [R=301,L,NE]
+</IfModule>
 # Apache configuration for the standalone PomBench website.
 <IfModule mod_headers.c>
   Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; connect-src 'self'; frame-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
@@ -9,7 +18,7 @@
   AddType video/mp4 .mp4
   AddType image/webp .webp
 </IfModule>
-<FilesMatch "\.txt$">
+<FilesMatch "(?:source|prompt)\.txt$">
   ForceType text/plain
   <IfModule mod_headers.c>
     Header set Content-Disposition "attachment"
@@ -20,3 +29,9 @@
     Require all denied
   </FilesMatch>
 </IfModule>
+
+<FilesMatch "(?:\.(?:json|md)|(?:source|prompt)\.txt)$">
+  <IfModule mod_headers.c>
+    Header set X-Robots-Tag "noindex"
+  </IfModule>
+</FilesMatch>

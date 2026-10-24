@@ -24,6 +24,7 @@
 !/tests/
 /tests/*
 !/tests/catalog.test.ts
+!/tests/seo.test.ts
 !/tests/outcome.test.ts
 !/tests/public-results.test.ts
 !/tests/browser/
