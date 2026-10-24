@@ -1,1 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#101a21"/><path d="m12 11 17 9 6 0 17-9-3 22 6 9-9 4-3 9-11-3-11 3-3-9-9-4 6-9Z" fill="#e9a46e"/><path d="m15 33 17 8 17-8-8 17-9 4-9-4Z" fill="#edf2e9"/><ellipse cx="32" cy="42" rx="5" ry="4" fill="#101a21"/><circle cx="23" cy="29" r="3" fill="#101a21"/><circle cx="41" cy="29" r="3" fill="#101a21"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>PomBench — Pomeranian dog</title>
+  <rect width="64" height="64" rx="15" fill="#26332d"/>
+  <!-- Small upright ears, a round double coat and a short, broad dog muzzle. -->
+  <path d="M13 26 13 11Q13 8 16 10L26 20M38 20 48 10Q51 8 51 11L51 26" fill="#e6a05c" stroke="#f3bf7d" stroke-width="3" stroke-linejoin="round"/>
+  <path d="m16 19 1-5 6 8m18 0 6-8 1 5" fill="#83573e"/>
+  <path d="m14 24 5-6 5 1 8-4 8 4 5-1 5 6 5 3-2 6 3 5-5 4-1 7-6 1-4 6-8-2-8 2-4-6-6-1-1-7-5-4 3-5-2-6Z" fill="#f2bd77"/>
+  <path d="M15 34q-1 12 9 16l-1 4 9-3 9 3-1-4q10-4 9-16l-8 5-9-5-9 5Z" fill="#fff0d2"/>
+  <path d="M19 29q4-4 8-1m10 0q4-3 8 1" fill="none" stroke="#b97b40" stroke-width="2" stroke-linecap="round"/>
+  <ellipse cx="23" cy="32" rx="3.2" ry="3.6" fill="#26332d"/>
+  <ellipse cx="41" cy="32" rx="3.2" ry="3.6" fill="#26332d"/>
+  <circle cx="24" cy="31" r="1" fill="#fff"/>
+  <circle cx="42" cy="31" r="1" fill="#fff"/>
+  <ellipse cx="27" cy="41" rx="7" ry="5.5" fill="#fff9e9"/>
+  <ellipse cx="37" cy="41" rx="7" ry="5.5" fill="#fff9e9"/>
+  <path d="M28 38q4-3 8 0 0 4-4 5-4-1-4-5Z" fill="#26332d"/>
+  <path d="M27 45q5 5 10 0" fill="none" stroke="#694b35" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M29 47h6v2q-3 5-6 0Z" fill="#df8c88"/>
+</svg>
