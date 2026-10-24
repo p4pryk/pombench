@@ -1,0 +1,31 @@
+{
+  "modelId": "gemini-4-argon",
+  "sourceHash": "30d86fee690ce5e7e256c5c53ce1815c4d6ac241c36b48ec8c209e56315db128",
+  "status": "visible",
+  "note": "Recorded samples now show the dog and its approach inside the canvas, a visible leap, doorway entry/exit, and the final front-facing dog holding the bone. Doghouse doorway occlusion remains visible during entry. This is a framing observation, not an anatomy, realism, reflection or narrative-quality score.",
+  "reviewedAt": "2026-10-24T16:55:45.753679+00:00",
+  "reviewer": "Agent inspection of actual recorded screenshot evidence",
+  "sampleTimes": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10.5,
+    11.966666666666667
+  ],
+  "inspectedIndividualFrames": [
+    0,
+    60,
+    150,
+    359
+  ],
+  "contactSheetHash": "74a2a7871c2599dfa35bb29f411e67cd95851bb21fa631383376f12da108a14f",
+  "visualScore": null,
+  "technicalMotionCheck": true
+}

@@ -35,10 +35,6 @@
     let x = Math.sin(n * 127.1 + 311.7) * 43758.5453123;
     return x - Math.floor(x);
   }
-  function hash2(x, y) {
-    let n = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
-    return n - Math.floor(n);
-  }
 
   // Math helpers
   const clamp = (v, min, max) => v < min ? min : (v > max ? max : v);
@@ -53,15 +49,18 @@
   };
 
   // Camera & Projection Setup
-  // World coordinates:
-  // X: left (-5) to right (+5)
-  // Y: up (0 is ground, +Y is up)
-  // Z: depth (-2 is foreground, +4 is background)
+  // Note on pitch sign: Camera is at (0.05, 1.25, -4.35) looking in +Z direction toward (0.05, 0.35, 0.2).
+  // For a point at ground (wy=0, wz=0), dy = -1.25, dz = +4.35.
+  // Looking downward by angle `pitch = 0.22` brings ground points UP toward the vertical center of the screen:
+  // cy = dy * cosP + dz * sinP
+  // cz = -dy * sinP + dz * cosP
+  // With this corrected sign, ground at z=0 projects to y ~ 365px (comfortably inside 960x540!),
+  // horizon at z=3.2 projects to y ~ 202px, and doghouse peak projects to y ~ 195px.
   const cam = {
-    x: 0.15,
-    y: 1.45,
-    z: -4.45,
-    pitch: 0.21, // looking slightly down
+    x: 0.05,
+    y: 1.22,
+    z: -4.25,
+    pitch: 0.20,
     fov: 760
   };
   const cosP = Math.cos(cam.pitch);
@@ -71,33 +70,33 @@
     const dx = wx - cam.x;
     const dy = wy - cam.y;
     const dz = wz - cam.z;
-    // Rotate by pitch around X
-    const cy = dy * cosP - dz * sinP;
-    const cz = dy * sinP + dz * cosP;
-    const scale = cam.fov / Math.max(0.2, cz);
+    // Rotate camera downward by pitch around X axis
+    const cy = dy * cosP + dz * sinP;
+    const cz = -dy * sinP + dz * cosP;
+    const scale = cam.fov / Math.max(0.25, cz);
     return {
       x: W * 0.5 + dx * scale,
-      y: H * 0.44 - cy * scale,
+      y: H * 0.50 - cy * scale,
       z: cz,
       s: scale
     };
   }
 
-  // Pre-generate static yard elements (grass blades, pebbles, flowers, fence planks, foliage)
+  // Pre-generate static yard elements (grass blades, pebbles, fence planks, foliage)
   const grassClusters = [];
-  for (let i = 0; i < 650; i++) {
-    const gx = (hash(i * 3 + 1) - 0.5) * 9.5;
-    const gz = -1.7 + hash(i * 3 + 2) * 5.2;
+  for (let i = 0; i < 680; i++) {
+    const gx = (hash(i * 3 + 1) - 0.5) * 9.6;
+    const gz = -1.6 + hash(i * 3 + 2) * 4.7;
     // Exclude stone path / dirt apron around puddle and doghouse
-    const distPuddle = Math.hypot((gx - (-0.35)) * 0.85, (gz - 0.15) * 1.45);
-    const distHouse = Math.hypot((gx - 2.05) * 0.7, (gz - 0.45) * 0.9);
-    const onPath = Math.abs(gz - (0.1 + gx * 0.12)) < 0.52 && gx > -2.8 && gx < 2.2;
-    if (distPuddle < 0.72 || distHouse < 0.75 || (onPath && hash(i * 9) < 0.75)) continue;
+    const distPuddle = Math.hypot((gx - (-0.38)) * 0.82, (gz - 0.14) * 1.45);
+    const distHouse = Math.hypot((gx - 2.02) * 0.72, (gz - 0.36) * 0.92);
+    const onPath = Math.abs(gz - (0.08 + gx * 0.11)) < 0.50 && gx > -2.7 && gx < 2.2;
+    if (distPuddle < 0.74 || distHouse < 0.76 || (onPath && hash(i * 9) < 0.78)) continue;
     grassClusters.push({
       x: gx,
       z: gz,
-      h: 0.06 + hash(i * 3 + 3) * 0.08,
-      lean: (hash(i * 5) - 0.5) * 0.06,
+      h: 0.055 + hash(i * 3 + 3) * 0.075,
+      lean: (hash(i * 5) - 0.5) * 0.055,
       hue: 92 + (hash(i * 7) - 0.5) * 26,
       light: 26 + hash(i * 11) * 18,
       blades: 3 + (i % 3)
@@ -106,22 +105,21 @@
   grassClusters.sort((a, b) => b.z - a.z);
 
   const pebbles = [];
-  for (let i = 0; i < 140; i++) {
+  for (let i = 0; i < 145; i++) {
     const angle = hash(i * 13) * Math.PI * 2;
-    const isPuddleRim = i < 65;
+    const isPuddleRim = i < 68;
     let px, pz, pr;
     if (isPuddleRim) {
-      const rad = 0.62 + hash(i * 17) * 0.28;
-      px = -0.35 + Math.cos(angle) * rad * 1.15;
-      pz = 0.15 + Math.sin(angle) * rad * 0.58;
-      pr = 0.018 + hash(i * 19) * 0.026;
+      const rad = 0.63 + hash(i * 17) * 0.26;
+      px = -0.38 + Math.cos(angle) * rad * 1.15;
+      pz = 0.14 + Math.sin(angle) * rad * 0.58;
+      pr = 0.018 + hash(i * 19) * 0.025;
     } else {
       px = -2.8 + hash(i * 23) * 5.2;
-      pz = -0.7 + hash(i * 29) * 2.0;
-      // Avoid inside puddle water
-      const dp = Math.hypot((px - (-0.35)) / 0.72, (pz - 0.15) / 0.36);
-      if (dp < 0.96) continue;
-      pr = 0.015 + hash(i * 31) * 0.025;
+      pz = -0.75 + hash(i * 29) * 2.1;
+      const dp = Math.hypot((px - (-0.38)) / 0.74, (pz - 0.14) / 0.38);
+      if (dp < 0.98) continue;
+      pr = 0.015 + hash(i * 31) * 0.024;
     }
     pebbles.push({
       x: px,
@@ -134,9 +132,8 @@
 
   // Pre-generate fur strands on unit sphere for coherent volumetric Pomeranian coat
   const furSamples = [];
-  for (let i = 0; i < 160; i++) {
-    // Fibonacci sphere distribution
-    const y = 1 - (i / 159) * 2;
+  for (let i = 0; i < 165; i++) {
+    const y = 1 - (i / 164) * 2;
     const radius = Math.sqrt(Math.max(0, 1 - y * y));
     const theta = i * 2.399963229728653;
     const x = Math.cos(theta) * radius;
@@ -150,18 +147,17 @@
 
   // Puddle geometry definition
   const PUDDLE = {
-    cx: -0.35,
-    cz: 0.15,
+    cx: -0.38,
+    cz: 0.14,
     rx: 0.72,
-    rz: 0.37
+    rz: 0.38
   };
 
   function getPuddlePolygon(expand = 1.0) {
     const pts = [];
-    const steps = 40;
+    const steps = 44;
     for (let i = 0; i < steps; i++) {
       const a = (i / steps) * Math.PI * 2;
-      // Organic shallow puddle contour
       const mod = 1.0
         + 0.08 * Math.sin(a * 2 + 0.4)
         + 0.06 * Math.cos(a * 3 - 0.7)
@@ -183,16 +179,13 @@
     const minReach = Math.abs(L1 - L2) + 0.01;
     const clampedDist = clamp(dist, minReach, maxReach);
 
-    // Unit vector from root to target
     const ux = dx / (dist || 1);
     const uy = dy / (dist || 1);
     const uz = dz / (dist || 1);
 
-    // Law of cosines for upper bone angle
     const cosAngle = clamp((L1 * L1 + clampedDist * clampedDist - L2 * L2) / (2 * L1 * clampedDist), -1, 1);
     const angle = Math.acos(cosAngle);
 
-    // Gram-Schmidt orthogonalization of bendDir against u
     const dot = bendDir.x * ux + bendDir.y * uy + bendDir.z * uz;
     let bx = bendDir.x - dot * ux;
     let by = bendDir.y - dot * uy;
@@ -214,9 +207,8 @@
   function evaluateSceneState(rawTime) {
     const t = clamp(rawTime, 0, 12);
 
-    // Dog center of mass (hip/chest midpoint on ground), yaw, pitch, head orientation, jaw, tail, paws
-    let cx = -2.25;
-    let cy = 0.25;
+    let cx = -2.20;
+    let cy = 0.255;
     let cz = 0.08;
     let yaw = 0.05; // 0 = facing +X (toward doghouse), PI/2 = facing -Z (toward camera)
     let bodyPitch = 0; // positive = chest higher than hips
@@ -228,15 +220,6 @@
     let jawOpen = 0;
     let earPerk = 1.0;
 
-    // Key Positions:
-    // Start: x = -2.25, z = 0.08
-    // Takeoff bank (before puddle): x = -1.24, z = 0.13 (puddle left edge is ~ -1.08)
-    // Landing bank (after puddle): x = 0.56, z = 0.18 (puddle right edge is ~ +0.38)
-    // Doorway threshold: x = 1.50, z = 0.30
-    // Inside doghouse bone grab position (hips): x = 1.66, z = 0.35 (chest at ~2.0, head reaches bone at 2.16)
-    // Backed out position: x = 0.92, z = 0.14
-    // Final presentation position: x = 0.85, z = -0.02, facing camera (yaw = PI/2)
-
     let gaitPhase = 0;
     let gaitAmp = 0;
     let inJump = false;
@@ -247,103 +230,96 @@
     if (t < 1.0) {
       // 0 - 1.0s: Establish scene. Dog notices bone inside doghouse, perks up, shifts weight eagerly
       const p = t / 1.0;
-      cx = -2.25 + smoothstep(0.5, 1.0, p) * 0.04;
+      cx = -2.20 + smoothstep(0.45, 1.0, p) * 0.05;
       cz = 0.08;
       yaw = 0.05;
-      // Alert recognition at t=0.35s: slight excited crouch/play-bow micro-anticipation
-      const alertDip = Math.sin(smoothstep(0.15, 0.75, p) * Math.PI);
-      cy = 0.255 - alertDip * 0.022;
-      bodyPitch = -alertDip * 0.08 + smoothstep(0.7, 1.0, p) * 0.05;
-      headPitchRel = 0.06 + smoothstep(0.2, 0.6, p) * 0.12;
-      headYawRel = (1 - smoothstep(0.0, 0.45, p)) * 0.22; // turns gaze from camera straight into doghouse
-      headCock = Math.sin(smoothstep(0.2, 0.8, p) * Math.PI) * 0.12;
-      jawOpen = Math.sin(smoothstep(0.3, 0.65, p) * Math.PI) * 0.25; // tiny excited yap/pant
-    } else if (t < 1.58) {
-      // 1.0 - 1.58s: Approach run toward puddle (-2.21 to -1.24)
-      const p = (t - 1.0) / 0.58;
+      const alertDip = Math.sin(smoothstep(0.12, 0.78, p) * Math.PI);
+      cy = 0.255 - alertDip * 0.025;
+      bodyPitch = -alertDip * 0.09 + smoothstep(0.68, 1.0, p) * 0.06;
+      headPitchRel = 0.06 + smoothstep(0.18, 0.62, p) * 0.13;
+      headYawRel = (1 - smoothstep(0.0, 0.45, p)) * 0.24;
+      headCock = Math.sin(smoothstep(0.18, 0.82, p) * Math.PI) * 0.13;
+      jawOpen = Math.sin(smoothstep(0.28, 0.68, p) * Math.PI) * 0.26;
+    } else if (t < 1.56) {
+      // 1.0 - 1.56s: Approach run toward puddle (-2.15 to -1.26)
+      const p = (t - 1.0) / 0.56;
       const easeP = smoothstep(0, 0.25, p) * 0.15 + 0.85 * p;
-      cx = lerp(-2.21, -1.24, easeP);
-      cz = lerp(0.08, 0.13, easeP);
+      cx = lerp(-2.15, -1.26, easeP);
+      cz = lerp(0.08, 0.12, easeP);
       yaw = 0.05;
-      gaitPhase = (t - 1.0) * 3.8 * Math.PI * 2;
+      gaitPhase = (t - 1.0) * 3.9 * Math.PI * 2;
       gaitAmp = 1.0;
-      cy = 0.255 + Math.abs(Math.sin(gaitPhase * 0.5)) * 0.025;
+      cy = 0.255 + Math.abs(Math.sin(gaitPhase * 0.5)) * 0.026;
       bodyPitch = Math.sin(gaitPhase * 0.5) * 0.09;
       headPitchRel = 0.08 - bodyPitch * 0.6;
-    } else if (t < 1.78) {
-      // 1.58 - 1.78s: Readable anticipation! Shorten final stride, lower body, load hind legs on near dry bank
-      const p = (t - 1.58) / 0.20;
+    } else if (t < 1.76) {
+      // 1.56 - 1.76s: Readable anticipation! Shorten final stride, lower body, load hind legs on near dry bank
+      const p = (t - 1.56) / 0.20;
       jumpCrouch = Math.sin(p * Math.PI * 0.85);
-      cx = lerp(-1.24, -1.16, smoothstep(0, 1, p));
-      cz = 0.13;
+      cx = lerp(-1.26, -1.18, smoothstep(0, 1, p));
+      cz = 0.12;
       yaw = 0.04;
-      cy = 0.255 - jumpCrouch * 0.068 + smoothstep(0.75, 1.0, p) * 0.045;
-      // Load hind legs then pitch chest up for takeoff
-      bodyPitch = lerp(-0.14, 0.34, smootherstep(0.2, 1.0, p));
+      cy = 0.255 - jumpCrouch * 0.072 + smoothstep(0.75, 1.0, p) * 0.048;
+      bodyPitch = lerp(-0.15, 0.36, smootherstep(0.2, 1.0, p));
       headPitchRel = 0.18;
       earPerk = 0.85;
     } else if (t < 2.34) {
-      // 1.78 - 2.34s: Ballistic leap across the puddle! All 4 paws off ground, clearing [-1.08, +0.38]
+      // 1.76 - 2.34s: Ballistic leap across the puddle! All 4 paws off ground, clearing puddle [-1.10, +0.34]
       inJump = true;
-      jumpProgress = (t - 1.78) / 0.56;
+      jumpProgress = (t - 1.76) / 0.58;
       const p = jumpProgress;
-      cx = lerp(-1.16, 0.56, p);
-      cz = lerp(0.13, 0.18, p);
+      cx = lerp(-1.18, 0.54, p);
+      cz = lerp(0.12, 0.17, p);
       yaw = 0.04;
-      // Parabolic arc for center of mass
       const arc = 4 * p * (1 - p);
-      cy = lerp(0.27, 0.25, p) + arc * 0.36;
-      // Body pitches up on ascent, levels at apex, pitches nose-down for forepaw landing
-      bodyPitch = lerp(0.42, -0.36, smoothstep(0.08, 0.92, p));
-      headPitchRel = lerp(0.16, 0.22, p); // looking at landing spot
+      cy = lerp(0.27, 0.25, p) + arc * 0.38;
+      bodyPitch = lerp(0.44, -0.38, smoothstep(0.08, 0.92, p));
+      headPitchRel = lerp(0.16, 0.22, p);
       jawOpen = 0.12;
-      earPerk = 0.72; // ears swept back slightly in flight
-    } else if (t < 2.55) {
-      // 2.34 - 2.55s: Weight-bearing landing on dry ground (x = 0.56 to 0.82), joints compress to absorb impact
-      const p = (t - 2.34) / 0.21;
+      earPerk = 0.72;
+    } else if (t < 2.56) {
+      // 2.34 - 2.56s: Weight-bearing landing on dry ground (x = 0.54 to 0.80), joints compress to absorb impact
+      const p = (t - 2.34) / 0.22;
       landCompress = Math.sin(p * Math.PI);
-      cx = lerp(0.56, 0.82, p);
-      cz = lerp(0.18, 0.22, p);
+      cx = lerp(0.54, 0.80, p);
+      cz = lerp(0.17, 0.21, p);
       yaw = 0.06;
-      cy = 0.25 - landCompress * 0.062;
+      cy = 0.25 - landCompress * 0.065;
       bodyPitch = lerp(-0.28, 0.06, smootherstep(0, 1, p));
       headPitchRel = 0.1 + landCompress * 0.12;
     } else if (t < 3.0) {
-      // 2.55 - 3.0s: Resume supported forward running gait toward doorway
-      const p = (t - 2.55) / 0.45;
-      cx = lerp(0.82, 1.28, p);
-      cz = lerp(0.22, 0.29, p);
+      // 2.56 - 3.0s: Resume supported forward running gait toward doorway
+      const p = (t - 2.56) / 0.44;
+      cx = lerp(0.80, 1.24, p);
+      cz = lerp(0.21, 0.28, p);
       yaw = 0.09;
-      gaitPhase = (t - 2.55) * 3.4 * Math.PI * 2;
-      gaitAmp = 0.85;
-      cy = 0.255 + Math.abs(Math.sin(gaitPhase * 0.5)) * 0.02;
+      gaitPhase = (t - 2.56) * 3.5 * Math.PI * 2;
+      gaitAmp = 0.88;
+      cy = 0.255 + Math.abs(Math.sin(gaitPhase * 0.5)) * 0.022;
       bodyPitch = Math.sin(gaitPhase * 0.5) * 0.07;
       headPitchRel = 0.05;
     } else if (t < 4.5) {
       // 3.0 - 4.5s: Enter through doorway (head and forequarters first, rear and curled tail remain visible)
       const p = (t - 3.0) / 1.5;
       const moveP = smootherstep(0.0, 0.92, p);
-      cx = lerp(1.28, 1.66, moveP);
-      cz = lerp(0.29, 0.35, moveP);
+      cx = lerp(1.24, 1.58, moveP);
+      cz = lerp(0.28, 0.34, moveP);
       yaw = lerp(0.09, 0.04, moveP);
-      // Careful stepping gait into house, lowering head slightly under lintel
-      gaitPhase = (t - 3.0) * 2.1 * Math.PI * 2;
-      gaitAmp = (1 - smoothstep(0.75, 0.95, p)) * 0.55;
+      gaitPhase = (t - 3.0) * 2.2 * Math.PI * 2;
+      gaitAmp = (1 - smoothstep(0.75, 0.95, p)) * 0.58;
       cy = 0.248 - smoothstep(0.3, 0.85, p) * 0.015;
       bodyPitch = -smoothstep(0.25, 0.9, p) * 0.08;
       headPitchRel = lerp(0.05, -0.22, smoothstep(0.3, 1.0, p));
     } else if (t < 6.0) {
       // 4.5 - 6.0s: Inside doorway: lowers head, opens mouth, grips bone at t=5.25s, lifts it
       const p = (t - 4.5) / 1.5;
-      cx = 1.66 + Math.sin(smoothstep(0.1, 0.85, p) * Math.PI) * 0.045;
-      cz = 0.35;
+      cx = 1.58 + Math.sin(smoothstep(0.1, 0.85, p) * Math.PI) * 0.045;
+      cz = 0.34;
       yaw = 0.04;
-      // Forequarters dip down so muzzle reaches floor bone
       const reachCurve = Math.sin(smootherstep(0.05, 0.92, p) * Math.PI);
       cy = 0.233 - reachCurve * 0.042;
       bodyPitch = -0.08 - reachCurve * 0.27;
       headPitchRel = -0.22 - reachCurve * 0.34;
-      // Mouth opens wide before grab (t=4.7..5.25), then clamps onto bone (jawOpen = 0.24)
       if (t < 5.25) {
         jawOpen = smoothstep(4.65, 5.05, t) * 0.78;
       } else {
@@ -353,30 +329,27 @@
       // 6.0 - 8.0s: Backs out through doorway with bone held rigidly in jaws, paws stepping in reverse
       const p = (t - 6.0) / 2.0;
       const moveP = smootherstep(0.04, 0.96, p);
-      cx = lerp(1.66, 0.90, moveP);
-      cz = lerp(0.35, 0.14, moveP);
+      cx = lerp(1.58, 0.86, moveP);
+      cz = lerp(0.34, 0.14, moveP);
       yaw = lerp(0.04, 0.14, moveP);
-      // Reverse stepping phase
-      gaitPhase = -(t - 6.0) * 2.2 * Math.PI * 2;
-      gaitAmp = Math.sin(smoothstep(0, 0.15, p) * (1 - smoothstep(0.85, 1.0, p)) * Math.PI * 0.5) * 0.65;
-      cy = 0.245 + Math.abs(Math.sin(gaitPhase * 0.5)) * 0.012;
+      gaitPhase = -(t - 6.0) * 2.3 * Math.PI * 2;
+      gaitAmp = Math.sin(smoothstep(0, 0.15, p) * (1 - smoothstep(0.85, 1.0, p)) * Math.PI * 0.5) * 0.68;
+      cy = 0.245 + Math.abs(Math.sin(gaitPhase * 0.5)) * 0.013;
       bodyPitch = 0.05 + Math.sin(gaitPhase * 0.5) * 0.03;
-      headPitchRel = 0.12; // holding bone up proudly
+      headPitchRel = 0.12;
       jawOpen = 0.24;
     } else if (t < 10.0) {
       // 8.0 - 10.0s: Turns smoothly to face viewer, stepping/pivoting paws and rotating body, head, ears, tail
       const p = (t - 8.0) / 2.0;
       const turnP = smootherstep(0.05, 0.95, p);
-      cx = lerp(0.90, 0.84, turnP);
+      cx = lerp(0.86, 0.76, turnP);
       cz = lerp(0.14, -0.02, turnP);
-      // Yaw rotates from 0.14 (facing doghouse) to PI/2 (facing camera)
       yaw = lerp(0.14, Math.PI * 0.5, turnP);
-      gaitPhase = (t - 8.0) * 2.4 * Math.PI * 2;
-      gaitAmp = Math.sin(p * Math.PI) * 0.52;
-      cy = 0.252 + Math.abs(Math.sin(gaitPhase * 0.5)) * 0.014;
+      gaitPhase = (t - 8.0) * 2.5 * Math.PI * 2;
+      gaitAmp = Math.sin(p * Math.PI) * 0.55;
+      cy = 0.252 + Math.abs(Math.sin(gaitPhase * 0.5)) * 0.015;
       bodyPitch = lerp(0.05, 0.09, turnP);
       bodyRoll = Math.sin(p * Math.PI) * 0.05;
-      // Head leads the turn slightly
       const headLead = Math.sin(p * Math.PI) * 0.22;
       headYawRel = headLead;
       headPitchRel = lerp(0.12, 0.16, turnP);
@@ -384,7 +357,7 @@
     } else {
       // 10.0 - 12.0s: Clear front-facing presentation looking at camera with bone visible, subtle breathing & tail wag
       const breath = Math.sin((t - 10.0) * 3.2) * 0.005;
-      cx = 0.84;
+      cx = 0.76;
       cz = -0.02;
       cy = 0.254 + breath;
       yaw = Math.PI * 0.5;
@@ -401,7 +374,7 @@
     const rightX = Math.sin(yaw);
     const rightZ = Math.cos(yaw);
 
-    const halfBody = 0.175; // compact Pomeranian torso length
+    const halfBody = 0.175;
     const pitchSin = Math.sin(bodyPitch);
     const pitchCos = Math.cos(bodyPitch);
 
@@ -439,7 +412,6 @@
       y: neck.y + 0.065 + Math.sin(headPitch) * 0.03,
       z: neck.z + hDirZ * 0.05
     };
-    // Short pointed muzzle (fox-faced miniature Pomeranian)
     const muzzleLen = 0.095;
     const muzzle = {
       x: head.x + hDirX * Math.cos(headPitch) * muzzleLen,
@@ -458,7 +430,7 @@
     };
 
     // Bone state (resting inside doghouse until t=5.25s, then gripped rigidly in jaws)
-    const boneRestPos = { x: 2.13, y: 0.036, z: 0.36 };
+    const boneRestPos = { x: 2.05, y: 0.036, z: 0.35 };
     let bone;
     if (t < 5.25) {
       bone = {
@@ -471,7 +443,6 @@
         gripped: false
       };
     } else {
-      // Smoothly locks into jaw grip right at grab moment
       const lockP = smoothstep(5.25, 5.38, t);
       bone = {
         x: lerp(boneRestPos.x, jawGripPoint.x, lockP),
@@ -495,7 +466,6 @@
       BR: { x: hips.x + rightX * hipSpread, y: hips.y - 0.02, z: hips.z + rightZ * hipSpread }
     };
 
-    // Phase offsets for natural rotary gallop / trot transitions
     const phaseOffsets = { FL: 0.0, FR: 2.6, BL: 3.4, BR: 0.8 };
     const paws = {};
     const joints = {};
@@ -510,53 +480,47 @@
       let px, py, pz;
 
       if (inJump) {
-        // Coherent leg tuck and extension over the puddle!
         const p = jumpProgress;
         if (isFront) {
-          // Forelegs tuck under chest early/mid jump, then extend forward to catch landing
           const reach = lerp(-0.08, 0.22, smoothstep(0.35, 0.95, p));
           const tuck = Math.sin(smoothstep(0.0, 0.78, p) * Math.PI) * 0.11;
           px = shoulders[legKey].x + dirX * reach;
           pz = shoulders[legKey].z + dirZ * reach;
-          py = Math.max(0.02, shoulders[legKey].y - 0.20 + tuck);
+          py = Math.max(0.03, shoulders[legKey].y - 0.20 + tuck);
         } else {
-          // Hind legs push off strongly at start, trail extended, then tuck in late flight
           const pushTrail = lerp(-0.22, 0.06, smoothstep(0.15, 0.95, p));
           const tuck = Math.sin(smoothstep(0.25, 0.95, p) * Math.PI) * 0.10;
           px = shoulders[legKey].x + dirX * pushTrail;
           pz = shoulders[legKey].z + dirZ * pushTrail;
-          py = Math.max(0.02, shoulders[legKey].y - 0.20 + tuck);
+          py = Math.max(0.03, shoulders[legKey].y - 0.20 + tuck);
         }
-        // Slight offset between left and right paws for dynamic 3D readability
         px += dirX * (isRight ? 0.025 : -0.02);
         py += isRight ? 0.012 : 0;
-      } else if (t >= 1.55 && t < 1.78) {
-        // Takeoff bank stance: paws planted firmly on near dry bank (x < -1.06)
+      } else if (t >= 1.54 && t < 1.76) {
+        // Takeoff bank stance: paws planted firmly on near dry bank (x < -1.10)
         const baseHomeX = cx + dirX * homeOffsetAlong + rightX * sideSign * spread;
         const baseHomeZ = cz + dirZ * homeOffsetAlong + rightZ * sideSign * spread;
-        px = isFront ? Math.min(-1.07, baseHomeX - 0.03) : baseHomeX - 0.04;
+        px = isFront ? Math.min(-1.11, baseHomeX - 0.03) : baseHomeX - 0.04;
         pz = baseHomeZ;
         py = 0.018;
-      } else if (t >= 2.34 && t < 2.55) {
-        // Landing bank stance: forepaws touch down first on dry bank (x > 0.44), hind paws land shortly after
-        const p = (t - 2.34) / 0.21;
+      } else if (t >= 2.34 && t < 2.56) {
+        // Landing bank stance: forepaws touch down first on dry bank (x > 0.42), hind paws land shortly after
+        const p = (t - 2.34) / 0.22;
         if (isFront) {
-          px = lerp(0.72, 0.88, smoothstep(0.4, 1.0, p)) + (isRight ? 0.02 : -0.02);
+          px = lerp(0.70, 0.86, smoothstep(0.4, 1.0, p)) + (isRight ? 0.02 : -0.02);
           pz = cz + rightZ * sideSign * spread;
           py = 0.018;
         } else {
           const hindTouch = smoothstep(0.0, 0.38, p);
-          px = lerp(0.44, 0.56, hindTouch) + (isRight ? 0.02 : -0.02);
+          px = lerp(0.42, 0.54, hindTouch) + (isRight ? 0.02 : -0.02);
           pz = cz + rightZ * sideSign * spread;
           py = lerp(0.075, 0.018, hindTouch);
         }
       } else {
-        // Grounded locomotion (running, stepping into house, backing out, turning, or standing)
         const ph = gaitPhase + phaseOffsets[legKey];
         const stride = Math.sin(ph) * 0.135 * gaitAmp;
         const lift = Math.max(0, Math.cos(ph)) * 0.085 * gaitAmp;
 
-        // Subtle weight shift during bone grab inside house
         let grabShift = 0;
         if (t >= 4.5 && t < 6.0 && isFront) {
           grabShift = isRight ? 0.03 : -0.015;
@@ -569,8 +533,6 @@
 
       paws[legKey] = { x: px, y: py, z: pz };
 
-      // Solve knee/elbow joint via 3D IK
-      // Front legs bend backward at elbow; hind legs bend forward at stifle/hock visual mid-joint
       const bendSign = isFront ? -1 : 0.7;
       const bendDir = {
         x: dirX * bendSign + rightX * sideSign * 0.18,
@@ -617,19 +579,21 @@
     };
   }
 
-  // Draw Sky, Distant Trees, Backyard Fence, Lawn, Stone Path, and Shadowed Ground
+  // Draw Sky, Distant Trees, Backyard Fence, Lawn, Stone Path, and Puddle
   function drawEnvironment(state) {
+    const horizonY = project(0, 0, 3.2).y;
+
     // 1. Sky gradient (warm golden-hour afternoon)
-    const skyGrad = ctx.createLinearGradient(0, 0, 0, H * 0.45);
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY + 10);
     skyGrad.addColorStop(0, "#76a8d4");
     skyGrad.addColorStop(0.55, "#abd0e6");
     skyGrad.addColorStop(1, "#dfeccf");
     ctx.fillStyle = skyGrad;
-    ctx.fillRect(0, 0, W, H * 0.45);
+    ctx.fillRect(0, 0, W, horizonY + 10);
 
     // Soft distant sunlit clouds
-    ctx.fillStyle = "rgba(255, 252, 242, 0.45)";
-    const cloudPositions = [[180, 62, 95, 22], [240, 55, 70, 26], [640, 48, 120, 24], [730, 56, 85, 20]];
+    ctx.fillStyle = "rgba(255, 252, 242, 0.48)";
+    const cloudPositions = [[180, 42, 95, 20], [240, 36, 70, 22], [640, 34, 120, 20], [730, 40, 85, 18]];
     for (const [cx, cy, rx, ry] of cloudPositions) {
       ctx.beginPath();
       ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
@@ -638,13 +602,13 @@
 
     // 2. Distant garden bushes above fence
     const bushData = [
-      [-4.2, 1.35, 3.6, 0.75, "#3a5c32"],
-      [-3.1, 1.48, 3.6, 0.90, "#476e3b"],
-      [-1.8, 1.32, 3.6, 0.72, "#35562e"],
-      [-0.4, 1.52, 3.6, 0.95, "#4c743e"],
-      [1.1, 1.40, 3.6, 0.85, "#3c6134"],
-      [2.8, 1.55, 3.6, 1.05, "#456b3a"],
-      [4.2, 1.38, 3.6, 0.80, "#34542d"]
+      [-4.2, 1.25, 3.5, 0.72, "#3a5c32"],
+      [-3.1, 1.38, 3.5, 0.85, "#476e3b"],
+      [-1.8, 1.22, 3.5, 0.68, "#35562e"],
+      [-0.4, 1.42, 3.5, 0.90, "#4c743e"],
+      [1.1, 1.30, 3.5, 0.80, "#3c6134"],
+      [2.8, 1.45, 3.5, 0.98, "#456b3a"],
+      [4.2, 1.28, 3.5, 0.76, "#34542d"]
     ];
     for (const [bx, by, bz, br, col] of bushData) {
       const p = project(bx, by, bz);
@@ -652,7 +616,6 @@
       ctx.beginPath();
       ctx.arc(p.x, p.y, br * p.s, 0, Math.PI * 2);
       ctx.fill();
-      // Warm sun rim on top-left of bush
       ctx.fillStyle = "rgba(205, 230, 145, 0.18)";
       ctx.beginPath();
       ctx.arc(p.x - br * p.s * 0.2, p.y - br * p.s * 0.2, br * p.s * 0.78, 0, Math.PI * 2);
@@ -661,11 +624,11 @@
 
     // 3. Wooden backyard fence at Z = 3.2
     const fenceZ = 3.2;
-    const numPlanks = 38;
+    const numPlanks = 40;
     for (let i = 0; i < numPlanks; i++) {
-      const x0 = -5.2 + i * 0.28;
+      const x0 = -5.4 + i * 0.28;
       const x1 = x0 + 0.265;
-      const hTop = 1.28 + (hash(i * 7) - 0.5) * 0.03;
+      const hTop = 1.22 + (hash(i * 7) - 0.5) * 0.03;
       const pBL = project(x0, 0, fenceZ);
       const pBR = project(x1, 0, fenceZ);
       const pTR = project(x1, hTop, fenceZ);
@@ -686,11 +649,11 @@
       ctx.stroke();
     }
     // Horizontal fence rails
-    for (const railY of [0.35, 0.98]) {
-      const rL = project(-5.2, railY, fenceZ - 0.02);
-      const rR = project(5.4, railY, fenceZ - 0.02);
+    for (const railY of [0.35, 0.94]) {
+      const rL = project(-5.4, railY, fenceZ - 0.02);
+      const rR = project(5.6, railY, fenceZ - 0.02);
       ctx.strokeStyle = "#6c4e35";
-      ctx.lineWidth = 6;
+      ctx.lineWidth = 5;
       ctx.beginPath();
       ctx.moveTo(rL.x, rL.y);
       ctx.lineTo(rR.x, rR.y);
@@ -698,7 +661,6 @@
     }
 
     // 4. Backyard Lawn Base
-    const horizonY = project(0, 0, 3.2).y;
     const lawnGrad = ctx.createLinearGradient(0, horizonY, 0, H);
     lawnGrad.addColorStop(0, "#4f7738");
     lawnGrad.addColorStop(0.35, "#5d8a41");
@@ -707,10 +669,10 @@
     ctx.fillStyle = lawnGrad;
     ctx.fillRect(0, horizonY - 2, W, H - horizonY + 4);
 
-    // Subtle sunlit lawn stripes / variation
-    for (let zBand = -1.4; zBand < 2.9; zBand += 0.35) {
+    // Subtle sunlit lawn stripes
+    for (let zBand = -1.4; zBand < 2.9; zBand += 0.38) {
       const p1 = project(-5, 0, zBand);
-      const p2 = project(5, 0, zBand + 0.16);
+      const p2 = project(5, 0, zBand + 0.18);
       ctx.fillStyle = "rgba(185, 220, 110, 0.07)";
       ctx.fillRect(0, p2.y, W, Math.max(2, p1.y - p2.y));
     }
@@ -719,10 +681,10 @@
     ctx.save();
     ctx.beginPath();
     const pathPointsTop = [
-      [-3.4, -0.35], [-1.6, -0.25], [-0.35, -0.32], [0.85, -0.24], [2.25, -0.15]
+      [-3.4, -0.35], [-1.6, -0.25], [-0.38, -0.32], [0.85, -0.24], [2.20, -0.15]
     ];
     const pathPointsBot = [
-      [2.25, 0.85], [0.85, 0.68], [-0.35, 0.65], [-1.6, 0.48], [-3.4, 0.45]
+      [2.20, 0.85], [0.85, 0.68], [-0.38, 0.65], [-1.6, 0.48], [-3.4, 0.45]
     ];
     pathPointsTop.forEach(([px, pz], idx) => {
       const pt = project(px, 0.001, pz);
@@ -734,7 +696,7 @@
       ctx.lineTo(pt.x, pt.y);
     });
     ctx.closePath();
-    const pathGrad = ctx.createLinearGradient(120, 320, 780, 380);
+    const pathGrad = ctx.createLinearGradient(120, 310, 780, 390);
     pathGrad.addColorStop(0, "rgba(138, 118, 92, 0.55)");
     pathGrad.addColorStop(0.5, "rgba(126, 106, 82, 0.72)");
     pathGrad.addColorStop(1, "rgba(118, 98, 74, 0.80)");
@@ -744,10 +706,10 @@
 
     // Stepping stones on dry ground (clearly marking dry takeoff & landing zones and path)
     const steppingStones = [
-      { x: -2.25, z: 0.08, rx: 0.28, rz: 0.16 },
+      { x: -2.20, z: 0.08, rx: 0.28, rz: 0.16 },
       { x: -1.32, z: 0.12, rx: 0.24, rz: 0.15 }, // dry takeoff stone
-      { x: 0.66, z: 0.18, rx: 0.25, rz: 0.15 },  // dry landing stone
-      { x: 1.24, z: 0.28, rx: 0.24, rz: 0.14 }   // threshold stone
+      { x: 0.64, z: 0.18, rx: 0.25, rz: 0.15 },  // dry landing stone
+      { x: 1.20, z: 0.28, rx: 0.24, rz: 0.14 }   // threshold stone
     ];
     for (const st of steppingStones) {
       const p = project(st.x, 0.002, st.z);
@@ -774,7 +736,7 @@
     }
 
     for (const g of grassClusters) {
-      if (g.z < -0.35) continue; // draw foreground grass later for depth
+      if (g.z < -0.35) continue;
       drawGrassCluster(g);
     }
   }
@@ -829,31 +791,25 @@
     waterGrad.addColorStop(0.5, "#5c8496");
     waterGrad.addColorStop(1, "#466370");
     ctx.fillStyle = waterGrad;
-    ctx.fillRect(0, pTop.y - 20, W, pBot.y - pTop.y + 40);
+    ctx.fillRect(0, pTop.y - 25, W, pBot.y - pTop.y + 50);
 
-    // Reflected clouds and fence hint in water
-    ctx.fillStyle = "rgba(215, 235, 245, 0.18)";
+    // Reflected clouds in water
+    ctx.fillStyle = "rgba(215, 235, 245, 0.20)";
     ctx.beginPath();
-    ctx.ellipse(pTop.x - 35, (pTop.y + pBot.y) * 0.5, 65, 14, 0, 0, Math.PI * 2);
+    ctx.ellipse(pTop.x - 30, (pTop.y + pBot.y) * 0.5, 65, 14, 0, 0, Math.PI * 2);
     ctx.fill();
-
-    // Reflected Doghouse edge in far right of puddle
-    const dhRef1 = project(1.5, -0.1, 0.35);
-    const dhRef2 = project(1.5, -0.9, 0.35);
-    ctx.fillStyle = "rgba(120, 75, 45, 0.25)";
-    ctx.fillRect(dhRef1.x - 10, dhRef1.y, 60, dhRef2.y - dhRef1.y);
 
     // Render Reflection of the ACTUAL Dog (mirrored across Y = 0 water plane)
     // Only visible inside the clipped water polygon!
     ctx.save();
-    ctx.globalAlpha = 0.62;
+    ctx.globalAlpha = 0.66;
     drawPomeranian(state, true);
     ctx.restore();
 
     // Subtle water surface Fresnel sheen and shoreline meniscus highlight
     const sheenGrad = ctx.createLinearGradient(0, pTop.y, 0, pBot.y);
     sheenGrad.addColorStop(0, "rgba(180, 220, 245, 0.10)");
-    sheenGrad.addColorStop(0.5, "rgba(255, 255, 255, 0.22)");
+    sheenGrad.addColorStop(0.5, "rgba(255, 255, 255, 0.20)");
     sheenGrad.addColorStop(1, "rgba(140, 190, 220, 0.14)");
     ctx.fillStyle = sheenGrad;
     ctx.fillRect(0, pTop.y - 10, W, pBot.y - pTop.y + 20);
@@ -885,7 +841,6 @@
     ctx.lineWidth = 2.0;
     ctx.stroke();
 
-    // Specular water edge highlight on sunlit rim
     ctx.strokeStyle = "rgba(220, 240, 255, 0.35)";
     ctx.lineWidth = 1.0;
     ctx.stroke();
@@ -910,23 +865,20 @@
   }
 
   // Doghouse Geometry Constants (angled in readable 3/4 view so doorway & interior bone are clearly visible)
-  // We place the doghouse on the right side of the yard, rotated slightly toward the camera
   const DH = {
-    cx: 2.12,
-    cz: 0.36,
-    yaw: 0.24, // angled toward viewer so left/entry face is clearly visible
-    halfL: 0.62, // depth along house axis
-    halfW: 0.54, // width across doorway face
-    wallH: 0.78,
-    peakH: 1.18,
+    cx: 2.04,
+    cz: 0.35,
+    yaw: 0.24,
+    halfL: 0.60,
+    halfW: 0.52,
+    wallH: 0.76,
+    peakH: 1.14,
     doorHalfW: 0.27,
     doorArchY: 0.44,
     doorTopY: 0.60
   };
 
   function dhPoint(lx, ly, lz) {
-    // lx: -halfL is front (doorway face), +halfL is back wall
-    // lz: -halfW is near/camera-side corner, +halfW is far corner
     const cosY = Math.cos(DH.yaw);
     const sinY = Math.sin(DH.yaw);
     const wx = DH.cx + lx * cosY - lz * sinY;
@@ -935,7 +887,6 @@
   }
 
   // Layer 1 of Doghouse: Cast shadow, interior floor, far (+lz) inner wall, back (+lx) inner wall
-  // Drawn BEFORE the dog and bone so the dog stands inside the house naturally
   function drawDoghouseInterior() {
     const L = DH.halfL;
     const Wd = DH.halfW;
@@ -949,22 +900,16 @@
     const sh3 = dhPoint(-L - 0.05, 0.002, Wd + 0.15);
     fillQuad3D(sh0, sh1, sh2, sh3, "rgba(18, 26, 14, 0.45)");
 
-    // Wooden floor base thickness
-    const f0 = dhPoint(-L, 0, -Wd);
-    const f1 = dhPoint(L, 0, -Wd);
-    const f2 = dhPoint(L, 0, Wd);
-    const f3 = dhPoint(-L, 0, Wd);
-
-    // Interior floor surface (warm dark wood planks, lit slightly near threshold so bone is clearly readable!)
+    // Interior floor surface (warm dark wood planks, lit near threshold so bone is clearly readable!)
     const fl0 = dhPoint(-L, 0.02, -Wd);
     const fl1 = dhPoint(L, 0.02, -Wd);
     const fl2 = dhPoint(L, 0.02, Wd);
     const fl3 = dhPoint(-L, 0.02, Wd);
 
     const floorGrad = ctx.createLinearGradient(fl0.x, fl0.y, fl2.x, fl2.y);
-    floorGrad.addColorStop(0, "#5e4028");
-    floorGrad.addColorStop(0.55, "#3a2516");
-    floorGrad.addColorStop(1, "#22150c");
+    floorGrad.addColorStop(0, "#63432a");
+    floorGrad.addColorStop(0.55, "#3d2717");
+    floorGrad.addColorStop(1, "#24160c");
     fillQuad3D(fl0, fl1, fl2, fl3, floorGrad, "#2a1a0e", 1.5);
 
     // Floor plank lines inside doghouse
@@ -1011,7 +956,6 @@
   }
 
   // Layer 2 of Doghouse: Front doorway wall (with cutout arch), Near side wall, and Roof
-  // Drawn AFTER the dog/bone so the doorway and walls occlude the dog's forequarters accurately!
   function drawDoghouseExterior() {
     const L = DH.halfL;
     const Wd = DH.halfW;
@@ -1021,7 +965,7 @@
     const dArch = DH.doorArchY;
     const dTop = DH.doorTopY;
 
-    // 1. Inner thickness of the doorway right/far jamb (visible because of 3/4 angle)
+    // 1. Inner thickness of the doorway right/far jamb
     const jambDepth = 0.065;
     const j0 = dhPoint(-L, 0.02, dW);
     const j1 = dhPoint(-L + jambDepth, 0.02, dW);
@@ -1057,7 +1001,6 @@
     nearWallGrad.addColorStop(1, "#7d4e2b");
     fillQuad3D(nw0, nw1, nw2, nw3, nearWallGrad, "#4a2c16", 1.5);
 
-    // Horizontal siding clapboards on near side wall
     ctx.strokeStyle = "rgba(55, 30, 12, 0.45)";
     ctx.lineWidth = 1.2;
     for (let y = 0.13; y < Hw; y += 0.13) {
@@ -1081,13 +1024,11 @@
 
     ctx.save();
     ctx.beginPath();
-    // Outer pentagon of front wall
     ctx.moveTo(fwBL.x, fwBL.y);
     ctx.lineTo(fwTL.x, fwTL.y);
     ctx.lineTo(fwPeak.x, fwPeak.y);
     ctx.lineTo(fwTR.x, fwTR.y);
     ctx.lineTo(fwBR.x, fwBR.y);
-    // Cut out doorway arch (going from +dW to -dW)
     ctx.lineTo(dBotR.x, dBotR.y);
     for (let i = 0; i <= 16; i++) {
       const a = (i / 16) * Math.PI;
@@ -1106,7 +1047,6 @@
     ctx.fillStyle = frontGrad;
     ctx.fill();
 
-    // Clip to front wall to draw horizontal wood siding lines and corner trim
     ctx.clip();
     ctx.strokeStyle = "rgba(65, 36, 15, 0.42)";
     ctx.lineWidth = 1.2;
@@ -1120,7 +1060,7 @@
     }
     ctx.restore();
 
-    // Doorway frame trim & threshold sill
+    // Doorway frame trim
     ctx.strokeStyle = "#5c361b";
     ctx.lineWidth = 3.0;
     ctx.beginPath();
@@ -1153,8 +1093,8 @@
     );
 
     // 4. Sloped Overhanging Shingled Roof
-    const overhangL = L + 0.10;
-    const overhangW = Wd + 0.09;
+    const overhangL = L + 0.09;
+    const overhangW = Wd + 0.08;
     const eaveY = Hw - 0.04;
     const roofPeakY = Hp + 0.05;
 
@@ -1165,7 +1105,7 @@
     const rf3 = dhPoint(-overhangL, eaveY, overhangW);
     fillQuad3D(rf0, rf1, rf2, rf3, "#5a2922", "#3b1813", 1.5);
 
-    // Near roof slope (facing camera & sun)
+    // Near roof slope
     const rn0 = dhPoint(-overhangL, roofPeakY, 0);
     const rn1 = dhPoint(overhangL, roofPeakY, 0);
     const rn2 = dhPoint(overhangL, eaveY, -overhangW);
@@ -1227,7 +1167,6 @@
     const pB = project(endB.x, endB.y, endB.z);
     const pM = project(mid.x, mid.y, mid.z);
 
-    // Ground contact shadow when resting on doghouse floor
     if (!bone.gripped && !isReflection) {
       ctx.fillStyle = "rgba(10, 5, 2, 0.55)";
       ctx.beginPath();
@@ -1239,7 +1178,6 @@
     const knobR = Math.max(3.2, 0.032 * s);
     const shaftW = Math.max(4.5, 0.038 * s);
 
-    // Perpendicular vector on screen for double-knobs at each bone epiphysis
     const dx = pB.x - pA.x;
     const dy = pB.y - pA.y;
     const len = Math.hypot(dx, dy) || 1;
@@ -1247,7 +1185,6 @@
     const ny = dx / len;
     const spread = knobR * 0.68;
 
-    // Shadow / underside outline for high contrast readability against both dark interior and orange fur
     ctx.lineCap = "round";
     ctx.strokeStyle = "#6e5c44";
     ctx.lineWidth = shaftW + 3.0;
@@ -1270,7 +1207,6 @@
       ctx.fill();
     }
 
-    // Main ivory bone body
     ctx.strokeStyle = "#f5ebd6";
     ctx.lineWidth = shaftW;
     ctx.beginPath();
@@ -1289,7 +1225,6 @@
       ctx.fill();
     }
 
-    // Specular highlight along shaft
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = Math.max(1.5, shaftW * 0.35);
     ctx.beginPath();
@@ -1304,7 +1239,6 @@
     const pC = project(center.x, center.y * ySign, center.z);
     const s = pC.s;
 
-    // Base shaded core volume so there are never any gaps
     const rScreenX = Math.max(2, rx * s);
     const rScreenY = Math.max(2, ry * s);
     const grad = ctx.createRadialGradient(
@@ -1324,7 +1258,6 @@
     ctx.ellipse(pC.x, pC.y, rScreenX * 0.96, rScreenY * 0.96, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Directional layered fur locks over the 3D ellipsoid surface
     const cosY = state.dirX;
     const sinY = -state.dirZ;
     const step = isReflection ? 3 : 1;
@@ -1332,12 +1265,10 @@
 
     for (let i = 0; i < furSamples.length; i += step) {
       const fs = furSamples[i];
-      // Transform local sphere sample by dog orientation
       const wx = center.x + (fs.x * rx * cosY + fs.z * rz * sinY);
       const wy = (center.y + fs.y * ry) * ySign;
       const wz = center.z + (-fs.x * rx * sinY + fs.z * rz * cosY);
 
-      // Cull back-facing strands for speed & clean volume
       if (wz - center.z > rz * 0.55) continue;
 
       const pt = project(wx, wy, wz);
@@ -1346,11 +1277,9 @@
       const dLen = Math.hypot(dx, dy) || 1;
 
       const fLen = furLenBase * fs.varLen;
-      // Fur flows outward from volume center and slightly downward/backward with gravity
       const tx = pt.x + (dx / dLen) * fLen - cosY * fLen * 0.25;
       const ty = pt.y + (dy / dLen) * fLen + (isReflection ? -0.2 : 0.2) * fLen;
 
-      // Lighting based on world normal (sun is upper-left-front: (-0.4, +0.8, -0.4))
       const sunDot = (-fs.x * 0.35 + fs.y * 0.78 - fs.z * 0.35);
       if (sunDot > 0.22) {
         ctx.strokeStyle = palette.highlight;
@@ -1383,7 +1312,7 @@
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
-    // 1. Upper leg (feathered orange coat blending into torso)
+    // 1. Upper leg
     ctx.strokeStyle = "#b55616";
     ctx.lineWidth = Math.max(5, 0.068 * s);
     ctx.beginPath();
@@ -1398,7 +1327,6 @@
     ctx.lineTo(pJt.x - 1, pJt.y);
     ctx.stroke();
 
-    // Fluffy hock/elbow feathering tufts
     if (!isReflection) {
       ctx.strokeStyle = "#f2a052";
       ctx.lineWidth = Math.max(1.5, 0.016 * s);
@@ -1413,7 +1341,7 @@
       }
     }
 
-    // 2. Lower leg (slender cream/orange pastern)
+    // 2. Lower leg
     ctx.strokeStyle = "#a8521b";
     ctx.lineWidth = Math.max(3.5, 0.044 * s);
     ctx.beginPath();
@@ -1428,7 +1356,7 @@
     ctx.lineTo(pPw.x - 0.8, pPw.y);
     ctx.stroke();
 
-    // 3. Compact cat-like Pomeranian paw with cream fur and dark toe definition
+    // 3. Compact cat-like Pomeranian paw
     const pawR = Math.max(3, 0.028 * s);
     ctx.fillStyle = "#d99b62";
     ctx.beginPath();
@@ -1455,7 +1383,6 @@
     const hRightX = state.hRightX;
     const hRightZ = state.hRightZ;
 
-    // Upright triangular ears (left and right, sorted by depth)
     const earSpread = 0.068;
     const earBaseY = head.y + 0.065;
     const earTipY = head.y + 0.145 * state.earPerk;
@@ -1478,7 +1405,6 @@
       const pT = project(ear.tip.x, ear.tip.y * ySign, ear.tip.z);
       const earW = 0.036 * s;
 
-      // Outer orange/sable ear triangle
       ctx.fillStyle = "#b85314";
       ctx.beginPath();
       ctx.moveTo(pB.x - earW, pB.y);
@@ -1487,7 +1413,6 @@
       ctx.closePath();
       ctx.fill();
 
-      // Inner warm pink-cream ear pinna (more visible when facing camera)
       const frontVisibility = clamp(-hDirZ * 0.8 + 0.4, 0.15, 0.9);
       ctx.fillStyle = `rgba(242, 195, 170, ${frontVisibility})`;
       ctx.beginPath();
@@ -1498,11 +1423,9 @@
       ctx.fill();
     };
 
-    // Draw far ear before cranium if it's behind head center
     ears.sort((a, b) => b.base.z - a.base.z);
     if (ears[0].base.z > head.z) drawEar(ears[0]);
 
-    // Fluffy Pomeranian Cranium /Cheek Ruff
     const headPalette = {
       highlight: "#ffd39b",
       light: "#f79d46",
@@ -1512,7 +1435,6 @@
     };
     drawFluffyVolume(head, 0.105, 0.098, 0.105, headPalette, state, isReflection, 0.82);
 
-    // Cream cheek fluff patches (classic orange-sable Pomeranian facial markings)
     for (const side of [-1, 1]) {
       const cheek = {
         x: head.x + hDirX * 0.025 + hRightX * side * 0.058,
@@ -1528,15 +1450,12 @@
       }
     }
 
-    // Draw remaining ear(s) in front of cranium
     if (ears[0].base.z <= head.z) drawEar(ears[0]);
     drawEar(ears[1]);
 
-    // Lower Jaw, Mouth Interior, and Bone (if gripped)
     const pMuz = project(muzzle.x, muzzle.y * ySign, muzzle.z);
     const pJaw = project(lowerJaw.x, lowerJaw.y * ySign, lowerJaw.z);
 
-    // Draw lower jaw
     ctx.strokeStyle = "#d47632";
     ctx.lineWidth = Math.max(4, 0.042 * s);
     ctx.lineCap = "round";
@@ -1545,7 +1464,6 @@
     ctx.lineTo(pJaw.x, pJaw.y);
     ctx.stroke();
 
-    // Warm dark pink mouth interior when jaw is open
     if (state.jawOpen > 0.05) {
       ctx.fillStyle = "#7a2328";
       ctx.beginPath();
@@ -1556,12 +1474,10 @@
       ctx.fill();
     }
 
-    // If the bone is gripped in the jaws, draw it here right between lower jaw and upper muzzle!
     if (state.bone.gripped) {
       drawBone(state.bone, isReflection);
     }
 
-    // Upper Muzzle (short, pointed fox-like snout)
     const muzGrad = ctx.createLinearGradient(pHead.x, pHead.y, pMuz.x, pMuz.y);
     muzGrad.addColorStop(0, "#eb8838");
     muzGrad.addColorStop(0.65, "#f7be83");
@@ -1575,7 +1491,6 @@
     ctx.lineTo(pMuz.x, pMuz.y);
     ctx.stroke();
 
-    // Crisp dark nose tip with specular catchlight
     const noseR = Math.max(2.4, 0.020 * s);
     ctx.fillStyle = "#1a1412";
     ctx.beginPath();
@@ -1589,7 +1504,6 @@
       ctx.fill();
     }
 
-    // Dark Expressive Almond Eyes (3D positioned on front-sides of skull)
     const eyeForward = 0.068;
     const eyeUp = 0.018;
     const eyeSpread = 0.044;
@@ -1600,12 +1514,10 @@
         y: head.y + eyeUp - side * state.headCock * 0.01,
         z: head.z + hDirZ * eyeForward + hRightZ * side * eyeSpread
       };
-      // Only draw eye if it is on the camera-facing hemisphere of the head
       if (eyeW.z < head.z + 0.022) {
         const pEye = project(eyeW.x, eyeW.y * ySign, eyeW.z);
         const eyeR = Math.max(2.2, 0.017 * s);
 
-        // Subtle cream eyebrow dot above eye
         if (!isReflection) {
           ctx.fillStyle = "#ffe3ba";
           ctx.beginPath();
@@ -1613,13 +1525,11 @@
           ctx.fill();
         }
 
-        // Dark expressive iris/pupil
         ctx.fillStyle = "#160e0a";
         ctx.beginPath();
         ctx.arc(pEye.x, pEye.y, eyeR, 0, Math.PI * 2);
         ctx.fill();
 
-        // Lively corneal catchlight
         if (!isReflection) {
           ctx.fillStyle = "#ffffff";
           ctx.beginPath();
@@ -1632,7 +1542,6 @@
 
   // Draw the Full Plumed Tail Curled Forward Over the Back
   function drawPlumedTail(state, isReflection) {
-    const ySign = isReflection ? -1 : 1;
     const pts = [
       state.tailBase,
       state.tailMid,
@@ -1661,7 +1570,6 @@
 
   // Draw the Complete Miniature Pomeranian with Depth-Sorted Volumetric Parts
   function drawPomeranian(state, isReflection = false) {
-    // 1. Ground Contact Shadow (only for real dog, not reflection)
     if (!isReflection) {
       const pShadow = project(state.cx, 0.003, state.cz);
       const jumpHeight = Math.max(0, state.cy - 0.25);
@@ -1681,7 +1589,6 @@
       );
       ctx.fill();
 
-      // Individual paw contact shadows when paws are near ground
       for (const legKey of ["FL", "FR", "BL", "BR"]) {
         const pw = state.paws[legKey];
         if (pw.y < 0.09) {
@@ -1695,7 +1602,6 @@
       }
     }
 
-    // Palettes for rich double-coated orange/cream Pomeranian
     const bodyPalette = {
       highlight: "#ffcb8c",
       light: "#f28c35",
@@ -1718,14 +1624,12 @@
       shadow: "#a86b36"
     };
 
-    // Front cream chest bib center
     const chestBib = {
       x: state.chest.x + state.dirX * 0.065,
       y: state.chest.y - 0.01,
       z: state.chest.z + state.dirZ * 0.065
     };
 
-    // Assemble drawable anatomical components and sort back-to-front by camera depth Z
     const components = [
       { z: state.shoulders.FL.z + 0.03, draw: () => drawArticulatedLeg("FL", state, isReflection) },
       { z: state.shoulders.FR.z + 0.03, draw: () => drawArticulatedLeg("FR", state, isReflection) },
@@ -1763,14 +1667,13 @@
     }
   }
 
-  // Foreground Framing Details (grass blades near bottom corners and subtle warm sun rays)
+  // Foreground Framing Details
   function drawForegroundDetails() {
     for (const g of grassClusters) {
       if (g.z >= -0.35) continue;
       drawGrassCluster(g);
     }
 
-    // Subtle warm golden-hour sunlight bloom in upper left
     const sunGrad = ctx.createRadialGradient(80, 30, 10, 80, 30, 420);
     sunGrad.addColorStop(0, "rgba(255, 245, 200, 0.16)");
     sunGrad.addColorStop(0.5, "rgba(255, 230, 165, 0.06)");
@@ -1802,7 +1705,6 @@
     drawPomeranian(state, false);
 
     // 5. Draw Doghouse Exterior (front doorway wall, near wall, overhanging roof)
-    // This naturally and accurately occludes the dog's forequarters when inside the doorway!
     drawDoghouseExterior();
 
     // 6. Foreground grass and atmospheric lighting

@@ -82,5 +82,8 @@
       "at": "2026-10-24T10:55:41.618233+00:00",
       "policy": "Retryable 408/429/5xx responses and interrupted transports without terminal usage are conservatively flagged as unknown additional usage. Only deterministic validation rejections are excluded. Do not interpret a missing token receipt as zero charge. Original request/response diagnostics are preserved; no provider response, source or usage is changed."
     }
+  ],
+  "postCampaignCorrections": [
+    "/results/FRAMING-CORRECTION.json"
   ]
 }

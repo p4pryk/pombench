@@ -2,7 +2,7 @@
   "version": "pombench-v4",
   "campaign": "pombench-v4-20261024",
   "title": "The puddle, the Pomeranian and the bone",
-  "publishedAt": "2026-10-24T11:17:05.105569+00:00",
+  "publishedAt": "2026-10-24T16:55:47.815691+00:00",
   "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
   "protocolHash": "ef8b6d80c1038255181e60d9856157bffb1318239c4073f5668e09696981c68b",
   "promptUrl": "/results/PROMPT.md",
@@ -4908,13 +4908,13 @@
       "releasedAt": "2026-10-13",
       "releaseSource": "https://ai.google.dev/gemini-api/docs/changelog",
       "usage": {
-        "input_tokens": 2144,
-        "output_tokens": 26530,
-        "cache_write_input_tokens": 0,
-        "visible_output_tokens": 26530,
-        "total_tokens": 28674,
+        "output_tokens": 51473,
+        "reasoning_output_tokens": 0,
+        "input_tokens": 31141,
+        "total_tokens": 82614,
         "cached_input_tokens": 0,
-        "reasoning_output_tokens": 0
+        "cache_write_input_tokens": 0,
+        "visible_output_tokens": 51473
       },
       "attempts": [
         {
@@ -4945,25 +4945,54 @@
           "status": "captured",
           "errors": [],
           "summary": "/results/gemini-4-argon/attempt-1-summary.json"
+        },
+        {
+          "number": 2,
+          "usage": {
+            "input_tokens": 28997,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 24943,
+            "reasoning_output_tokens": 0,
+            "visible_output_tokens": 24943,
+            "total_tokens": 53940
+          },
+          "generationSeconds": 299.845174074173,
+          "stopReason": "STOP",
+          "sourceHash": "30d86fee690ce5e7e256c5c53ce1815c4d6ac241c36b48ec8c209e56315db128",
+          "promptHash": "3852e798dd5aa058f53eb9114d650834bd542f16ff000299ba76642ddd950a32",
+          "maxOutputTokens": 32768,
+          "extendedBudget": false,
+          "reasoningEffort": "low",
+          "source": "/results/gemini-4-argon/attempt-2-source.txt",
+          "price": {
+            "usd": 0.307424,
+            "source": "https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing",
+            "checkedAt": "2026-10-22",
+            "note": "Published introductory Global Standard rates; Google describes promotional pricing as credits back on net eligible spend. Estimate assumes eligibility, not an invoice. Standard post-promotion rates are $4 input / $20 output / $0.20 cached per million tokens."
+          },
+          "status": "captured",
+          "errors": [],
+          "summary": "/results/gemini-4-argon/attempt-2-summary.json"
         }
       ],
-      "submissions": 1,
+      "submissions": 2,
       "finalUsage": {
-        "input_tokens": 2144,
+        "input_tokens": 28997,
         "cached_input_tokens": 0,
         "cache_write_input_tokens": 0,
-        "output_tokens": 26530,
+        "output_tokens": 24943,
         "reasoning_output_tokens": 0,
-        "visible_output_tokens": 26530,
-        "total_tokens": 28674
+        "visible_output_tokens": 24943,
+        "total_tokens": 53940
       },
-      "sourceHash": "14ecf65cad12a7a6914264aca95df7d2bfee245abb1e93e279aeaa4f7c0a774e",
+      "sourceHash": "30d86fee690ce5e7e256c5c53ce1815c4d6ac241c36b48ec8c209e56315db128",
       "source": "/results/gemini-4-argon/source.txt",
-      "generationPromptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
-      "generationSeconds": 315.21160793304443,
+      "generationPromptHash": "3852e798dd5aa058f53eb9114d650834bd542f16ff000299ba76642ddd950a32",
+      "generationSeconds": 615.0567820072174,
       "stopReason": "STOP",
       "price": {
-        "usd": 0.269588,
+        "usd": 0.577012,
         "source": "https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing",
         "checkedAt": "2026-10-22",
         "note": "Published introductory Global Standard rates; Google describes promotional pricing as credits back on net eligible spend. Estimate assumes eligibility, not an invoice. Standard post-promotion rates are $4 input / $20 output / $0.20 cached per million tokens."
@@ -4972,48 +5001,48 @@
         "contract": true,
         "renders": true,
         "visible": true,
-        "motion": false,
+        "motion": true,
         "deterministic": true,
         "offline": true
       },
-      "technicalPassed": 5,
+      "technicalPassed": 6,
       "errors": [],
       "metrics": {
         "sampleColorStd": [
-          77.01766967773438,
-          77.01766967773438,
-          77.30106353759766,
-          77.01766967773438,
-          77.01766967773438,
-          77.01766967773438,
-          77.01766967773438,
-          77.01766967773438,
-          77.01766967773438,
-          77.01766967773438,
-          77.01766967773438,
-          77.01766967773438
+          39.291934967041016,
+          39.29226303100586,
+          38.71759796142578,
+          38.0499153137207,
+          37.625118255615234,
+          37.40849685668945,
+          37.429443359375,
+          38.124813079833984,
+          39.12784957885742,
+          39.14019775390625,
+          38.56800842285156,
+          38.56877517700195
         ],
         "changedPixelFractions": [
-          0.0,
-          0.009342206790123457,
-          0.009342206790123457,
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0
+          0.020707947530864197,
+          0.044334490740740744,
+          0.038267746913580244,
+          0.017916666666666668,
+          0.008074845679012345,
+          0.006450617283950617,
+          0.019089506172839506,
+          0.03012152777777778,
+          0.01846064814814815,
+          0.021118827160493826,
+          0.006724537037037037
         ],
-        "finalBoundaryStepRmse": 0.0,
+        "finalBoundaryStepRmse": 1.4977632761001587,
         "repeatPixelRmse": {
           "repeat-a": 0.0,
           "repeat-b": 0.0,
           "repeat-c": 0.0
         },
-        "renderRoundTripMedianMs": 3.3391249999995125,
-        "renderRoundTripP95Ms": 11.33325000000291
+        "renderRoundTripMedianMs": 1.9861040000014327,
+        "renderRoundTripP95Ms": 4.913064899999881
       },
       "capture": {
         "frames": 360,
@@ -5023,21 +5052,32 @@
         "height": 540,
         "complete": true,
         "isolation": "Separate offline Chromium process, service workers and downloads disabled, CSP, all post-bootstrap network blocked. Organizer measures screenshot pixels; candidate reports are ignored.",
-        "sourceHash": "14ecf65cad12a7a6914264aca95df7d2bfee245abb1e93e279aeaa4f7c0a774e",
-        "frameEvidenceHash": "b9f7edb97c6b0cda065d1a62806d9a310c02e9d0392d10543e786c3e20f81772"
+        "sourceHash": "30d86fee690ce5e7e256c5c53ce1815c4d6ac241c36b48ec8c209e56315db128",
+        "frameEvidenceHash": "dc938510415dc85e350c8e8a48247e7b6c766308c8070ad2f477665b4d2e5501"
       },
       "evidenceHashes": {
-        "capture.json": "b9f7edb97c6b0cda065d1a62806d9a310c02e9d0392d10543e786c3e20f81772",
-        "poster.png": "f6312b95aaf4ab901c588965896864f97f2897b759bfbba30ccbe69887670a34",
-        "contact-sheet.jpg": "8578e5827bf382ffee7f99cedc2578a2922c90062fd0eec6350e5496fb8bd0f3",
-        "animation.mp4": "534f1fcc990ede45df6c833bfb6337b8691a82b323946850bbb28700fcbb098a"
+        "capture.json": "dc938510415dc85e350c8e8a48247e7b6c766308c8070ad2f477665b4d2e5501",
+        "poster.png": "7a89e66406fb566cebe022b7df818330a9fe7338558646f1ab3c37e6d03273b9",
+        "contact-sheet.jpg": "74a2a7871c2599dfa35bb29f411e67cd95851bb21fa631383376f12da108a14f",
+        "animation.mp4": "286a6d3bbb3afaf731be99c61a3601582c74681f99f18b97f80caa573c0f2985"
       },
       "summary": "/results/gemini-4-argon/summary.json",
       "video": "/results/gemini-4-argon/animation.mp4",
       "poster": "/results/gemini-4-argon/poster.png",
       "contactSheet": "/results/gemini-4-argon/contact-sheet.jpg",
       "startFrame": "/results/gemini-4-argon/start-frame.png",
-      "usageComplete": true
+      "usageComplete": true,
+      "framingReview": {
+        "sourceHash": "30d86fee690ce5e7e256c5c53ce1815c4d6ac241c36b48ec8c209e56315db128",
+        "status": "visible",
+        "note": "Recorded samples now show the dog and its approach inside the canvas, a visible leap, doorway entry/exit, and the final front-facing dog holding the bone. Doghouse doorway occlusion remains visible during entry. This is a framing observation, not an anatomy, realism, reflection or narrative-quality score.",
+        "reviewedAt": "2026-10-24T16:55:45.753679+00:00"
+      },
+      "framingRepair": {
+        "policyUrl": "/results/FRAMING-CORRECTION.json",
+        "previousSourceHash": "14ecf65cad12a7a6914264aca95df7d2bfee245abb1e93e279aeaa4f7c0a774e",
+        "note": "The original recording placed the dog outside the frame. This final response was generated with visibility feedback. Both responses are included in tokens and cost; the original recording and code are retained."
+      }
     },
     {
       "id": "grok-4.7",
@@ -6232,7 +6272,8 @@
     "usageComplete": true
   },
   "amendmentUrls": [
-    "/results/V4-CAMPAIGN.json"
+    "/results/V4-CAMPAIGN.json",
+    "/results/FRAMING-CORRECTION.json"
   ],
   "methodology": [
     "Results use direct Microsoft Foundry and Google Vertex AI APIs. Private service configuration is excluded from the published dataset.",
@@ -6240,6 +6281,7 @@
     "One unchanged retry on interrupted transport or retryable 408/429/5xx. Deterministic API validation rejections are not resampled. Missing terminal usage remains explicitly unknown. A received terminal response is normalized without another model call.",
     "Output tokens include provider-reported reasoning exactly once. For Vertex AI, output_tokens is candidatesTokenCount plus thoughtsTokenCount. Estimates use dated official rate snapshots; taxes, regions and promotional credit eligibility can change actual spend.",
     "Record 360 actual 960\u00d7540 offline browser screenshots at 30 fps. The page only plays recorded films; candidate code never runs on this origin.",
-    "Seven visual criteria include puddle clearance, weight-bearing landing and water reflection. Technical checks measure execution and repeatability, not visual quality or task success. No automatic aesthetic score or self-rating."
+    "Seven visual criteria include puddle clearance, weight-bearing landing and water reflection. Technical checks measure execution and repeatability, not visual quality or task success. No automatic aesthetic score or self-rating.",
+    "Gemini 4 Argon received a disclosed user-requested framing correction after its first recording put the dog outside the canvas. Same initial task, original source plus visibility diagnostics, two total completed responses, final response retained. Both responses are included in cost and tokens; see FRAMING-CORRECTION.json. No organizer source edits. Other models are unchanged."
   ]
 }

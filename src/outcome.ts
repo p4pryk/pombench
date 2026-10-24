@@ -28,3 +28,10 @@ export const realismCriteria=[
  ['Turn toward the viewer','The dog steps and rotates coherently to face the camera, keeping the bone in its mouth and its proportions consistent.'],
  ['Fur, light and finish','Volume, directional coat, coherent shadows and a readable front-facing final pose with subtle living motion.']
 ];
+
+export function sceneNotice(m:Model):{title:string;detail:string}|null{
+ if(!m.video)return null;
+ if(m.framingReview&&m.framingReview.sourceHash===m.sourceHash&&m.framingReview.status==='framing-failed')return {title:'Scene outside the frame',detail:m.framingReview.note};
+ if(m.technicalChecks?.motion===false)return {title:'Limited visible movement',detail:'Little movement was detected in the recorded images. The action may be static or outside the frame; this is a recording limitation, not a visual-quality score.'};
+ return null;
+}

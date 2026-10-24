@@ -2,41 +2,41 @@
   "modelId": "gemini-4-argon",
   "modelVersion": "gemini-4-argon",
   "source": "Actual Vertex AI API usage",
-  "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
-  "sourceHash": "14ecf65cad12a7a6914264aca95df7d2bfee245abb1e93e279aeaa4f7c0a774e",
-  "requestHash": "7e909a2fb678307a5cd5abca2d42356f90f799136f9540fecdb4ad98f1f6bf09",
-  "responseHash": "04840b7c0dd524e009fef2bdcc06323b8a26cdf0008b12d1584985a7442b51eb",
+  "promptHash": "3852e798dd5aa058f53eb9114d650834bd542f16ff000299ba76642ddd950a32",
+  "sourceHash": "30d86fee690ce5e7e256c5c53ce1815c4d6ac241c36b48ec8c209e56315db128",
+  "requestHash": "d6295fa104fc2bec769421a5f0b82a0dca19d794a44bec8e216f24efc2f53c99",
+  "responseHash": "2d1c05cf0aafa2cbcd12208ddfa2d8417962ba904dd9b803a84a3f6946a6bb0b",
   "streamHash": null,
   "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
   "tools": [],
   "usageComplete": true,
-  "submission": 1,
+  "submission": 2,
   "rawUsage": {
-    "promptTokenCount": 2144,
-    "candidatesTokenCount": 26530,
-    "totalTokenCount": 28674,
+    "promptTokenCount": 28997,
+    "candidatesTokenCount": 24943,
+    "totalTokenCount": 53940,
     "trafficType": "ON_DEMAND",
     "promptTokensDetails": [
       {
         "modality": "TEXT",
-        "tokenCount": 2144
+        "tokenCount": 28997
       }
     ],
     "candidatesTokensDetails": [
       {
         "modality": "TEXT",
-        "tokenCount": 26530
+        "tokenCount": 24943
       }
     ]
   },
   "usage": {
-    "input_tokens": 2144,
+    "input_tokens": 28997,
     "cached_input_tokens": 0,
     "cache_write_input_tokens": 0,
-    "output_tokens": 26530,
+    "output_tokens": 24943,
     "reasoning_output_tokens": 0,
-    "visible_output_tokens": 26530,
-    "total_tokens": 28674
+    "visible_output_tokens": 24943,
+    "total_tokens": 53940
   },
   "visualScore": null,
   "visualReview": "Inspect the recorded film against all seven visual criteria. Technical execution does not prove puddle clearance, realism or narrative success."

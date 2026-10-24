@@ -29,3 +29,23 @@ test('Google Vertex films play with Foundry films in the same gallery and synchr
 test('V4 explains the new jump criterion and keeps the gallery on one shared task',async({page})=>{if(c.version!=='pombench-v4')return;await page.goto('/');await expect(page.locator('.lead')).toContainText('puddle');await expect(page.locator('.model-card')).toHaveCount(ready.length);await page.getByRole('navigation').getByRole('link',{name:'About the test',exact:true}).click();await expect(page.getByRole('heading',{name:'Seven things to look for'})).toBeVisible();await expect(page.locator('main ol li')).toHaveCount(7);await expect(page.locator('main ol')).toContainText('Puddle clearance, landing & water reflection');await expect(page.locator('main a[download]')).toHaveCount(0);await expect(page.locator('main')).not.toContainText('65,536-token');await page.goto('/#model/'+ready[0].id);await expect(page.locator('.brief-card')).toContainText('Over the puddle.');await expect(page.locator('.model-stat')).toHaveCount(2)});
 
 test('a new task replaces comparison metadata together and stops players from the previous prompt',async({page})=>{await page.clock.install();let changed=false;const next={...c,promptHash:'a-new-task-prompt',models:c.models.map((m:any)=>({...m,name:m.name+' · refreshed task',promptHash:'a-new-task-prompt'}))};await page.route('**/results/index.json',r=>r.fulfill({json:changed?next:c}));await page.goto('/#compare');await expect(page.locator('.compare-grid video')).toHaveCount(4);const oldPlayers=await page.locator('.compare-grid video').elementHandles();changed=true;await page.clock.runFor(16000);await expect(page.locator('.compare-grid select').first().locator('option:checked')).toContainText('refreshed task');for(const player of oldPlayers)expect(await player.evaluate((v:HTMLVideoElement)=>v.paused)).toBe(true)});
+
+test('recording limitations and feedback-assisted corrections are visible without quality scores',async({page})=>{
+ const argon=c.models.find((m:any)=>m.id==='gemini-4-argon');
+ const fixture={...c,models:c.models.map((m:any)=>m.id===argon.id?{...m,technicalChecks:{...m.technicalChecks,motion:false},framingReview:{sourceHash:m.sourceHash,status:'framing-failed',note:'The dog is below the canvas edge.',reviewedAt:'2026-10-24'},framingRepair:undefined}:m)};
+ await page.route('**/results/index.json',r=>r.fulfill({json:fixture}));
+ await page.goto('/#gallery');await page.getByRole('searchbox').fill('Gemini 4 Argon');
+ await expect(page.getByLabel('Recording limitation')).toContainText('Scene outside the frame');
+ await page.goto('/#model/'+argon.id);await expect(page.getByLabel('Recording limitation')).toContainText('below the canvas');
+ await expect(page.locator('#animation')).toBeVisible();await expect(page.locator('.model-stat')).toHaveCount(2);
+ await page.unroute('**/results/index.json');await page.reload();
+ if(argon.framingRepair)await expect(page.getByLabel('Generation correction')).toContainText('Framing correction with feedback');
+});
+
+test('a corrected recording refreshes an open model page even when the shared prompt is unchanged',async({page})=>{
+ await page.clock.install();let corrected=false;
+ const next={...c,models:c.models.map((x:any)=>x.id===m.id?{...x,sourceHash:'corrected-source-hash',framingRepair:{policyUrl:'/results/FRAMING-CORRECTION.json',previousSourceHash:x.sourceHash,note:'A new model response corrected the framing. Both responses are included in tokens and cost.'}}:x)};
+ await page.route('**/results/index.json',r=>r.fulfill({json:corrected?next:c}));await page.goto('/#model/'+m.id);
+ const old=await page.locator('#animation').elementHandle();corrected=true;await page.clock.runFor(16000);
+ await expect(page.getByLabel('Generation correction')).toBeVisible();expect(await old!.evaluate((v:HTMLVideoElement)=>v.paused)).toBe(true);
+});

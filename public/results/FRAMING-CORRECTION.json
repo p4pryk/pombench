@@ -1,0 +1,20 @@
+{
+  "id": "v4-framing-repair",
+  "at": "2026-10-24T16:49:27.712382+00:00",
+  "modelId": "gemini-4-argon",
+  "reason": "User-requested framing correction after organizer inspection; disclosed separately from the original execution-only policy.",
+  "initialPromptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+  "repairPromptHash": "3852e798dd5aa058f53eb9114d650834bd542f16ff000299ba76642ddd950a32",
+  "previousSourceHash": "14ecf65cad12a7a6914264aca95df7d2bfee245abb1e93e279aeaa4f7c0a774e",
+  "maxCompletedResponses": 2,
+  "maxOutputTokens": 32768,
+  "manualSourceEdits": false,
+  "selection": "Final response, no best-of",
+  "usagePolicy": "Include both completed responses in tokens and cost.",
+  "originalRecording": "/results/gemini-4-argon/attempt-1-animation.mp4",
+  "originalReview": "/results/gemini-4-argon/attempt-1-framing-review.json",
+  "repairPromptUrl": "/results/gemini-4-argon/framing-repair-prompt.txt",
+  "finalSourceHash": "30d86fee690ce5e7e256c5c53ce1815c4d6ac241c36b48ec8c209e56315db128",
+  "finalReviewUrl": "/results/gemini-4-argon/framing-review.json",
+  "scope": "An explicitly disclosed post-campaign correction for Gemini 4 Argon. Other models are unchanged. This is not an unaided initial result or a new shared-prompt cohort."
+}

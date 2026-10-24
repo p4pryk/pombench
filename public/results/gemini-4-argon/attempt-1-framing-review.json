@@ -1,0 +1,28 @@
+{
+  "modelId": "gemini-4-argon",
+  "sourceHash": "14ecf65cad12a7a6914264aca95df7d2bfee245abb1e93e279aeaa4f7c0a774e",
+  "reviewedAt": "2026-10-24T16:49:27.696719+00:00",
+  "reviewer": "Organizer inspection of recorded screenshot evidence",
+  "status": "framing-failed",
+  "observations": [
+    "The dog is outside the lower canvas boundary through most of the recorded film.",
+    "Only the doghouse roof and background are visible in most samples.",
+    "The existing measured motion check failed."
+  ],
+  "sampleTimes": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10.5,
+    11.966666666666667
+  ],
+  "contactSheetHash": "8578e5827bf382ffee7f99cedc2578a2922c90062fd0eec6350e5496fb8bd0f3",
+  "visualScore": null
+}

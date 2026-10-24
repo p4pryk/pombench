@@ -1,0 +1,1991 @@
+# PomBench — The puddle, the Pomeranian and the bone (v4)
+
+Create the most realistic, sophisticated 12-second animal animation you can
+implement with native browser graphics. ONE miniature Pomeranian dog runs across
+a backyard, jumps over ONE shallow puddle on the way into its doghouse, retrieves
+ONE bone, backs out with it, then turns
+its head and body toward the viewer, proudly holding the bone in its mouth.
+Finish with that readable frontal pose. This is a short narrative, NOT a loop.
+
+Aim for believable animal anatomy, material, weight and purposeful action, rather
+than a cartoon, flat icon, toy, infographic or slideshow. Choose the composition,
+camera, yard design, lighting, palette and implementation yourself. Canvas 2D,
+2.5D or WebGL are allowed: realism of the final pixels and movement is the target.
+No scene template or reference artwork is provided.
+
+## Recognisable miniature Pomeranian
+Show one small, compact dog with a thick orange / cream double coat, a pronounced
+neck ruff, short pointed muzzle, small upright triangular ears, dark expressive
+eyes, four anatomically articulated legs with small paws, and a full plumed tail
+curled over the back. Preserve its identity, proportions, fur volume and skeleton
+through side, rear, three-quarter and frontal views. It must read as a Pomeranian,
+not a generic fox, wolf, large spitz or a round silhouette with stick legs.
+
+## One continuous action, in this order
+- 0–1 s: establish the backyard, dog, doghouse doorway and bone inside. The dog
+  notices its goal. Establish the shallow puddle on the approach as an obstacle.
+  Keep the bone discoverable without labels, arrows or text.
+- 1–3 s: the dog runs toward the doghouse. Show a coherent four-legged gait,
+  paw contacts, weight transfer, head stabilisation and coat / tail follow-through.
+  During this approach it anticipates, takes off, clears the puddle completely,
+  lands on dry ground and continues toward the doorway without a cut or reset.
+- 3–4.5 s: the dog actually enters through the doorway, head and forequarters
+  first. The doorway and walls must occlude the body correctly. The rear and
+  curled tail can remain visible; no passing through solid walls or roof.
+- 4.5–6 s: it lowers its head, opens its mouth and grips the bone. The bone leaves
+  its original resting position once. Show enough of the interaction through the
+  doorway to understand the grab; do not conceal the retrieval with a cut.
+- 6–8 s: it backs out through the doorway with the bone held between its jaws.
+  Its paws support the reverse motion. The bone moves rigidly with the mouth,
+  with plausible orientation and occlusion; no floating, duplication or teleport.
+- 8–10 s: the dog turns smoothly to face the viewer, stepping / pivoting its paws
+  and rotating its body, head, ears and curled tail coherently. The bone stays in
+  its jaws. Reveal real changing volume rather than flipping a flat drawing.
+- 10–12 s: settle into a clear front-facing presentation, looking toward the
+  camera with the bone visible. Maintain this final pose with subtle breathing,
+  ear / coat response and restrained tail movement. No return to the house,
+  camera cut, sudden reset, fade to black or end card.
+
+## New challenge: clear the puddle and land naturally
+Add ONE shallow, still puddle across the dog’s approach to the doorway. Its size,
+shape and position are your choice, but it must be a visible obstacle that the
+small dog can realistically clear. Keep the leap and landing fully inside the
+frame; scene composition and visual style remain entirely your decision.
+
+- Show readable anticipation: shorten the final running stride, lower the body,
+  load the hind legs, then push off from the near dry bank.
+- All four paws leave the ground. The dog’s centre of mass follows a smooth
+  arcing trajectory while the legs tuck and extend coherently. The coat and tail
+  respond to the jump without detaching, changing breed or stretching the body.
+- Clear the far edge with the whole body and paws. Land on dry ground: forepaws
+  make contact before or with the hind paws, joints compress to absorb weight,
+  then the dog resumes supported forward motion and enters the house.
+- Render a reflection of the actual dog only inside the puddle’s water surface.
+  The reflected pose, position and orientation must follow the dog consistently
+  during approach and flight, with correct masking at the water boundary. This
+  is a reflection of the same animal, not a second dog or an unrelated shadow.
+- Keep the puddle in place throughout the film. No teleport across the obstacle,
+  walking through the water, instantaneous pose swap or hiding the landing behind
+  the doghouse. Preserve the original bone retrieval and final front-facing pose.
+
+The additional visual criterion is **puddle clearance, weight-bearing landing
+and coherent water reflection**. These are judged from the recorded animation,
+not from a model’s claims, variable names or a claimed physics simulation.
+
+## Realism and scene coherence
+- Paws remain planted during stance. Shoulders, hips, spine and head respond to
+  locomotion, braking, reverse steps and the final turn. Bend joints plausibly;
+  avoid skating, detached limbs, mechanical oscillation and elastic cartoon motion.
+- Build fur from underlying body volume, coherent shading and directional texture.
+  Avoid thick outlines, flat orange fill, plastic highlights or giant cartoon eyes.
+- The doghouse has readable depth, a real doorway and a darker interior. Keep it
+  large enough for the dog to enter. Use consistent occlusion at its threshold.
+- Maintain exactly one bone. Its resting contact, mouth grip, movement and depth
+  order must stay consistent. The retrieval and final face are central to the task.
+- Use coherent light and shadows, contact shadows that follow paws and body,
+  a grounded yard surface, and useful depth. Keep the scene sufficiently lit to
+  inspect the interaction. Decoration cannot substitute for the animal action.
+- Use a continuous stable camera, preferably a readable three-quarter view where
+  the doorway, approach, reverse motion and final front-facing dog remain visible.
+  Do not let the doghouse or foreground conceal most of the important action.
+- Prioritise a complete functioning animal and object interaction over excessive
+  decorative effects or a huge unfinished renderer. Finish the executable scene.
+
+## Exact delivery contract
+Return ONE complete HTML document, and nothing else. No explanation or Markdown.
+Use one visible <canvas id="stage" width="960" height="540"></canvas> for the
+entire visible output. Body margin is zero; stage size is exactly 960×540 CSS
+pixels. Draw all output on that canvas. Use inline native browser JavaScript and
+styles, Canvas 2D or WebGL. No libraries, imports, network, fetch, external fonts,
+audio, embedded photographs, pre-rendered videos, base64 images, iframes, external
+assets, user input, CSS animation, timers or your own requestAnimationFrame loop.
+
+Expose synchronous window.renderFrame(timeSeconds). Any call must completely
+and immediately draw that frame, depending only on the supplied time and fixed
+constants. The recorder seeks out of order. Clear / redraw the whole canvas on
+every call. All noise, particles and fur variation must be deterministic.
+For t < 0 use the opening state; for t >= 12 hold the exact state at t=12.
+Do NOT reduce time modulo 12: this film does not loop or return to its opening.
+Call renderFrame(0) once at startup. The recorder drives animation playback.
+Keep HTML below 180,000 UTF-8 bytes. Do not add scoring or benchmark telemetry.
+
+## Equal completion opportunity and evidence
+Every model receives these exact initial prompt bytes and no tools. Up to 32,768
+output tokens are requested, including any internal reasoning and the entire HTML.
+The provider's lower output ceiling applies where necessary (16,384 for GPT-4o
+variants). Low reasoning effort is used where supported; optional Haiku thinking
+is disabled. Other models use their supported low-effort or native configuration.
+Keep planning concise and reserve enough budget to return the complete document.
+
+If the source is empty or fails to execute, each model has ONE conditional repair
+opportunity with its own source and the actual recorder diagnostics. Return a full
+corrected document if that opportunity is used. There are at most two completed
+creative responses per model. There is no aesthetic feedback, human code repair,
+or best-of selection; the final completed response is retained, and all known
+request usage is included. Transport failures are recorded separately and may
+receive one infrastructure retry with unchanged request settings.
+
+An independent offline browser captures real 960×540 pixels at 30 fps for twelve
+seconds, including the final boundary and repeat samples sought out of order.
+It checks execution, visible output, movement, repeatability and offline operation.
+It does not infer dog anatomy, jump clearance, water reflections, bone contact or narrative success from source-code
+keywords or changed pixels. No loop-closure requirement applies to this task.
+
+The visual result is inspected for Pomeranian identity and natural anatomy;
+grounded running; anticipation, puddle clearance, weight-bearing landing and
+water reflection; entry and reverse gait; correct doghouse occlusion; a single
+bone actually gripped and carried; a coherent turn toward the viewer; fur, light,
+contact and readable final framing. Deliver the actual animation, not claims that
+these requirements have been satisfied. There is no self-reported score.
+
+
+## Conditional framing repair — recorded visibility failure
+Your first source executed, but the actual 960×540 recording failed scene
+visibility: the dog is below the lower canvas edge for most of the film; only
+the doghouse roof and background are visible. The measured motion check also
+failed. This is not a request for a different artistic style.
+Return ONE complete corrected HTML document implementing the original task.
+Check your projection and screen-space bounds across the full 0–12 second
+sequence. Keep the dog, approach, puddle take-off and landing, doorway interaction
+and final front-facing dog with its bone readable inside the 960×540 canvas.
+Correct framing in your own renderer; do not move content outside the canvas or
+change the delivery contract. Preserve correct doorway occlusion.
+No score or success claims. No tools. The final response is retained, not best-of.
+
+Previous source (verbatim data):
+<previous-source>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PomBench — The puddle, the Pomeranian and the bone</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 960px;
+    height: 540px;
+    overflow: hidden;
+    background: #1a2418;
+  }
+  #stage {
+    display: block;
+    width: 960px;
+    height: 540px;
+  }
+</style>
+</head>
+<body>
+<canvas id="stage" width="960" height="540"></canvas>
+<script>
+(function() {
+  "use strict";
+
+  const canvas = document.getElementById("stage");
+  const ctx = canvas.getContext("2d", { alpha: false });
+  const W = 960;
+  const H = 540;
+
+  // Deterministic PRNG
+  function hash(n) {
+    let x = Math.sin(n * 127.1 + 311.7) * 43758.5453123;
+    return x - Math.floor(x);
+  }
+  function hash2(x, y) {
+    let n = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+    return n - Math.floor(n);
+  }
+
+  // Math helpers
+  const clamp = (v, min, max) => v < min ? min : (v > max ? max : v);
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const smoothstep = (edge0, edge1, x) => {
+    const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
+    return t * t * (3 - 2 * t);
+  };
+  const smootherstep = (edge0, edge1, x) => {
+    const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
+    return t * t * t * (t * (t * 6 - 15) + 10);
+  };
+
+  // Camera & Projection Setup
+  // World coordinates:
+  // X: left (-5) to right (+5)
+  // Y: up (0 is ground, +Y is up)
+  // Z: depth (-2 is foreground, +4 is background)
+  const cam = {
+    x: 0.15,
+    y: 1.45,
+    z: -4.45,
+    pitch: 0.21, // looking slightly down
+    fov: 760
+  };
+  const cosP = Math.cos(cam.pitch);
+  const sinP = Math.sin(cam.pitch);
+
+  function project(wx, wy, wz) {
+    const dx = wx - cam.x;
+    const dy = wy - cam.y;
+    const dz = wz - cam.z;
+    // Rotate by pitch around X
+    const cy = dy * cosP - dz * sinP;
+    const cz = dy * sinP + dz * cosP;
+    const scale = cam.fov / Math.max(0.2, cz);
+    return {
+      x: W * 0.5 + dx * scale,
+      y: H * 0.44 - cy * scale,
+      z: cz,
+      s: scale
+    };
+  }
+
+  // Pre-generate static yard elements (grass blades, pebbles, flowers, fence planks, foliage)
+  const grassClusters = [];
+  for (let i = 0; i < 650; i++) {
+    const gx = (hash(i * 3 + 1) - 0.5) * 9.5;
+    const gz = -1.7 + hash(i * 3 + 2) * 5.2;
+    // Exclude stone path / dirt apron around puddle and doghouse
+    const distPuddle = Math.hypot((gx - (-0.35)) * 0.85, (gz - 0.15) * 1.45);
+    const distHouse = Math.hypot((gx - 2.05) * 0.7, (gz - 0.45) * 0.9);
+    const onPath = Math.abs(gz - (0.1 + gx * 0.12)) < 0.52 && gx > -2.8 && gx < 2.2;
+    if (distPuddle < 0.72 || distHouse < 0.75 || (onPath && hash(i * 9) < 0.75)) continue;
+    grassClusters.push({
+      x: gx,
+      z: gz,
+      h: 0.06 + hash(i * 3 + 3) * 0.08,
+      lean: (hash(i * 5) - 0.5) * 0.06,
+      hue: 92 + (hash(i * 7) - 0.5) * 26,
+      light: 26 + hash(i * 11) * 18,
+      blades: 3 + (i % 3)
+    });
+  }
+  grassClusters.sort((a, b) => b.z - a.z);
+
+  const pebbles = [];
+  for (let i = 0; i < 140; i++) {
+    const angle = hash(i * 13) * Math.PI * 2;
+    const isPuddleRim = i < 65;
+    let px, pz, pr;
+    if (isPuddleRim) {
+      const rad = 0.62 + hash(i * 17) * 0.28;
+      px = -0.35 + Math.cos(angle) * rad * 1.15;
+      pz = 0.15 + Math.sin(angle) * rad * 0.58;
+      pr = 0.018 + hash(i * 19) * 0.026;
+    } else {
+      px = -2.8 + hash(i * 23) * 5.2;
+      pz = -0.7 + hash(i * 29) * 2.0;
+      // Avoid inside puddle water
+      const dp = Math.hypot((px - (-0.35)) / 0.72, (pz - 0.15) / 0.36);
+      if (dp < 0.96) continue;
+      pr = 0.015 + hash(i * 31) * 0.025;
+    }
+    pebbles.push({
+      x: px,
+      z: pz,
+      r: pr,
+      aspect: 0.6 + hash(i * 37) * 0.35,
+      col: `hsl(${30 + hash(i * 41) * 20}, ${12 + hash(i * 43) * 15}%, ${42 + hash(i * 47) * 22}%)`
+    });
+  }
+
+  // Pre-generate fur strands on unit sphere for coherent volumetric Pomeranian coat
+  const furSamples = [];
+  for (let i = 0; i < 160; i++) {
+    // Fibonacci sphere distribution
+    const y = 1 - (i / 159) * 2;
+    const radius = Math.sqrt(Math.max(0, 1 - y * y));
+    const theta = i * 2.399963229728653;
+    const x = Math.cos(theta) * radius;
+    const z = Math.sin(theta) * radius;
+    furSamples.push({
+      x, y, z,
+      varLen: 0.85 + hash(i * 11) * 0.35,
+      varTone: (hash(i * 17) - 0.5) * 12
+    });
+  }
+
+  // Puddle geometry definition
+  const PUDDLE = {
+    cx: -0.35,
+    cz: 0.15,
+    rx: 0.72,
+    rz: 0.37
+  };
+
+  function getPuddlePolygon(expand = 1.0) {
+    const pts = [];
+    const steps = 40;
+    for (let i = 0; i < steps; i++) {
+      const a = (i / steps) * Math.PI * 2;
+      // Organic shallow puddle contour
+      const mod = 1.0
+        + 0.08 * Math.sin(a * 2 + 0.4)
+        + 0.06 * Math.cos(a * 3 - 0.7)
+        + 0.03 * Math.sin(a * 5 + 1.1);
+      const wx = PUDDLE.cx + Math.cos(a) * PUDDLE.rx * mod * expand;
+      const wz = PUDDLE.cz + Math.sin(a) * PUDDLE.rz * mod * expand;
+      pts.push(project(wx, 0.002, wz));
+    }
+    return pts;
+  }
+
+  // 2-bone analytic Inverse Kinematics in 3D with a pole vector
+  function solveLimbIK(root, target, L1, L2, bendDir) {
+    const dx = target.x - root.x;
+    const dy = target.y - root.y;
+    const dz = target.z - root.z;
+    let dist = Math.hypot(dx, dy, dz);
+    const maxReach = (L1 + L2) * 0.992;
+    const minReach = Math.abs(L1 - L2) + 0.01;
+    const clampedDist = clamp(dist, minReach, maxReach);
+
+    // Unit vector from root to target
+    const ux = dx / (dist || 1);
+    const uy = dy / (dist || 1);
+    const uz = dz / (dist || 1);
+
+    // Law of cosines for upper bone angle
+    const cosAngle = clamp((L1 * L1 + clampedDist * clampedDist - L2 * L2) / (2 * L1 * clampedDist), -1, 1);
+    const angle = Math.acos(cosAngle);
+
+    // Gram-Schmidt orthogonalization of bendDir against u
+    const dot = bendDir.x * ux + bendDir.y * uy + bendDir.z * uz;
+    let bx = bendDir.x - dot * ux;
+    let by = bendDir.y - dot * uy;
+    let bz = bendDir.z - dot * uz;
+    const bLen = Math.hypot(bx, by, bz) || 1;
+    bx /= bLen; by /= bLen; bz /= bLen;
+
+    const along = Math.cos(angle) * L1;
+    const perp = Math.sin(angle) * L1;
+
+    return {
+      x: root.x + ux * along + bx * perp,
+      y: root.y + uy * along + by * perp,
+      z: root.z + uz * along + bz * perp
+    };
+  }
+
+  // Timeline and Full Motion Choreography (0 to 12 seconds)
+  function evaluateSceneState(rawTime) {
+    const t = clamp(rawTime, 0, 12);
+
+    // Dog center of mass (hip/chest midpoint on ground), yaw, pitch, head orientation, jaw, tail, paws
+    let cx = -2.25;
+    let cy = 0.25;
+    let cz = 0.08;
+    let yaw = 0.05; // 0 = facing +X (toward doghouse), PI/2 = facing -Z (toward camera)
+    let bodyPitch = 0; // positive = chest higher than hips
+    let bodyRoll = 0;
+
+    let headYawRel = 0;
+    let headPitchRel = 0.08;
+    let headCock = 0;
+    let jawOpen = 0;
+    let earPerk = 1.0;
+
+    // Key Positions:
+    // Start: x = -2.25, z = 0.08
+    // Takeoff bank (before puddle): x = -1.24, z = 0.13 (puddle left edge is ~ -1.08)
+    // Landing bank (after puddle): x = 0.56, z = 0.18 (puddle right edge is ~ +0.38)
+    // Doorway threshold: x = 1.50, z = 0.30
+    // Inside doghouse bone grab position (hips): x = 1.66, z = 0.35 (chest at ~2.0, head reaches bone at 2.16)
+    // Backed out position: x = 0.92, z = 0.14
+    // Final presentation position: x = 0.85, z = -0.02, facing camera (yaw = PI/2)
+
+    let gaitPhase = 0;
+    let gaitAmp = 0;
+    let inJump = false;
+    let jumpProgress = 0;
+    let jumpCrouch = 0;
+    let landCompress = 0;
+
+    if (t < 1.0) {
+      // 0 - 1.0s: Establish scene. Dog notices bone inside doghouse, perks up, shifts weight eagerly
+      const p = t / 1.0;
+      cx = -2.25 + smoothstep(0.5, 1.0, p) * 0.04;
+      cz = 0.08;
+      yaw = 0.05;
+      // Alert recognition at t=0.35s: slight excited crouch/play-bow micro-anticipation
+      const alertDip = Math.sin(smoothstep(0.15, 0.75, p) * Math.PI);
+      cy = 0.255 - alertDip * 0.022;
+      bodyPitch = -alertDip * 0.08 + smoothstep(0.7, 1.0, p) * 0.05;
+      headPitchRel = 0.06 + smoothstep(0.2, 0.6, p) * 0.12;
+      headYawRel = (1 - smoothstep(0.0, 0.45, p)) * 0.22; // turns gaze from camera straight into doghouse
+      headCock = Math.sin(smoothstep(0.2, 0.8, p) * Math.PI) * 0.12;
+      jawOpen = Math.sin(smoothstep(0.3, 0.65, p) * Math.PI) * 0.25; // tiny excited yap/pant
+    } else if (t < 1.58) {
+      // 1.0 - 1.58s: Approach run toward puddle (-2.21 to -1.24)
+      const p = (t - 1.0) / 0.58;
+      const easeP = smoothstep(0, 0.25, p) * 0.15 + 0.85 * p;
+      cx = lerp(-2.21, -1.24, easeP);
+      cz = lerp(0.08, 0.13, easeP);
+      yaw = 0.05;
+      gaitPhase = (t - 1.0) * 3.8 * Math.PI * 2;
+      gaitAmp = 1.0;
+      cy = 0.255 + Math.abs(Math.sin(gaitPhase * 0.5)) * 0.025;
+      bodyPitch = Math.sin(gaitPhase * 0.5) * 0.09;
+      headPitchRel = 0.08 - bodyPitch * 0.6;
+    } else if (t < 1.78) {
+      // 1.58 - 1.78s: Readable anticipation! Shorten final stride, lower body, load hind legs on near dry bank
+      const p = (t - 1.58) / 0.20;
+      jumpCrouch = Math.sin(p * Math.PI * 0.85);
+      cx = lerp(-1.24, -1.16, smoothstep(0, 1, p));
+      cz = 0.13;
+      yaw = 0.04;
+      cy = 0.255 - jumpCrouch * 0.068 + smoothstep(0.75, 1.0, p) * 0.045;
+      // Load hind legs then pitch chest up for takeoff
+      bodyPitch = lerp(-0.14, 0.34, smootherstep(0.2, 1.0, p));
+      headPitchRel = 0.18;
+      earPerk = 0.85;
+    } else if (t < 2.34) {
+      // 1.78 - 2.34s: Ballistic leap across the puddle! All 4 paws off ground, clearing [-1.08, +0.38]
+      inJump = true;
+      jumpProgress = (t - 1.78) / 0.56;
+      const p = jumpProgress;
+      cx = lerp(-1.16, 0.56, p);
+      cz = lerp(0.13, 0.18, p);
+      yaw = 0.04;
+      // Parabolic arc for center of mass
+      const arc = 4 * p * (1 - p);
+      cy = lerp(0.27, 0.25, p) + arc * 0.36;
+      // Body pitches up on ascent, levels at apex, pitches nose-down for forepaw landing
+      bodyPitch = lerp(0.42, -0.36, smoothstep(0.08, 0.92, p));
+      headPitchRel = lerp(0.16, 0.22, p); // looking at landing spot
+      jawOpen = 0.12;
+      earPerk = 0.72; // ears swept back slightly in flight
+    } else if (t < 2.55) {
+      // 2.34 - 2.55s: Weight-bearing landing on dry ground (x = 0.56 to 0.82), joints compress to absorb impact
+      const p = (t - 2.34) / 0.21;
+      landCompress = Math.sin(p * Math.PI);
+      cx = lerp(0.56, 0.82, p);
+      cz = lerp(0.18, 0.22, p);
+      yaw = 0.06;
+      cy = 0.25 - landCompress * 0.062;
+      bodyPitch = lerp(-0.28, 0.06, smootherstep(0, 1, p));
+      headPitchRel = 0.1 + landCompress * 0.12;
+    } else if (t < 3.0) {
+      // 2.55 - 3.0s: Resume supported forward running gait toward doorway
+      const p = (t - 2.55) / 0.45;
+      cx = lerp(0.82, 1.28, p);
+      cz = lerp(0.22, 0.29, p);
+      yaw = 0.09;
+      gaitPhase = (t - 2.55) * 3.4 * Math.PI * 2;
+      gaitAmp = 0.85;
+      cy = 0.255 + Math.abs(Math.sin(gaitPhase * 0.5)) * 0.02;
+      bodyPitch = Math.sin(gaitPhase * 0.5) * 0.07;
+      headPitchRel = 0.05;
+    } else if (t < 4.5) {
+      // 3.0 - 4.5s: Enter through doorway (head and forequarters first, rear and curled tail remain visible)
+      const p = (t - 3.0) / 1.5;
+      const moveP = smootherstep(0.0, 0.92, p);
+      cx = lerp(1.28, 1.66, moveP);
+      cz = lerp(0.29, 0.35, moveP);
+      yaw = lerp(0.09, 0.04, moveP);
+      // Careful stepping gait into house, lowering head slightly under lintel
+      gaitPhase = (t - 3.0) * 2.1 * Math.PI * 2;
+      gaitAmp = (1 - smoothstep(0.75, 0.95, p)) * 0.55;
+      cy = 0.248 - smoothstep(0.3, 0.85, p) * 0.015;
+      bodyPitch = -smoothstep(0.25, 0.9, p) * 0.08;
+      headPitchRel = lerp(0.05, -0.22, smoothstep(0.3, 1.0, p));
+    } else if (t < 6.0) {
+      // 4.5 - 6.0s: Inside doorway: lowers head, opens mouth, grips bone at t=5.25s, lifts it
+      const p = (t - 4.5) / 1.5;
+      cx = 1.66 + Math.sin(smoothstep(0.1, 0.85, p) * Math.PI) * 0.045;
+      cz = 0.35;
+      yaw = 0.04;
+      // Forequarters dip down so muzzle reaches floor bone
+      const reachCurve = Math.sin(smootherstep(0.05, 0.92, p) * Math.PI);
+      cy = 0.233 - reachCurve * 0.042;
+      bodyPitch = -0.08 - reachCurve * 0.27;
+      headPitchRel = -0.22 - reachCurve * 0.34;
+      // Mouth opens wide before grab (t=4.7..5.25), then clamps onto bone (jawOpen = 0.24)
+      if (t < 5.25) {
+        jawOpen = smoothstep(4.65, 5.05, t) * 0.78;
+      } else {
+        jawOpen = lerp(0.78, 0.24, smoothstep(5.25, 5.45, t));
+      }
+    } else if (t < 8.0) {
+      // 6.0 - 8.0s: Backs out through doorway with bone held rigidly in jaws, paws stepping in reverse
+      const p = (t - 6.0) / 2.0;
+      const moveP = smootherstep(0.04, 0.96, p);
+      cx = lerp(1.66, 0.90, moveP);
+      cz = lerp(0.35, 0.14, moveP);
+      yaw = lerp(0.04, 0.14, moveP);
+      // Reverse stepping phase
+      gaitPhase = -(t - 6.0) * 2.2 * Math.PI * 2;
+      gaitAmp = Math.sin(smoothstep(0, 0.15, p) * (1 - smoothstep(0.85, 1.0, p)) * Math.PI * 0.5) * 0.65;
+      cy = 0.245 + Math.abs(Math.sin(gaitPhase * 0.5)) * 0.012;
+      bodyPitch = 0.05 + Math.sin(gaitPhase * 0.5) * 0.03;
+      headPitchRel = 0.12; // holding bone up proudly
+      jawOpen = 0.24;
+    } else if (t < 10.0) {
+      // 8.0 - 10.0s: Turns smoothly to face viewer, stepping/pivoting paws and rotating body, head, ears, tail
+      const p = (t - 8.0) / 2.0;
+      const turnP = smootherstep(0.05, 0.95, p);
+      cx = lerp(0.90, 0.84, turnP);
+      cz = lerp(0.14, -0.02, turnP);
+      // Yaw rotates from 0.14 (facing doghouse) to PI/2 (facing camera)
+      yaw = lerp(0.14, Math.PI * 0.5, turnP);
+      gaitPhase = (t - 8.0) * 2.4 * Math.PI * 2;
+      gaitAmp = Math.sin(p * Math.PI) * 0.52;
+      cy = 0.252 + Math.abs(Math.sin(gaitPhase * 0.5)) * 0.014;
+      bodyPitch = lerp(0.05, 0.09, turnP);
+      bodyRoll = Math.sin(p * Math.PI) * 0.05;
+      // Head leads the turn slightly
+      const headLead = Math.sin(p * Math.PI) * 0.22;
+      headYawRel = headLead;
+      headPitchRel = lerp(0.12, 0.16, turnP);
+      jawOpen = 0.24;
+    } else {
+      // 10.0 - 12.0s: Clear front-facing presentation looking at camera with bone visible, subtle breathing & tail wag
+      const breath = Math.sin((t - 10.0) * 3.2) * 0.005;
+      cx = 0.84;
+      cz = -0.02;
+      cy = 0.254 + breath;
+      yaw = Math.PI * 0.5;
+      bodyPitch = 0.10 + breath * 0.4;
+      headYawRel = Math.sin((t - 10.0) * 1.5) * 0.03;
+      headPitchRel = 0.17;
+      headCock = Math.sin((t - 10.0) * 1.8) * 0.045;
+      jawOpen = 0.24;
+    }
+
+    // Compute Spine / Body Landmarks from Center of Mass (cx, cy, cz), yaw, and bodyPitch
+    const dirX = Math.cos(yaw);
+    const dirZ = -Math.sin(yaw);
+    const rightX = Math.sin(yaw);
+    const rightZ = Math.cos(yaw);
+
+    const halfBody = 0.175; // compact Pomeranian torso length
+    const pitchSin = Math.sin(bodyPitch);
+    const pitchCos = Math.cos(bodyPitch);
+
+    const chest = {
+      x: cx + dirX * halfBody * pitchCos,
+      y: cy + halfBody * pitchSin + 0.015,
+      z: cz + dirZ * halfBody * pitchCos
+    };
+    const hips = {
+      x: cx - dirX * halfBody * pitchCos,
+      y: cy - halfBody * pitchSin,
+      z: cz - dirZ * halfBody * pitchCos
+    };
+    const belly = {
+      x: (chest.x + hips.x) * 0.5,
+      y: (chest.y + hips.y) * 0.5 - 0.015,
+      z: (chest.z + hips.z) * 0.5
+    };
+
+    // Head and Muzzle kinematics
+    const headYaw = yaw + headYawRel;
+    const headPitch = bodyPitch * 0.45 + headPitchRel;
+    const hDirX = Math.cos(headYaw);
+    const hDirZ = -Math.sin(headYaw);
+    const hRightX = Math.sin(headYaw);
+    const hRightZ = Math.cos(headYaw);
+
+    const neck = {
+      x: chest.x + dirX * 0.055,
+      y: chest.y + 0.085,
+      z: chest.z + dirZ * 0.055
+    };
+    const head = {
+      x: neck.x + hDirX * 0.05,
+      y: neck.y + 0.065 + Math.sin(headPitch) * 0.03,
+      z: neck.z + hDirZ * 0.05
+    };
+    // Short pointed muzzle (fox-faced miniature Pomeranian)
+    const muzzleLen = 0.095;
+    const muzzle = {
+      x: head.x + hDirX * Math.cos(headPitch) * muzzleLen,
+      y: head.y - 0.015 + Math.sin(headPitch) * muzzleLen,
+      z: head.z + hDirZ * Math.cos(headPitch) * muzzleLen
+    };
+    const lowerJaw = {
+      x: head.x + hDirX * Math.cos(headPitch - 0.35 * jawOpen) * (muzzleLen * 0.92),
+      y: head.y - 0.032 + Math.sin(headPitch - 0.45 * jawOpen) * (muzzleLen * 0.92) - jawOpen * 0.028,
+      z: head.z + hDirZ * Math.cos(headPitch - 0.35 * jawOpen) * (muzzleLen * 0.92)
+    };
+    const jawGripPoint = {
+      x: (muzzle.x + lowerJaw.x) * 0.5 + hDirX * 0.018,
+      y: (muzzle.y + lowerJaw.y) * 0.5 - 0.004,
+      z: (muzzle.z + lowerJaw.z) * 0.5 + hDirZ * 0.018
+    };
+
+    // Bone state (resting inside doghouse until t=5.25s, then gripped rigidly in jaws)
+    const boneRestPos = { x: 2.13, y: 0.036, z: 0.36 };
+    let bone;
+    if (t < 5.25) {
+      bone = {
+        x: boneRestPos.x,
+        y: boneRestPos.y,
+        z: boneRestPos.z,
+        axisX: Math.sin(0.18),
+        axisY: 0.0,
+        axisZ: Math.cos(0.18),
+        gripped: false
+      };
+    } else {
+      // Smoothly locks into jaw grip right at grab moment
+      const lockP = smoothstep(5.25, 5.38, t);
+      bone = {
+        x: lerp(boneRestPos.x, jawGripPoint.x, lockP),
+        y: lerp(boneRestPos.y, jawGripPoint.y, lockP),
+        z: lerp(boneRestPos.z, jawGripPoint.z, lockP),
+        axisX: hRightX,
+        axisY: Math.sin(headCock) * 0.25,
+        axisZ: hRightZ,
+        gripped: true
+      };
+    }
+
+    // Compute Four Articulated Legs and Paws
+    const shoulderSpread = 0.088;
+    const hipSpread = 0.085;
+
+    const shoulders = {
+      FL: { x: chest.x - rightX * shoulderSpread, y: chest.y - 0.025, z: chest.z - rightZ * shoulderSpread },
+      FR: { x: chest.x + rightX * shoulderSpread, y: chest.y - 0.025, z: chest.z + rightZ * shoulderSpread },
+      BL: { x: hips.x - rightX * hipSpread, y: hips.y - 0.02, z: hips.z - rightZ * hipSpread },
+      BR: { x: hips.x + rightX * hipSpread, y: hips.y - 0.02, z: hips.z + rightZ * hipSpread }
+    };
+
+    // Phase offsets for natural rotary gallop / trot transitions
+    const phaseOffsets = { FL: 0.0, FR: 2.6, BL: 3.4, BR: 0.8 };
+    const paws = {};
+    const joints = {};
+
+    for (const legKey of ["FL", "FR", "BL", "BR"]) {
+      const isFront = legKey[0] === "F";
+      const isRight = legKey[1] === "R";
+      const sideSign = isRight ? 1 : -1;
+      const spread = isFront ? shoulderSpread : hipSpread;
+      const homeOffsetAlong = isFront ? halfBody + 0.02 : -halfBody - 0.015;
+
+      let px, py, pz;
+
+      if (inJump) {
+        // Coherent leg tuck and extension over the puddle!
+        const p = jumpProgress;
+        if (isFront) {
+          // Forelegs tuck under chest early/mid jump, then extend forward to catch landing
+          const reach = lerp(-0.08, 0.22, smoothstep(0.35, 0.95, p));
+          const tuck = Math.sin(smoothstep(0.0, 0.78, p) * Math.PI) * 0.11;
+          px = shoulders[legKey].x + dirX * reach;
+          pz = shoulders[legKey].z + dirZ * reach;
+          py = Math.max(0.02, shoulders[legKey].y - 0.20 + tuck);
+        } else {
+          // Hind legs push off strongly at start, trail extended, then tuck in late flight
+          const pushTrail = lerp(-0.22, 0.06, smoothstep(0.15, 0.95, p));
+          const tuck = Math.sin(smoothstep(0.25, 0.95, p) * Math.PI) * 0.10;
+          px = shoulders[legKey].x + dirX * pushTrail;
+          pz = shoulders[legKey].z + dirZ * pushTrail;
+          py = Math.max(0.02, shoulders[legKey].y - 0.20 + tuck);
+        }
+        // Slight offset between left and right paws for dynamic 3D readability
+        px += dirX * (isRight ? 0.025 : -0.02);
+        py += isRight ? 0.012 : 0;
+      } else if (t >= 1.55 && t < 1.78) {
+        // Takeoff bank stance: paws planted firmly on near dry bank (x < -1.06)
+        const baseHomeX = cx + dirX * homeOffsetAlong + rightX * sideSign * spread;
+        const baseHomeZ = cz + dirZ * homeOffsetAlong + rightZ * sideSign * spread;
+        px = isFront ? Math.min(-1.07, baseHomeX - 0.03) : baseHomeX - 0.04;
+        pz = baseHomeZ;
+        py = 0.018;
+      } else if (t >= 2.34 && t < 2.55) {
+        // Landing bank stance: forepaws touch down first on dry bank (x > 0.44), hind paws land shortly after
+        const p = (t - 2.34) / 0.21;
+        if (isFront) {
+          px = lerp(0.72, 0.88, smoothstep(0.4, 1.0, p)) + (isRight ? 0.02 : -0.02);
+          pz = cz + rightZ * sideSign * spread;
+          py = 0.018;
+        } else {
+          const hindTouch = smoothstep(0.0, 0.38, p);
+          px = lerp(0.44, 0.56, hindTouch) + (isRight ? 0.02 : -0.02);
+          pz = cz + rightZ * sideSign * spread;
+          py = lerp(0.075, 0.018, hindTouch);
+        }
+      } else {
+        // Grounded locomotion (running, stepping into house, backing out, turning, or standing)
+        const ph = gaitPhase + phaseOffsets[legKey];
+        const stride = Math.sin(ph) * 0.135 * gaitAmp;
+        const lift = Math.max(0, Math.cos(ph)) * 0.085 * gaitAmp;
+
+        // Subtle weight shift during bone grab inside house
+        let grabShift = 0;
+        if (t >= 4.5 && t < 6.0 && isFront) {
+          grabShift = isRight ? 0.03 : -0.015;
+        }
+
+        px = cx + dirX * (homeOffsetAlong + stride + grabShift) + rightX * sideSign * spread;
+        pz = cz + dirZ * (homeOffsetAlong + stride + grabShift) + rightZ * sideSign * spread;
+        py = 0.018 + lift;
+      }
+
+      paws[legKey] = { x: px, y: py, z: pz };
+
+      // Solve knee/elbow joint via 3D IK
+      // Front legs bend backward at elbow; hind legs bend forward at stifle/hock visual mid-joint
+      const bendSign = isFront ? -1 : 0.7;
+      const bendDir = {
+        x: dirX * bendSign + rightX * sideSign * 0.18,
+        y: 0.25,
+        z: dirZ * bendSign + rightZ * sideSign * 0.18
+      };
+      joints[legKey] = solveLimbIK(shoulders[legKey], paws[legKey], 0.135, 0.135, bendDir);
+    }
+
+    // Curled Plumed Tail Kinematics (characteristic Pomeranian tail curved forward over the back)
+    const wagFreq = t >= 10.0 ? 5.5 : 8.0;
+    const wagAmp = t >= 10.0 ? 0.045 : 0.075;
+    const wag = Math.sin(t * wagFreq) * wagAmp;
+    const jumpTailLag = inJump ? -Math.sin(jumpProgress * Math.PI) * 0.06 : 0;
+
+    const tailBase = {
+      x: hips.x - dirX * 0.07,
+      y: hips.y + 0.065,
+      z: hips.z - dirZ * 0.07
+    };
+    const tailMid = {
+      x: tailBase.x - dirX * 0.04 + rightX * (wag * 0.5),
+      y: tailBase.y + 0.115 + jumpTailLag * 0.5,
+      z: tailBase.z - dirZ * 0.04 + rightZ * (wag * 0.5)
+    };
+    const tailTip = {
+      x: tailBase.x + dirX * (0.065 + jumpTailLag) + rightX * wag,
+      y: tailBase.y + 0.145 + jumpTailLag,
+      z: tailBase.z + dirZ * (0.065 + jumpTailLag) + rightZ * wag
+    };
+
+    return {
+      t,
+      cx, cy, cz,
+      yaw, bodyPitch, bodyRoll,
+      dirX, dirZ, rightX, rightZ,
+      hDirX, hDirZ, hRightX, hRightZ,
+      headYaw, headPitch, headCock, jawOpen, earPerk,
+      chest, belly, hips, neck, head, muzzle, lowerJaw,
+      shoulders, joints, paws,
+      tailBase, tailMid, tailTip,
+      bone,
+      inJump, jumpProgress
+    };
+  }
+
+  // Draw Sky, Distant Trees, Backyard Fence, Lawn, Stone Path, and Shadowed Ground
+  function drawEnvironment(state) {
+    // 1. Sky gradient (warm golden-hour afternoon)
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, H * 0.45);
+    skyGrad.addColorStop(0, "#76a8d4");
+    skyGrad.addColorStop(0.55, "#abd0e6");
+    skyGrad.addColorStop(1, "#dfeccf");
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, W, H * 0.45);
+
+    // Soft distant sunlit clouds
+    ctx.fillStyle = "rgba(255, 252, 242, 0.45)";
+    const cloudPositions = [[180, 62, 95, 22], [240, 55, 70, 26], [640, 48, 120, 24], [730, 56, 85, 20]];
+    for (const [cx, cy, rx, ry] of cloudPositions) {
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 2. Distant garden bushes above fence
+    const bushData = [
+      [-4.2, 1.35, 3.6, 0.75, "#3a5c32"],
+      [-3.1, 1.48, 3.6, 0.90, "#476e3b"],
+      [-1.8, 1.32, 3.6, 0.72, "#35562e"],
+      [-0.4, 1.52, 3.6, 0.95, "#4c743e"],
+      [1.1, 1.40, 3.6, 0.85, "#3c6134"],
+      [2.8, 1.55, 3.6, 1.05, "#456b3a"],
+      [4.2, 1.38, 3.6, 0.80, "#34542d"]
+    ];
+    for (const [bx, by, bz, br, col] of bushData) {
+      const p = project(bx, by, bz);
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, br * p.s, 0, Math.PI * 2);
+      ctx.fill();
+      // Warm sun rim on top-left of bush
+      ctx.fillStyle = "rgba(205, 230, 145, 0.18)";
+      ctx.beginPath();
+      ctx.arc(p.x - br * p.s * 0.2, p.y - br * p.s * 0.2, br * p.s * 0.78, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 3. Wooden backyard fence at Z = 3.2
+    const fenceZ = 3.2;
+    const numPlanks = 38;
+    for (let i = 0; i < numPlanks; i++) {
+      const x0 = -5.2 + i * 0.28;
+      const x1 = x0 + 0.265;
+      const hTop = 1.28 + (hash(i * 7) - 0.5) * 0.03;
+      const pBL = project(x0, 0, fenceZ);
+      const pBR = project(x1, 0, fenceZ);
+      const pTR = project(x1, hTop, fenceZ);
+      const pTL = project(x0, hTop, fenceZ);
+
+      const woodLum = 52 + (hash(i * 13) - 0.5) * 8;
+      ctx.fillStyle = `hsl(28, 32%, ${woodLum}%)`;
+      ctx.beginPath();
+      ctx.moveTo(pBL.x, pBL.y);
+      ctx.lineTo(pBR.x, pBR.y);
+      ctx.lineTo(pTR.x, pTR.y);
+      ctx.lineTo(pTL.x, pTL.y);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = "rgba(45, 28, 15, 0.35)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    // Horizontal fence rails
+    for (const railY of [0.35, 0.98]) {
+      const rL = project(-5.2, railY, fenceZ - 0.02);
+      const rR = project(5.4, railY, fenceZ - 0.02);
+      ctx.strokeStyle = "#6c4e35";
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(rL.x, rL.y);
+      ctx.lineTo(rR.x, rR.y);
+      ctx.stroke();
+    }
+
+    // 4. Backyard Lawn Base
+    const horizonY = project(0, 0, 3.2).y;
+    const lawnGrad = ctx.createLinearGradient(0, horizonY, 0, H);
+    lawnGrad.addColorStop(0, "#4f7738");
+    lawnGrad.addColorStop(0.35, "#5d8a41");
+    lawnGrad.addColorStop(0.75, "#4b7434");
+    lawnGrad.addColorStop(1, "#395c26");
+    ctx.fillStyle = lawnGrad;
+    ctx.fillRect(0, horizonY - 2, W, H - horizonY + 4);
+
+    // Subtle sunlit lawn stripes / variation
+    for (let zBand = -1.4; zBand < 2.9; zBand += 0.35) {
+      const p1 = project(-5, 0, zBand);
+      const p2 = project(5, 0, zBand + 0.16);
+      ctx.fillStyle = "rgba(185, 220, 110, 0.07)";
+      ctx.fillRect(0, p2.y, W, Math.max(2, p1.y - p2.y));
+    }
+
+    // 5. Earthen / gravel path leading from left approach across puddle to doghouse doorway
+    ctx.save();
+    ctx.beginPath();
+    const pathPointsTop = [
+      [-3.4, -0.35], [-1.6, -0.25], [-0.35, -0.32], [0.85, -0.24], [2.25, -0.15]
+    ];
+    const pathPointsBot = [
+      [2.25, 0.85], [0.85, 0.68], [-0.35, 0.65], [-1.6, 0.48], [-3.4, 0.45]
+    ];
+    pathPointsTop.forEach(([px, pz], idx) => {
+      const pt = project(px, 0.001, pz);
+      if (idx === 0) ctx.moveTo(pt.x, pt.y);
+      else ctx.lineTo(pt.x, pt.y);
+    });
+    pathPointsBot.forEach(([px, pz]) => {
+      const pt = project(px, 0.001, pz);
+      ctx.lineTo(pt.x, pt.y);
+    });
+    ctx.closePath();
+    const pathGrad = ctx.createLinearGradient(120, 320, 780, 380);
+    pathGrad.addColorStop(0, "rgba(138, 118, 92, 0.55)");
+    pathGrad.addColorStop(0.5, "rgba(126, 106, 82, 0.72)");
+    pathGrad.addColorStop(1, "rgba(118, 98, 74, 0.80)");
+    ctx.fillStyle = pathGrad;
+    ctx.fill();
+    ctx.restore();
+
+    // Stepping stones on dry ground (clearly marking dry takeoff & landing zones and path)
+    const steppingStones = [
+      { x: -2.25, z: 0.08, rx: 0.28, rz: 0.16 },
+      { x: -1.32, z: 0.12, rx: 0.24, rz: 0.15 }, // dry takeoff stone
+      { x: 0.66, z: 0.18, rx: 0.25, rz: 0.15 },  // dry landing stone
+      { x: 1.24, z: 0.28, rx: 0.24, rz: 0.14 }   // threshold stone
+    ];
+    for (const st of steppingStones) {
+      const p = project(st.x, 0.002, st.z);
+      ctx.fillStyle = "#9e988e";
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, st.rx * p.s, st.rz * p.s * 0.44, 0.04, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(65, 58, 48, 0.45)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
+    // 6. Draw Puddle with Real Water Reflection of the Dog and Environment!
+    drawPuddleAndReflection(state);
+
+    // 7. Draw Pebbles and Background/Midground Grass Blades
+    for (const peb of pebbles) {
+      const p = project(peb.x, 0.004, peb.z);
+      const r = Math.max(1.2, peb.r * p.s);
+      ctx.fillStyle = peb.col;
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, r, r * peb.aspect * 0.55, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    for (const g of grassClusters) {
+      if (g.z < -0.35) continue; // draw foreground grass later for depth
+      drawGrassCluster(g);
+    }
+  }
+
+  function drawGrassCluster(g) {
+    const p = project(g.x, 0, g.z);
+    const h = g.h * p.s;
+    const lean = g.lean * p.s;
+    ctx.strokeStyle = `hsl(${g.hue}, 46%, ${g.light}%)`;
+    ctx.lineWidth = Math.max(1.1, p.s * 0.008);
+    ctx.beginPath();
+    for (let b = 0; b < g.blades; b++) {
+      const spread = (b - 1) * p.s * 0.014;
+      ctx.moveTo(p.x + spread * 0.3, p.y);
+      ctx.quadraticCurveTo(p.x + spread * 0.7 + lean * 0.5, p.y - h * 0.6, p.x + spread + lean, p.y - h);
+    }
+    ctx.stroke();
+  }
+
+  // Shallow Puddle and Masked Inverted Reflection of the Actual Dog
+  function drawPuddleAndReflection(state) {
+    const outerMudPts = getPuddlePolygon(1.13);
+    const waterPts = getPuddlePolygon(1.0);
+
+    // Damp dark mud bank around puddle
+    ctx.save();
+    ctx.beginPath();
+    outerMudPts.forEach((pt, idx) => {
+      if (idx === 0) ctx.moveTo(pt.x, pt.y);
+      else ctx.lineTo(pt.x, pt.y);
+    });
+    ctx.closePath();
+    ctx.fillStyle = "#4d3e2e";
+    ctx.fill();
+    ctx.restore();
+
+    // Clip to water surface boundary
+    ctx.save();
+    ctx.beginPath();
+    waterPts.forEach((pt, idx) => {
+      if (idx === 0) ctx.moveTo(pt.x, pt.y);
+      else ctx.lineTo(pt.x, pt.y);
+    });
+    ctx.closePath();
+    ctx.clip();
+
+    // Base shallow water gradient (reflecting sky + muddy bottom)
+    const pTop = project(PUDDLE.cx, 0, PUDDLE.cz + PUDDLE.rz);
+    const pBot = project(PUDDLE.cx, 0, PUDDLE.cz - PUDDLE.rz);
+    const waterGrad = ctx.createLinearGradient(0, pTop.y, 0, pBot.y);
+    waterGrad.addColorStop(0, "#4c6d7a");
+    waterGrad.addColorStop(0.5, "#5c8496");
+    waterGrad.addColorStop(1, "#466370");
+    ctx.fillStyle = waterGrad;
+    ctx.fillRect(0, pTop.y - 20, W, pBot.y - pTop.y + 40);
+
+    // Reflected clouds and fence hint in water
+    ctx.fillStyle = "rgba(215, 235, 245, 0.18)";
+    ctx.beginPath();
+    ctx.ellipse(pTop.x - 35, (pTop.y + pBot.y) * 0.5, 65, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Reflected Doghouse edge in far right of puddle
+    const dhRef1 = project(1.5, -0.1, 0.35);
+    const dhRef2 = project(1.5, -0.9, 0.35);
+    ctx.fillStyle = "rgba(120, 75, 45, 0.25)";
+    ctx.fillRect(dhRef1.x - 10, dhRef1.y, 60, dhRef2.y - dhRef1.y);
+
+    // Render Reflection of the ACTUAL Dog (mirrored across Y = 0 water plane)
+    // Only visible inside the clipped water polygon!
+    ctx.save();
+    ctx.globalAlpha = 0.62;
+    drawPomeranian(state, true);
+    ctx.restore();
+
+    // Subtle water surface Fresnel sheen and shoreline meniscus highlight
+    const sheenGrad = ctx.createLinearGradient(0, pTop.y, 0, pBot.y);
+    sheenGrad.addColorStop(0, "rgba(180, 220, 245, 0.10)");
+    sheenGrad.addColorStop(0.5, "rgba(255, 255, 255, 0.22)");
+    sheenGrad.addColorStop(1, "rgba(140, 190, 220, 0.14)");
+    ctx.fillStyle = sheenGrad;
+    ctx.fillRect(0, pTop.y - 10, W, pBot.y - pTop.y + 20);
+
+    // Subtle horizontal water specular streaks
+    ctx.strokeStyle = "rgba(235, 248, 255, 0.28)";
+    ctx.lineWidth = 1.2;
+    for (let i = 0; i < 6; i++) {
+      const sy = lerp(pTop.y + 6, pBot.y - 6, (i + 0.5) / 6);
+      const sx = pTop.x + (hash(i * 19) - 0.5) * 90;
+      const sw = 22 + hash(i * 23) * 35;
+      ctx.beginPath();
+      ctx.moveTo(sx - sw, sy);
+      ctx.lineTo(sx + sw, sy);
+      ctx.stroke();
+    }
+
+    ctx.restore(); // End water clip
+
+    // Crisp wet shoreline rim
+    ctx.save();
+    ctx.beginPath();
+    waterPts.forEach((pt, idx) => {
+      if (idx === 0) ctx.moveTo(pt.x, pt.y);
+      else ctx.lineTo(pt.x, pt.y);
+    });
+    ctx.closePath();
+    ctx.strokeStyle = "rgba(38, 30, 22, 0.65)";
+    ctx.lineWidth = 2.0;
+    ctx.stroke();
+
+    // Specular water edge highlight on sunlit rim
+    ctx.strokeStyle = "rgba(220, 240, 255, 0.35)";
+    ctx.lineWidth = 1.0;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Helper to fill a 3D quad with a color or gradient
+  function fillQuad3D(p0, p1, p2, p3, fillStyle, strokeStyle = null, lineWidth = 1) {
+    ctx.beginPath();
+    ctx.moveTo(p0.x, p0.y);
+    ctx.lineTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.lineTo(p3.x, p3.y);
+    ctx.closePath();
+    ctx.fillStyle = fillStyle;
+    ctx.fill();
+    if (strokeStyle) {
+      ctx.strokeStyle = strokeStyle;
+      ctx.lineWidth = lineWidth;
+      ctx.stroke();
+    }
+  }
+
+  // Doghouse Geometry Constants (angled in readable 3/4 view so doorway & interior bone are clearly visible)
+  // We place the doghouse on the right side of the yard, rotated slightly toward the camera
+  const DH = {
+    cx: 2.12,
+    cz: 0.36,
+    yaw: 0.24, // angled toward viewer so left/entry face is clearly visible
+    halfL: 0.62, // depth along house axis
+    halfW: 0.54, // width across doorway face
+    wallH: 0.78,
+    peakH: 1.18,
+    doorHalfW: 0.27,
+    doorArchY: 0.44,
+    doorTopY: 0.60
+  };
+
+  function dhPoint(lx, ly, lz) {
+    // lx: -halfL is front (doorway face), +halfL is back wall
+    // lz: -halfW is near/camera-side corner, +halfW is far corner
+    const cosY = Math.cos(DH.yaw);
+    const sinY = Math.sin(DH.yaw);
+    const wx = DH.cx + lx * cosY - lz * sinY;
+    const wz = DH.cz + lx * sinY + lz * cosY;
+    return project(wx, ly, wz);
+  }
+
+  // Layer 1 of Doghouse: Cast shadow, interior floor, far (+lz) inner wall, back (+lx) inner wall
+  // Drawn BEFORE the dog and bone so the dog stands inside the house naturally
+  function drawDoghouseInterior() {
+    const L = DH.halfL;
+    const Wd = DH.halfW;
+    const Hw = DH.wallH;
+    const Hp = DH.peakH;
+
+    // Ground cast shadow of doghouse
+    const sh0 = dhPoint(-L - 0.08, 0.002, -Wd - 0.12);
+    const sh1 = dhPoint(L + 0.25, 0.002, -Wd - 0.15);
+    const sh2 = dhPoint(L + 0.35, 0.002, Wd + 0.25);
+    const sh3 = dhPoint(-L - 0.05, 0.002, Wd + 0.15);
+    fillQuad3D(sh0, sh1, sh2, sh3, "rgba(18, 26, 14, 0.45)");
+
+    // Wooden floor base thickness
+    const f0 = dhPoint(-L, 0, -Wd);
+    const f1 = dhPoint(L, 0, -Wd);
+    const f2 = dhPoint(L, 0, Wd);
+    const f3 = dhPoint(-L, 0, Wd);
+
+    // Interior floor surface (warm dark wood planks, lit slightly near threshold so bone is clearly readable!)
+    const fl0 = dhPoint(-L, 0.02, -Wd);
+    const fl1 = dhPoint(L, 0.02, -Wd);
+    const fl2 = dhPoint(L, 0.02, Wd);
+    const fl3 = dhPoint(-L, 0.02, Wd);
+
+    const floorGrad = ctx.createLinearGradient(fl0.x, fl0.y, fl2.x, fl2.y);
+    floorGrad.addColorStop(0, "#5e4028");
+    floorGrad.addColorStop(0.55, "#3a2516");
+    floorGrad.addColorStop(1, "#22150c");
+    fillQuad3D(fl0, fl1, fl2, fl3, floorGrad, "#2a1a0e", 1.5);
+
+    // Floor plank lines inside doghouse
+    ctx.strokeStyle = "rgba(20, 10, 4, 0.45)";
+    ctx.lineWidth = 1;
+    for (let z = -Wd + 0.18; z < Wd; z += 0.18) {
+      const pA = dhPoint(-L, 0.021, z);
+      const pB = dhPoint(L, 0.021, z);
+      ctx.beginPath();
+      ctx.moveTo(pA.x, pA.y);
+      ctx.lineTo(pB.x, pB.y);
+      ctx.stroke();
+    }
+
+    // Far side interior wall (lz = +Wd)
+    const fw0 = dhPoint(-L, 0.02, Wd);
+    const fw1 = dhPoint(L, 0.02, Wd);
+    const fw2 = dhPoint(L, Hw, Wd);
+    const fw3 = dhPoint(-L, Hw, Wd);
+    fillQuad3D(fw0, fw1, fw2, fw3, "#25170e", "#1a0f08", 1);
+
+    // Back interior wall (lx = +L)
+    const bw0 = dhPoint(L, 0.02, -Wd);
+    const bw1 = dhPoint(L, 0.02, Wd);
+    const bw2 = dhPoint(L, Hw, Wd);
+    const bw3 = dhPoint(L, Hw, -Wd);
+    const bwPeak = dhPoint(L, Hp, 0);
+    ctx.beginPath();
+    ctx.moveTo(bw0.x, bw0.y);
+    ctx.lineTo(bw1.x, bw1.y);
+    ctx.lineTo(bw2.x, bw2.y);
+    ctx.lineTo(bwPeak.x, bwPeak.y);
+    ctx.lineTo(bw3.x, bw3.y);
+    ctx.closePath();
+    ctx.fillStyle = "#1d120a";
+    ctx.fill();
+
+    // Far roof interior underside
+    const rf0 = dhPoint(-L, Hw, Wd);
+    const rf1 = dhPoint(L, Hw, Wd);
+    const rf2 = dhPoint(L, Hp, 0);
+    const rf3 = dhPoint(-L, Hp, 0);
+    fillQuad3D(rf0, rf1, rf2, rf3, "#180e08");
+  }
+
+  // Layer 2 of Doghouse: Front doorway wall (with cutout arch), Near side wall, and Roof
+  // Drawn AFTER the dog/bone so the doorway and walls occlude the dog's forequarters accurately!
+  function drawDoghouseExterior() {
+    const L = DH.halfL;
+    const Wd = DH.halfW;
+    const Hw = DH.wallH;
+    const Hp = DH.peakH;
+    const dW = DH.doorHalfW;
+    const dArch = DH.doorArchY;
+    const dTop = DH.doorTopY;
+
+    // 1. Inner thickness of the doorway right/far jamb (visible because of 3/4 angle)
+    const jambDepth = 0.065;
+    const j0 = dhPoint(-L, 0.02, dW);
+    const j1 = dhPoint(-L + jambDepth, 0.02, dW);
+    const j2 = dhPoint(-L + jambDepth, dArch, dW);
+    const j3 = dhPoint(-L, dArch, dW);
+    fillQuad3D(j0, j1, j2, j3, "#5a3a22", "#3b2313", 1);
+
+    // Arch top inner thickness
+    const archSteps = 10;
+    for (let i = 0; i < archSteps; i++) {
+      const a0 = (i / archSteps) * Math.PI;
+      const a1 = ((i + 1) / archSteps) * Math.PI;
+      const z0 = Math.cos(a0) * dW;
+      const y0 = dArch + Math.sin(a0) * (dTop - dArch);
+      const z1 = Math.cos(a1) * dW;
+      const y1 = dArch + Math.sin(a1) * (dTop - dArch);
+      fillQuad3D(
+        dhPoint(-L, y0, z0),
+        dhPoint(-L + jambDepth, y0, z0),
+        dhPoint(-L + jambDepth, y1, z1),
+        dhPoint(-L, y1, z1),
+        "#472c18"
+      );
+    }
+
+    // 2. Near-side Exterior Wall (lz = -Wd)
+    const nw0 = dhPoint(-L, 0, -Wd);
+    const nw1 = dhPoint(L, 0, -Wd);
+    const nw2 = dhPoint(L, Hw, -Wd);
+    const nw3 = dhPoint(-L, Hw, -Wd);
+    const nearWallGrad = ctx.createLinearGradient(nw0.x, nw3.y, nw1.x, nw0.y);
+    nearWallGrad.addColorStop(0, "#9e663b");
+    nearWallGrad.addColorStop(1, "#7d4e2b");
+    fillQuad3D(nw0, nw1, nw2, nw3, nearWallGrad, "#4a2c16", 1.5);
+
+    // Horizontal siding clapboards on near side wall
+    ctx.strokeStyle = "rgba(55, 30, 12, 0.45)";
+    ctx.lineWidth = 1.2;
+    for (let y = 0.13; y < Hw; y += 0.13) {
+      const s0 = dhPoint(-L, y, -Wd);
+      const s1 = dhPoint(L, y, -Wd);
+      ctx.beginPath();
+      ctx.moveTo(s0.x, s0.y);
+      ctx.lineTo(s1.x, s1.y);
+      ctx.stroke();
+    }
+
+    // 3. Front Wall with Arched Doorway Cutout (lx = -L)
+    const fwBL = dhPoint(-L, 0, -Wd);
+    const fwBR = dhPoint(-L, 0, Wd);
+    const fwTR = dhPoint(-L, Hw, Wd);
+    const fwPeak = dhPoint(-L, Hp, 0);
+    const fwTL = dhPoint(-L, Hw, -Wd);
+
+    const dBotL = dhPoint(-L, 0.02, -dW);
+    const dBotR = dhPoint(-L, 0.02, dW);
+
+    ctx.save();
+    ctx.beginPath();
+    // Outer pentagon of front wall
+    ctx.moveTo(fwBL.x, fwBL.y);
+    ctx.lineTo(fwTL.x, fwTL.y);
+    ctx.lineTo(fwPeak.x, fwPeak.y);
+    ctx.lineTo(fwTR.x, fwTR.y);
+    ctx.lineTo(fwBR.x, fwBR.y);
+    // Cut out doorway arch (going from +dW to -dW)
+    ctx.lineTo(dBotR.x, dBotR.y);
+    for (let i = 0; i <= 16; i++) {
+      const a = (i / 16) * Math.PI;
+      const dz = Math.cos(a) * dW;
+      const dy = dArch + Math.sin(a) * (dTop - dArch);
+      const pt = dhPoint(-L, dy, dz);
+      ctx.lineTo(pt.x, pt.y);
+    }
+    ctx.lineTo(dBotL.x, dBotL.y);
+    ctx.closePath();
+
+    const frontGrad = ctx.createLinearGradient(fwTL.x, fwPeak.y, fwBR.x, fwBR.y);
+    frontGrad.addColorStop(0, "#c88752");
+    frontGrad.addColorStop(0.6, "#b57441");
+    frontGrad.addColorStop(1, "#9a5f32");
+    ctx.fillStyle = frontGrad;
+    ctx.fill();
+
+    // Clip to front wall to draw horizontal wood siding lines and corner trim
+    ctx.clip();
+    ctx.strokeStyle = "rgba(65, 36, 15, 0.42)";
+    ctx.lineWidth = 1.2;
+    for (let y = 0.13; y < Hp; y += 0.13) {
+      const pL = dhPoint(-L, y, -Wd - 0.1);
+      const pR = dhPoint(-L, y, Wd + 0.1);
+      ctx.beginPath();
+      ctx.moveTo(pL.x, pL.y);
+      ctx.lineTo(pR.x, pR.y);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Doorway frame trim & threshold sill
+    ctx.strokeStyle = "#5c361b";
+    ctx.lineWidth = 3.0;
+    ctx.beginPath();
+    ctx.moveTo(dBotR.x, dBotR.y);
+    for (let i = 0; i <= 16; i++) {
+      const a = (i / 16) * Math.PI;
+      const dz = Math.cos(a) * dW;
+      const dy = dArch + Math.sin(a) * (dTop - dArch);
+      const pt = dhPoint(-L, dy, dz);
+      ctx.lineTo(pt.x, pt.y);
+    }
+    ctx.lineTo(dBotL.x, dBotL.y);
+    ctx.stroke();
+
+    // Corner vertical wood trim posts
+    const trimW = 0.055;
+    fillQuad3D(
+      dhPoint(-L, 0, -Wd),
+      dhPoint(-L, 0, -Wd + trimW),
+      dhPoint(-L, Hw, -Wd + trimW),
+      dhPoint(-L, Hw, -Wd),
+      "#734524"
+    );
+    fillQuad3D(
+      dhPoint(-L, 0, Wd - trimW),
+      dhPoint(-L, 0, Wd),
+      dhPoint(-L, Hw, Wd),
+      dhPoint(-L, Hw, Wd - trimW),
+      "#693e20"
+    );
+
+    // 4. Sloped Overhanging Shingled Roof
+    const overhangL = L + 0.10;
+    const overhangW = Wd + 0.09;
+    const eaveY = Hw - 0.04;
+    const roofPeakY = Hp + 0.05;
+
+    // Far roof slope
+    const rf0 = dhPoint(-overhangL, roofPeakY, 0);
+    const rf1 = dhPoint(overhangL, roofPeakY, 0);
+    const rf2 = dhPoint(overhangL, eaveY, overhangW);
+    const rf3 = dhPoint(-overhangL, eaveY, overhangW);
+    fillQuad3D(rf0, rf1, rf2, rf3, "#5a2922", "#3b1813", 1.5);
+
+    // Near roof slope (facing camera & sun)
+    const rn0 = dhPoint(-overhangL, roofPeakY, 0);
+    const rn1 = dhPoint(overhangL, roofPeakY, 0);
+    const rn2 = dhPoint(overhangL, eaveY, -overhangW);
+    const rn3 = dhPoint(-overhangL, eaveY, -overhangW);
+    const roofGrad = ctx.createLinearGradient(rn0.x, rn0.y, rn3.x, rn3.y);
+    roofGrad.addColorStop(0, "#8f4236");
+    roofGrad.addColorStop(0.5, "#7a362b");
+    roofGrad.addColorStop(1, "#632a21");
+    fillQuad3D(rn0, rn1, rn2, rn3, roofGrad, "#3d1813", 1.5);
+
+    // Roof shingle course lines
+    ctx.strokeStyle = "rgba(40, 14, 10, 0.42)";
+    ctx.lineWidth = 1.2;
+    for (let s = 0.2; s < 1.0; s += 0.2) {
+      const y = lerp(roofPeakY, eaveY, s);
+      const z = lerp(0, -overhangW, s);
+      const pA = dhPoint(-overhangL, y, z);
+      const pB = dhPoint(overhangL, y, z);
+      ctx.beginPath();
+      ctx.moveTo(pA.x, pA.y);
+      ctx.lineTo(pB.x, pB.y);
+      ctx.stroke();
+    }
+
+    // Front gable fascia bargeboards
+    ctx.strokeStyle = "#e6d5b8";
+    ctx.lineWidth = 4.5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(rn3.x, rn3.y);
+    ctx.lineTo(rn0.x, rn0.y);
+    ctx.lineTo(rf3.x, rf3.y);
+    ctx.stroke();
+  }
+
+  // Draw the Single Bone (either resting inside doghouse or gripped in jaws)
+  function drawBone(bone, isReflection = false) {
+    const halfLen = 0.105;
+    const ySign = isReflection ? -1 : 1;
+
+    const endA = {
+      x: bone.x - bone.axisX * halfLen,
+      y: (bone.y - bone.axisY * halfLen) * ySign,
+      z: bone.z - bone.axisZ * halfLen
+    };
+    const endB = {
+      x: bone.x + bone.axisX * halfLen,
+      y: (bone.y + bone.axisY * halfLen) * ySign,
+      z: bone.z + bone.axisZ * halfLen
+    };
+    const mid = {
+      x: bone.x,
+      y: bone.y * ySign,
+      z: bone.z
+    };
+
+    const pA = project(endA.x, endA.y, endA.z);
+    const pB = project(endB.x, endB.y, endB.z);
+    const pM = project(mid.x, mid.y, mid.z);
+
+    // Ground contact shadow when resting on doghouse floor
+    if (!bone.gripped && !isReflection) {
+      ctx.fillStyle = "rgba(10, 5, 2, 0.55)";
+      ctx.beginPath();
+      ctx.ellipse(pM.x, pM.y + 4, 22, 6, 0.1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const s = pM.s;
+    const knobR = Math.max(3.2, 0.032 * s);
+    const shaftW = Math.max(4.5, 0.038 * s);
+
+    // Perpendicular vector on screen for double-knobs at each bone epiphysis
+    const dx = pB.x - pA.x;
+    const dy = pB.y - pA.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len;
+    const ny = dx / len;
+    const spread = knobR * 0.68;
+
+    // Shadow / underside outline for high contrast readability against both dark interior and orange fur
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "#6e5c44";
+    ctx.lineWidth = shaftW + 3.0;
+    ctx.beginPath();
+    ctx.moveTo(pA.x, pA.y);
+    ctx.lineTo(pB.x, pB.y);
+    ctx.stroke();
+
+    const knobs = [
+      { x: pA.x + nx * spread, y: pA.y + ny * spread },
+      { x: pA.x - nx * spread, y: pA.y - ny * spread },
+      { x: pB.x + nx * spread, y: pB.y + ny * spread },
+      { x: pB.x - nx * spread, y: pB.y - ny * spread }
+    ];
+
+    ctx.fillStyle = "#8a7558";
+    for (const k of knobs) {
+      ctx.beginPath();
+      ctx.arc(k.x, k.y + 1.5, knobR + 1.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Main ivory bone body
+    ctx.strokeStyle = "#f5ebd6";
+    ctx.lineWidth = shaftW;
+    ctx.beginPath();
+    ctx.moveTo(pA.x, pA.y);
+    ctx.lineTo(pB.x, pB.y);
+    ctx.stroke();
+
+    for (const k of knobs) {
+      const kGrad = ctx.createRadialGradient(k.x - knobR * 0.25, k.y - knobR * 0.25, 1, k.x, k.y, knobR);
+      kGrad.addColorStop(0, "#fffdf7");
+      kGrad.addColorStop(0.7, "#f2e5cb");
+      kGrad.addColorStop(1, "#cbb898");
+      ctx.fillStyle = kGrad;
+      ctx.beginPath();
+      ctx.arc(k.x, k.y, knobR, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Specular highlight along shaft
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = Math.max(1.5, shaftW * 0.35);
+    ctx.beginPath();
+    ctx.moveTo(pA.x, pA.y - 1.2);
+    ctx.lineTo(pB.x, pB.y - 1.2);
+    ctx.stroke();
+  }
+
+  // Draw Volumetric Fluffy Fur Cluster in 3D
+  function drawFluffyVolume(center, rx, ry, rz, palette, state, isReflection, fluffiness = 1.0) {
+    const ySign = isReflection ? -1 : 1;
+    const pC = project(center.x, center.y * ySign, center.z);
+    const s = pC.s;
+
+    // Base shaded core volume so there are never any gaps
+    const rScreenX = Math.max(2, rx * s);
+    const rScreenY = Math.max(2, ry * s);
+    const grad = ctx.createRadialGradient(
+      pC.x - rScreenX * 0.25,
+      pC.y - rScreenY * (isReflection ? -0.25 : 0.28),
+      rScreenX * 0.1,
+      pC.x,
+      pC.y,
+      Math.max(rScreenX, rScreenY) * 1.08
+    );
+    grad.addColorStop(0, palette.light);
+    grad.addColorStop(0.62, palette.mid);
+    grad.addColorStop(1, palette.dark);
+
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.ellipse(pC.x, pC.y, rScreenX * 0.96, rScreenY * 0.96, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Directional layered fur locks over the 3D ellipsoid surface
+    const cosY = state.dirX;
+    const sinY = -state.dirZ;
+    const step = isReflection ? 3 : 1;
+    const furLenBase = 0.036 * fluffiness * s;
+
+    for (let i = 0; i < furSamples.length; i += step) {
+      const fs = furSamples[i];
+      // Transform local sphere sample by dog orientation
+      const wx = center.x + (fs.x * rx * cosY + fs.z * rz * sinY);
+      const wy = (center.y + fs.y * ry) * ySign;
+      const wz = center.z + (-fs.x * rx * sinY + fs.z * rz * cosY);
+
+      // Cull back-facing strands for speed & clean volume
+      if (wz - center.z > rz * 0.55) continue;
+
+      const pt = project(wx, wy, wz);
+      const dx = pt.x - pC.x;
+      const dy = pt.y - pC.y;
+      const dLen = Math.hypot(dx, dy) || 1;
+
+      const fLen = furLenBase * fs.varLen;
+      // Fur flows outward from volume center and slightly downward/backward with gravity
+      const tx = pt.x + (dx / dLen) * fLen - cosY * fLen * 0.25;
+      const ty = pt.y + (dy / dLen) * fLen + (isReflection ? -0.2 : 0.2) * fLen;
+
+      // Lighting based on world normal (sun is upper-left-front: (-0.4, +0.8, -0.4))
+      const sunDot = (-fs.x * 0.35 + fs.y * 0.78 - fs.z * 0.35);
+      if (sunDot > 0.22) {
+        ctx.strokeStyle = palette.highlight;
+      } else if (sunDot > -0.18) {
+        ctx.strokeStyle = palette.mid;
+      } else {
+        ctx.strokeStyle = palette.shadow;
+      }
+
+      ctx.lineWidth = Math.max(1.3, 0.013 * s * fluffiness);
+      ctx.beginPath();
+      ctx.moveTo(pt.x, pt.y);
+      ctx.lineTo(tx, ty);
+      ctx.stroke();
+    }
+  }
+
+  // Draw an Anatomically Articulated Pomeranian Leg (Shoulder/Hip -> Elbow/Stifle -> Paw)
+  function drawArticulatedLeg(legKey, state, isReflection) {
+    const ySign = isReflection ? -1 : 1;
+    const sh = state.shoulders[legKey];
+    const jt = state.joints[legKey];
+    const pw = state.paws[legKey];
+
+    const pSh = project(sh.x, sh.y * ySign, sh.z);
+    const pJt = project(jt.x, jt.y * ySign, jt.z);
+    const pPw = project(pw.x, pw.y * ySign, pw.z);
+    const s = pJt.s;
+
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    // 1. Upper leg (feathered orange coat blending into torso)
+    ctx.strokeStyle = "#b55616";
+    ctx.lineWidth = Math.max(5, 0.068 * s);
+    ctx.beginPath();
+    ctx.moveTo(pSh.x, pSh.y);
+    ctx.lineTo(pJt.x, pJt.y);
+    ctx.stroke();
+
+    ctx.strokeStyle = "#e88435";
+    ctx.lineWidth = Math.max(3.5, 0.050 * s);
+    ctx.beginPath();
+    ctx.moveTo(pSh.x - 1, pSh.y);
+    ctx.lineTo(pJt.x - 1, pJt.y);
+    ctx.stroke();
+
+    // Fluffy hock/elbow feathering tufts
+    if (!isReflection) {
+      ctx.strokeStyle = "#f2a052";
+      ctx.lineWidth = Math.max(1.5, 0.016 * s);
+      for (let k = 0; k < 4; k++) {
+        const t = k / 3;
+        const lx = lerp(pSh.x, pJt.x, t);
+        const ly = lerp(pSh.y, pJt.y, t);
+        ctx.beginPath();
+        ctx.moveTo(lx, ly);
+        ctx.lineTo(lx - state.dirX * 0.028 * s, ly + 0.015 * s);
+        ctx.stroke();
+      }
+    }
+
+    // 2. Lower leg (slender cream/orange pastern)
+    ctx.strokeStyle = "#a8521b";
+    ctx.lineWidth = Math.max(3.5, 0.044 * s);
+    ctx.beginPath();
+    ctx.moveTo(pJt.x, pJt.y);
+    ctx.lineTo(pPw.x, pPw.y);
+    ctx.stroke();
+
+    ctx.strokeStyle = "#f2b87e";
+    ctx.lineWidth = Math.max(2.2, 0.030 * s);
+    ctx.beginPath();
+    ctx.moveTo(pJt.x - 0.8, pJt.y);
+    ctx.lineTo(pPw.x - 0.8, pPw.y);
+    ctx.stroke();
+
+    // 3. Compact cat-like Pomeranian paw with cream fur and dark toe definition
+    const pawR = Math.max(3, 0.028 * s);
+    ctx.fillStyle = "#d99b62";
+    ctx.beginPath();
+    ctx.ellipse(pPw.x + state.dirX * pawR * 0.25, pPw.y, pawR * 1.15, pawR * 0.72, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#fce0bd";
+    ctx.beginPath();
+    ctx.ellipse(pPw.x + state.dirX * pawR * 0.3, pPw.y - ySign * 1.0, pawR * 0.95, pawR * 0.58, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Draw the Pomeranian Head, Upright Triangular Ears, Fox Muzzle, Dark Expressive Eyes, and Gripped Bone
+  function drawPomeranianHead(state, isReflection) {
+    const ySign = isReflection ? -1 : 1;
+    const head = state.head;
+    const muzzle = state.muzzle;
+    const lowerJaw = state.lowerJaw;
+    const pHead = project(head.x, head.y * ySign, head.z);
+    const s = pHead.s;
+
+    const hDirX = state.hDirX;
+    const hDirZ = state.hDirZ;
+    const hRightX = state.hRightX;
+    const hRightZ = state.hRightZ;
+
+    // Upright triangular ears (left and right, sorted by depth)
+    const earSpread = 0.068;
+    const earBaseY = head.y + 0.065;
+    const earTipY = head.y + 0.145 * state.earPerk;
+
+    const ears = [
+      {
+        side: -1,
+        base: { x: head.x - hDirX * 0.01 - hRightX * earSpread, y: earBaseY, z: head.z - hDirZ * 0.01 - hRightZ * earSpread },
+        tip: { x: head.x - hDirX * 0.018 - hRightX * (earSpread * 1.18), y: earTipY + state.headCock * 0.02, z: head.z - hDirZ * 0.018 - hRightZ * (earSpread * 1.18) }
+      },
+      {
+        side: 1,
+        base: { x: head.x - hDirX * 0.01 + hRightX * earSpread, y: earBaseY, z: head.z - hDirZ * 0.01 + hRightZ * earSpread },
+        tip: { x: head.x - hDirX * 0.018 + hRightX * (earSpread * 1.18), y: earTipY - state.headCock * 0.02, z: head.z - hDirZ * 0.018 + hRightZ * (earSpread * 1.18) }
+      }
+    ];
+
+    const drawEar = (ear) => {
+      const pB = project(ear.base.x, ear.base.y * ySign, ear.base.z);
+      const pT = project(ear.tip.x, ear.tip.y * ySign, ear.tip.z);
+      const earW = 0.036 * s;
+
+      // Outer orange/sable ear triangle
+      ctx.fillStyle = "#b85314";
+      ctx.beginPath();
+      ctx.moveTo(pB.x - earW, pB.y);
+      ctx.lineTo(pT.x, pT.y);
+      ctx.lineTo(pB.x + earW, pB.y);
+      ctx.closePath();
+      ctx.fill();
+
+      // Inner warm pink-cream ear pinna (more visible when facing camera)
+      const frontVisibility = clamp(-hDirZ * 0.8 + 0.4, 0.15, 0.9);
+      ctx.fillStyle = `rgba(242, 195, 170, ${frontVisibility})`;
+      ctx.beginPath();
+      ctx.moveTo(pB.x - earW * 0.55, pB.y - ySign * 2);
+      ctx.lineTo(pT.x, pT.y + ySign * 3);
+      ctx.lineTo(pB.x + earW * 0.55, pB.y - ySign * 2);
+      ctx.closePath();
+      ctx.fill();
+    };
+
+    // Draw far ear before cranium if it's behind head center
+    ears.sort((a, b) => b.base.z - a.base.z);
+    if (ears[0].base.z > head.z) drawEar(ears[0]);
+
+    // Fluffy Pomeranian Cranium /Cheek Ruff
+    const headPalette = {
+      highlight: "#ffd39b",
+      light: "#f79d46",
+      mid: "#e07624",
+      dark: "#a6490f",
+      shadow: "#853809"
+    };
+    drawFluffyVolume(head, 0.105, 0.098, 0.105, headPalette, state, isReflection, 0.82);
+
+    // Cream cheek fluff patches (classic orange-sable Pomeranian facial markings)
+    for (const side of [-1, 1]) {
+      const cheek = {
+        x: head.x + hDirX * 0.025 + hRightX * side * 0.058,
+        y: head.y - 0.015,
+        z: head.z + hDirZ * 0.025 + hRightZ * side * 0.058
+      };
+      if (cheek.z <= head.z + 0.04) {
+        const pCh = project(cheek.x, cheek.y * ySign, cheek.z);
+        ctx.fillStyle = "rgba(255, 228, 190, 0.72)";
+        ctx.beginPath();
+        ctx.arc(pCh.x, pCh.y, 0.042 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Draw remaining ear(s) in front of cranium
+    if (ears[0].base.z <= head.z) drawEar(ears[0]);
+    drawEar(ears[1]);
+
+    // Lower Jaw, Mouth Interior, and Bone (if gripped)
+    const pMuz = project(muzzle.x, muzzle.y * ySign, muzzle.z);
+    const pJaw = project(lowerJaw.x, lowerJaw.y * ySign, lowerJaw.z);
+
+    // Draw lower jaw
+    ctx.strokeStyle = "#d47632";
+    ctx.lineWidth = Math.max(4, 0.042 * s);
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(pHead.x + (pJaw.x - pHead.x) * 0.35, pHead.y + (pJaw.y - pHead.y) * 0.35 + ySign * 0.02 * s);
+    ctx.lineTo(pJaw.x, pJaw.y);
+    ctx.stroke();
+
+    // Warm dark pink mouth interior when jaw is open
+    if (state.jawOpen > 0.05) {
+      ctx.fillStyle = "#7a2328";
+      ctx.beginPath();
+      ctx.moveTo(pHead.x + (pMuz.x - pHead.x) * 0.45, pHead.y + (pMuz.y - pHead.y) * 0.45);
+      ctx.lineTo(pMuz.x, pMuz.y);
+      ctx.lineTo(pJaw.x, pJaw.y);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // If the bone is gripped in the jaws, draw it here right between lower jaw and upper muzzle!
+    if (state.bone.gripped) {
+      drawBone(state.bone, isReflection);
+    }
+
+    // Upper Muzzle (short, pointed fox-like snout)
+    const muzGrad = ctx.createLinearGradient(pHead.x, pHead.y, pMuz.x, pMuz.y);
+    muzGrad.addColorStop(0, "#eb8838");
+    muzGrad.addColorStop(0.65, "#f7be83");
+    muzGrad.addColorStop(1, "#fcdbb6");
+
+    ctx.strokeStyle = muzGrad;
+    ctx.lineWidth = Math.max(5.5, 0.056 * s);
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(pHead.x + (pMuz.x - pHead.x) * 0.25, pHead.y + (pMuz.y - pHead.y) * 0.25);
+    ctx.lineTo(pMuz.x, pMuz.y);
+    ctx.stroke();
+
+    // Crisp dark nose tip with specular catchlight
+    const noseR = Math.max(2.4, 0.020 * s);
+    ctx.fillStyle = "#1a1412";
+    ctx.beginPath();
+    ctx.arc(pMuz.x, pMuz.y - ySign * 0.004 * s, noseR, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (!isReflection) {
+      ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+      ctx.beginPath();
+      ctx.arc(pMuz.x - noseR * 0.3, pMuz.y - noseR * 0.35, noseR * 0.32, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Dark Expressive Almond Eyes (3D positioned on front-sides of skull)
+    const eyeForward = 0.068;
+    const eyeUp = 0.018;
+    const eyeSpread = 0.044;
+
+    for (const side of [-1, 1]) {
+      const eyeW = {
+        x: head.x + hDirX * eyeForward + hRightX * side * eyeSpread,
+        y: head.y + eyeUp - side * state.headCock * 0.01,
+        z: head.z + hDirZ * eyeForward + hRightZ * side * eyeSpread
+      };
+      // Only draw eye if it is on the camera-facing hemisphere of the head
+      if (eyeW.z < head.z + 0.022) {
+        const pEye = project(eyeW.x, eyeW.y * ySign, eyeW.z);
+        const eyeR = Math.max(2.2, 0.017 * s);
+
+        // Subtle cream eyebrow dot above eye
+        if (!isReflection) {
+          ctx.fillStyle = "#ffe3ba";
+          ctx.beginPath();
+          ctx.ellipse(pEye.x, pEye.y - eyeR * 1.45, eyeR * 0.9, eyeR * 0.45, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Dark expressive iris/pupil
+        ctx.fillStyle = "#160e0a";
+        ctx.beginPath();
+        ctx.arc(pEye.x, pEye.y, eyeR, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Lively corneal catchlight
+        if (!isReflection) {
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(pEye.x - eyeR * 0.28, pEye.y - eyeR * 0.32, eyeR * 0.36, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+  }
+
+  // Draw the Full Plumed Tail Curled Forward Over the Back
+  function drawPlumedTail(state, isReflection) {
+    const ySign = isReflection ? -1 : 1;
+    const pts = [
+      state.tailBase,
+      state.tailMid,
+      {
+        x: (state.tailMid.x + state.tailTip.x) * 0.5,
+        y: (state.tailMid.y + state.tailTip.y) * 0.5 + 0.015,
+        z: (state.tailMid.z + state.tailTip.z) * 0.5
+      },
+      state.tailTip
+    ];
+
+    const tailPalette = {
+      highlight: "#fff0d4",
+      light: "#ffd296",
+      mid: "#f09643",
+      dark: "#bd5e19",
+      shadow: "#99470d"
+    };
+
+    const radii = [0.068, 0.088, 0.095, 0.082];
+    for (let i = 0; i < pts.length; i++) {
+      const r = radii[i];
+      drawFluffyVolume(pts[i], r * 1.1, r, r * 1.1, tailPalette, state, isReflection, 1.15);
+    }
+  }
+
+  // Draw the Complete Miniature Pomeranian with Depth-Sorted Volumetric Parts
+  function drawPomeranian(state, isReflection = false) {
+    // 1. Ground Contact Shadow (only for real dog, not reflection)
+    if (!isReflection) {
+      const pShadow = project(state.cx, 0.003, state.cz);
+      const jumpHeight = Math.max(0, state.cy - 0.25);
+      const shadowScale = 1 - clamp(jumpHeight * 0.9, 0, 0.45);
+      const shadowAlpha = (1 - clamp(jumpHeight * 1.4, 0, 0.65)) * 0.42;
+
+      ctx.fillStyle = `rgba(18, 25, 14, ${shadowAlpha})`;
+      ctx.beginPath();
+      ctx.ellipse(
+        pShadow.x,
+        pShadow.y,
+        0.29 * pShadow.s * shadowScale,
+        0.13 * pShadow.s * 0.46 * shadowScale,
+        0,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+
+      // Individual paw contact shadows when paws are near ground
+      for (const legKey of ["FL", "FR", "BL", "BR"]) {
+        const pw = state.paws[legKey];
+        if (pw.y < 0.09) {
+          const pPwG = project(pw.x, 0.003, pw.z);
+          const a = (1 - pw.y / 0.09) * 0.45;
+          ctx.fillStyle = `rgba(12, 18, 10, ${a})`;
+          ctx.beginPath();
+          ctx.ellipse(pPwG.x, pPwG.y, 0.036 * pPwG.s, 0.018 * pPwG.s, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    // Palettes for rich double-coated orange/cream Pomeranian
+    const bodyPalette = {
+      highlight: "#ffcb8c",
+      light: "#f28c35",
+      mid: "#d96a1b",
+      dark: "#9e410b",
+      shadow: "#7a2f05"
+    };
+    const ruffPalette = {
+      highlight: "#fff3db",
+      light: "#ffd9a3",
+      mid: "#f29d4b",
+      dark: "#bd5d17",
+      shadow: "#8f410a"
+    };
+    const bibPalette = {
+      highlight: "#ffffff",
+      light: "#fff1d6",
+      mid: "#f5cba0",
+      dark: "#cf8e55",
+      shadow: "#a86b36"
+    };
+
+    // Front cream chest bib center
+    const chestBib = {
+      x: state.chest.x + state.dirX * 0.065,
+      y: state.chest.y - 0.01,
+      z: state.chest.z + state.dirZ * 0.065
+    };
+
+    // Assemble drawable anatomical components and sort back-to-front by camera depth Z
+    const components = [
+      { z: state.shoulders.FL.z + 0.03, draw: () => drawArticulatedLeg("FL", state, isReflection) },
+      { z: state.shoulders.FR.z + 0.03, draw: () => drawArticulatedLeg("FR", state, isReflection) },
+      { z: state.shoulders.BL.z + 0.03, draw: () => drawArticulatedLeg("BL", state, isReflection) },
+      { z: state.shoulders.BR.z + 0.03, draw: () => drawArticulatedLeg("BR", state, isReflection) },
+      {
+        z: state.hips.z,
+        draw: () => drawFluffyVolume(state.hips, 0.145, 0.138, 0.138, bodyPalette, state, isReflection, 1.05)
+      },
+      {
+        z: state.belly.z,
+        draw: () => drawFluffyVolume(state.belly, 0.155, 0.142, 0.145, bodyPalette, state, isReflection, 1.02)
+      },
+      {
+        z: state.chest.z,
+        draw: () => drawFluffyVolume(state.chest, 0.175, 0.168, 0.172, ruffPalette, state, isReflection, 1.18)
+      },
+      {
+        z: chestBib.z - 0.01,
+        draw: () => drawFluffyVolume(chestBib, 0.125, 0.128, 0.125, bibPalette, state, isReflection, 1.12)
+      },
+      {
+        z: state.tailMid.z,
+        draw: () => drawPlumedTail(state, isReflection)
+      },
+      {
+        z: state.head.z - 0.02,
+        draw: () => drawPomeranianHead(state, isReflection)
+      }
+    ];
+
+    components.sort((a, b) => b.z - a.z);
+    for (const comp of components) {
+      comp.draw();
+    }
+  }
+
+  // Foreground Framing Details (grass blades near bottom corners and subtle warm sun rays)
+  function drawForegroundDetails() {
+    for (const g of grassClusters) {
+      if (g.z >= -0.35) continue;
+      drawGrassCluster(g);
+    }
+
+    // Subtle warm golden-hour sunlight bloom in upper left
+    const sunGrad = ctx.createRadialGradient(80, 30, 10, 80, 30, 420);
+    sunGrad.addColorStop(0, "rgba(255, 245, 200, 0.16)");
+    sunGrad.addColorStop(0.5, "rgba(255, 230, 165, 0.06)");
+    sunGrad.addColorStop(1, "rgba(255, 220, 140, 0.0)");
+    ctx.fillStyle = sunGrad;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // Main Synchronous Deterministic Frame Renderer
+  window.renderFrame = function(timeSeconds) {
+    const t = typeof timeSeconds === "number" && !isNaN(timeSeconds) ? clamp(timeSeconds, 0, 12) : 0;
+
+    ctx.clearRect(0, 0, W, H);
+
+    const state = evaluateSceneState(t);
+
+    // 1. Backyard, Sky, Fence, Lawn, Path, Puddle + Reflected Pomeranian
+    drawEnvironment(state);
+
+    // 2. Doghouse Interior (floor, back wall, far wall)
+    drawDoghouseInterior();
+
+    // 3. If Bone is not yet gripped in jaws, draw it resting on the doghouse floor
+    if (!state.bone.gripped) {
+      drawBone(state.bone, false);
+    }
+
+    // 4. Draw the Miniature Pomeranian (and gripped bone if t >= 5.25s)
+    drawPomeranian(state, false);
+
+    // 5. Draw Doghouse Exterior (front doorway wall, near wall, overhanging roof)
+    // This naturally and accurately occludes the dog's forequarters when inside the doorway!
+    drawDoghouseExterior();
+
+    // 6. Foreground grass and atmospheric lighting
+    drawForegroundDetails();
+  };
+
+  // Render initial frame at t = 0
+  window.renderFrame(0);
+})();
+</script>
+</body>
+</html>
+</previous-source>
+
+Actual recorder diagnostics:
+{
+  "technicalChecks": {
+    "contract": true,
+    "renders": true,
+    "visible": true,
+    "motion": false,
+    "deterministic": true,
+    "offline": true
+  },
+  "observations": [
+    "The dog is outside the lower canvas boundary through most of the recorded film.",
+    "Only the doghouse roof and background are visible in most samples.",
+    "The existing measured motion check failed."
+  ]
+}
