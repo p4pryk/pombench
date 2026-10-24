@@ -7,11 +7,13 @@
     "anthropic",
     "foundry-chat",
     "vertex-generate-content",
-    "foundry-fireworks-responses"
+    "foundry-fireworks-responses",
+    "openrouter-pinned-chat"
   ],
   "allowedReceiptSources": [
     "Actual Foundry API usage",
-    "Actual Vertex AI API usage"
+    "Actual Vertex AI API usage",
+    "Actual OpenRouter API usage"
   ],
-  "requirements": "Foundry deployment metadata must match the previously tested model and version. Google uses named publisher identifiers and retains actual returned modelVersion, including explicitly named previews. No latest aliases or routers. Actual raw provider usage, request and response receipts and source hashes are verified privately. No local inference or subscription authoring. See V4-CAMPAIGN.json."
+  "requirements": "Foundry deployment metadata must match the previously tested model and version. Google uses named publisher identifiers and retains actual returned modelVersion, including explicitly named previews. No latest aliases or routers. Actual raw provider usage, request and response receipts and source hashes are verified privately. No local inference or subscription authoring. See V4-CAMPAIGN.json. OpenRouter additions are explicitly authorized through a fixed named model and exact upstream variant, fallbacks disabled. No automatic model selector or latest alias is permitted; catalog versions and actual returned model/provider identities are retained. See OPENROUTER-V4.json."
 }

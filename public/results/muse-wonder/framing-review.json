@@ -1,0 +1,24 @@
+{
+  "modelId": "muse-wonder",
+  "sourceHash": "23c978fa32fbde46ff5a6cc05416259db0ca1f015af270ea3f0a8575825c12c2",
+  "status": "visible",
+  "note": "Storyboard samples show the dog inside the frame during the approach, leap, doghouse sequence and final front-facing pose. This is a framing observation, not a score for realism, anatomy, reflection or bone contact.",
+  "reviewedAt": "2026-10-24T17:29:24.018563+00:00",
+  "reviewer": "Agent inspection of actual recorded screenshot evidence",
+  "sampleTimes": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10.5,
+    11.966666666666667
+  ],
+  "contactSheetHash": "9416262415028bc74a8a5d07e6ed87b517608c9d0e1af078ac160b0d2695c664",
+  "visualScore": null
+}

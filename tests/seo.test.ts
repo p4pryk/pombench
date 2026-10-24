@@ -10,7 +10,7 @@ test('clean routes and legacy bookmarks resolve to one canonical model address',
  const d=pageSeo(c,'model/'+m.id);assert.equal(d.canonical,siteOrigin+modelPath(m));assert.equal(d.canonical.includes('#'),false);assert.match(d.title,new RegExp(m.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));assert.equal(pageSeo(c,'model/never-published').valid,false);
 });
 test('model descriptions use actual run evidence and disclose the framing correction',()=>{
- assert.match(modelDescription(m,c).join(' '),/independent offline browser/);assert.ok(modelDescription(m,c).join(' ').includes(m.usage!.output_tokens.toLocaleString('en-US')));assert.match(modelDescription(argon,c).join(' '),/feedback-assisted framing correction/);assert.ok(modelEditorial(m,c).includes('href="/models/'));assert.equal(modelEditorial(m,c).includes('href="#model'),false);
+ assert.match(modelDescription(m,c).join(' '),/independent offline browser/);assert.ok(modelDescription(m,c).join(' ').includes(m.usage!.output_tokens.toLocaleString('en-US')));assert.match(modelDescription(argon,c).join(' '),/feedback-assisted framing correction/);assert.ok(modelEditorial(m,c).includes('href="/animations/'));assert.equal(modelEditorial(m,c).includes('href="#model'),false);
  const noPrice={...m,price:undefined};assert.match(modelDescription(noPrice,c).join(' '),/verified price is unavailable/);assert.doesNotMatch(modelDescription(noPrice,c).join(' '),/\$0\.0000/);
 });
 test('static pages expose unique metadata, visible content and real VideoObjects without running JavaScript',()=>{

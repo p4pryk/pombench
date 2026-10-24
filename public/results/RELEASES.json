@@ -217,6 +217,14 @@
     "gemini-3.5-flash-lite": {
       "date": "2026-07-21",
       "source": "https://ai.google.dev/gemini-api/docs/changelog"
+    },
+    "kimi-k3.1-pro": {
+      "date": "2026-10-23",
+      "source": "https://www.kimi.ai/blog/kimi-k3-1-pro"
+    },
+    "muse-wonder": {
+      "date": "2026-10-12",
+      "source": "https://research.meta.ai/blog/muse-wonder"
     }
   }
 }

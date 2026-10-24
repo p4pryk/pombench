@@ -1,0 +1,24 @@
+{
+  "modelId": "kimi-k3.1-pro",
+  "sourceHash": "0c04a03af6f0f6230248e54ae4d562296c2972e24018d565ae294b5e11504694",
+  "status": "visible",
+  "note": "Storyboard samples show the dog and the main scene inside the canvas during approach, the jump, the doghouse sequence and the final frontal pose. This observation verifies framing only, not successful entry, bone grip, reflection quality, anatomy or realism.",
+  "reviewedAt": "2026-10-24T17:33:43.258933+00:00",
+  "reviewer": "Agent inspection of actual recorded screenshot evidence",
+  "sampleTimes": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10.5,
+    11.966666666666667
+  ],
+  "contactSheetHash": "37a71c4c5e437b29adec93e1b4c3107fe0bdf0883f45aaa374ccce2cf0c571e2",
+  "visualScore": null
+}

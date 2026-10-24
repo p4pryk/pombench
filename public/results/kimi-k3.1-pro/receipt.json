@@ -1,0 +1,50 @@
+{
+  "modelId": "moonshotai/kimi-k3.1-pro",
+  "modelVersion": "moonshotai/kimi-k3.1-pro-20261023",
+  "returnedModel": "moonshotai/kimi-k3.1-pro",
+  "upstreamProvider": "Moonshot AI",
+  "source": "Actual OpenRouter API usage",
+  "usage": {
+    "input_tokens": 2115,
+    "output_tokens": 20154,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "total_tokens": 22269,
+    "reasoning_output_tokens": 12479
+  },
+  "rawUsage": {
+    "prompt_tokens": 2115,
+    "completion_tokens": 20154,
+    "total_tokens": 22269,
+    "cost": 0.20577,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 0.20577,
+      "upstream_inference_prompt_cost": 0.00423,
+      "upstream_inference_completions_cost": 0.20154
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 12479,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  },
+  "reportedCostUsd": 0.20577,
+  "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+  "sourceHash": "0c04a03af6f0f6230248e54ae4d562296c2972e24018d565ae294b5e11504694",
+  "requestHash": "d7b96b10bf0139c4dcef268cb1330abb960f15da4ff815d9d04a64058fd38fd4",
+  "responseHash": "8431e11464424c40475d625817688b23f2ac400881bfc8c6ee6e954eb92f0094",
+  "streamHash": "e4868a870ae1027cf5571f748b64ccaca2bb7a6b09abd133e816bc1abbbcda89",
+  "sourceExtraction": "Trim outer whitespace and unwrap one surrounding HTML fence only; no source changes",
+  "tools": [],
+  "submission": 1,
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "Inspect the recorded film; browser execution does not grade realism, anatomy, reflection or narrative success."
+}

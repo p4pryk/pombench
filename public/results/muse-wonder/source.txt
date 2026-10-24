@@ -1,0 +1,238 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PomBench</title><style>html,body{margin:0;padding:0;background:#1a2410;overflow:hidden}canvas{display:block;width:960px;height:540px}</style></head><body><canvas id="stage" width="960" height="540"></canvas><script>
+const cv=document.getElementById('stage'),ctx=cv.getContext('2d');
+const W=960,H=540;
+function clamp(v,a,b){return v<a?a:v>b?b:v} function lerp(a,b,t){return a+(b-a)*t}
+function ss(a,b,t){let p=clamp((t-a)/(b-a),0,1);return p*p*(3-2*p)}
+function rng(seed){let s=seed;return()=>{s=(s*16807)%2147483647;return(s-1)/2147483646}}
+const R=rng(12345),fur=[],grass=[],flowers=[];
+for(let i=0;i<90;i++)fur.push({a:R()*Math.PI*2,r:R(),l:5+R()*9,o:R()});
+for(let i=0;i<260;i++)grass.push({x:R()*960,y:300+R()*235,h:5+R()*10,p:R()*6.28});
+for(let i=0;i<34;i++)flowers.push({x:R()*940+10,y:340+R()*180,c:['#e88ca0','#f5d76e','#ffffff','#c39bd3'][i%4],s:2+R()*2});
+// ---------- drawing helpers ----------
+function ell(x,y,rx,ry,rot,col){ctx.save();ctx.translate(x,y);ctx.rotate(rot||0);ctx.beginPath();ctx.ellipse(0,0,rx,ry,0,0,6.283);ctx.fillStyle=col;ctx.fill();ctx.restore()}
+function boneShape(x,y,s,rot,col){ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.scale(s,s);ctx.fillStyle=col;ctx.strokeStyle='rgba(120,100,70,.35)';ctx.lineWidth=1;
+ctx.beginPath();ctx.moveTo(-16,-4);ctx.lineTo(16,-4);ctx.lineTo(16,4);ctx.lineTo(-16,4);ctx.closePath();ctx.fill();
+[[-18,-5],[-18,5],[18,-5],[18,5]].forEach(p=>{ctx.beginPath();ctx.arc(p[0],p[1],6,0,6.283);ctx.fill()});
+ctx.fillStyle='rgba(255,255,255,.35)';ctx.fillRect(-14,-3,28,2);ctx.restore()}
+// fluffy blob: many overlapping circles along ellipse perimeter deterministic
+function fluffy(x,y,rx,ry,col,col2){
+ let g=ctx.createRadialGradient(x-rx*.3,y-ry*.4,5,x,y,rx*1.2);g.addColorStop(0,col2);g.addColorStop(.55,col);g.addColorStop(1,col);
+ ctx.fillStyle=g;
+ for(let i=0;i<26;i++){let a=i/26*6.283,px=x+Math.cos(a)*rx*.82,py=y+Math.sin(a)*ry*.82;ctx.beginPath();ctx.arc(px,py,(rx+ry)*.22*(0.8+fur[i].r*.4),0,6.283);ctx.fill()}
+ ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,6.283);ctx.fill();
+ // directional fur strokes
+ ctx.save();ctx.beginPath();ctx.ellipse(x,y,rx*1.02,ry*1.02,0,0,6.283);ctx.clip();
+ ctx.strokeStyle='rgba(120,55,10,.18)';ctx.lineWidth=1.1;
+ for(let i=0;i<34;i++){let f=fur[i],fx=x+(f.r-.5)*rx*1.5,fy=y+(fur[(i+20)%90].r-.5)*ry*1.4;ctx.beginPath();ctx.moveTo(fx,fy);ctx.lineTo(fx+f.l*.7,fy+f.l*.45);ctx.stroke()}
+ ctx.strokeStyle='rgba(255,230,180,.25)';for(let i=0;i<16;i++){let f=fur[i+40],fx=x+(f.r-.5)*rx*1.3,fy=y-ry*.3+(f.o-.5)*ry;ctx.beginPath();ctx.moveTo(fx,fy);ctx.lineTo(fx+f.l,fy+2);ctx.stroke()}
+ ctx.restore();
+}
+function leg(x0,y0,fx,fy,s,col,airBend){
+ // two-segment leg
+ let mx=(x0+fx)/2+6*s, my=(y0+fy)/2 - (airBend||0)*s;
+ ctx.strokeStyle=col;ctx.lineCap='round';
+ ctx.lineWidth=11*s;ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(mx,my);ctx.stroke();
+ ctx.lineWidth=8*s;ctx.beginPath();ctx.moveTo(mx,my);ctx.lineTo(fx,fy-3*s);ctx.stroke();
+ ell(fx+3*s,fy-2*s,8*s,4.5*s,0,'#f7e3c2'); // paw
+ ctx.strokeStyle='rgba(90,50,20,.5)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(fx+6*s,fy-4*s);ctx.lineTo(fx+6*s,fy-1*s);ctx.stroke();
+}
+// SIDE DOG. facing right. feetY ground.
+function drawSideDog(x,feetY,s,o){
+ o=o||{};let gait=o.gait||0,moving=o.moving||0,air=o.air||0,crouch=o.crouch||0,headDip=o.headDip||0,hold=o.hold,breath=o.breath||0;
+ let bob = moving? Math.sin(gait*2)*3*s : Math.sin(breath)*1.2*s;
+ if(air>0)bob-=0;
+ let bodyY=feetY-52*s+bob+crouch*10*s-air;
+ let bodyX=x;
+ // tail plume curled over back (behind body)
+ ctx.save();ctx.translate(bodyX-34*s,bodyY-22*s);ctx.rotate(-0.5+Math.sin(gait*.5)*0.06*moving + air*0.2);
+ fluffy(0,0,26*s,16*s,'#c96f22','#f2b56b');ctx.restore();
+ // far legs darker
+ let legColF='#b85f1c',legColN='#d67c2e';
+ let hipX=bodyX-28*s,shX=bodyX+30*s,legTopY=bodyY+18*s;
+ function foot(off){let ph=gait+off; if(air>0){ // tuck
+   return {x: bodyX+Math.cos(off)*18*s, y: feetY-28*s-air*0.15 - Math.abs(Math.sin(off))*8*s, bend:14};
+ } if(moving){let sw=Math.sin(ph);return{x:(off<3?hipX:shX)+sw*20*s + (o.backwards?-sw*4*s:0), y: feetY - Math.max(0,Math.cos(ph))*11*s, bend:6}}
+ return{x:(off<3?hipX:shX)+(off%2?6*s:-4*s), y:feetY,bend:2}}
+ let f1=foot(0),f2=foot(3.14),f3=foot(1.57),f4=foot(4.71);
+ leg(hipX,legTopY,f1.x,f1.y,s,legColF,f1.bend); leg(shX,legTopY,f2.x,f2.y,s,legColF,f2.bend);
+ // body
+ ctx.save();ctx.translate(bodyX,bodyY);ctx.rotate(air? -0.08 -air*0.0005 : (crouch*-0.04));ctx.translate(-bodyX,-bodyY);
+ fluffy(bodyX,bodyY,52*s,34*s,'#d67e2c','#f6c47e');
+ // chest / belly cream
+ ell(bodyX+18*s,bodyY+14*s,34*s,20*s,0.2,'rgba(250,230,195,.75)');
+ ctx.restore();
+ // near legs
+ leg(hipX+4*s,legTopY,f3.x,f3.y,s,legColN,f3.bend); leg(shX+4*s,legTopY,f4.x,f4.y,s,legColN,f4.bend);
+ // neck ruff
+ let headX=bodyX+58*s, headY=bodyY-22*s + headDip*26*s + (moving?Math.sin(gait*2+1)*1.5*s:0) - air*0.08;
+ fluffy(headX-12*s,headY+10*s,24*s,20*s,'#e99a44','#fbe0b0'); // ruff
+ // ears
+ ctx.fillStyle='#c96a1e';
+ [[headX-8*s,headY-16*s],[headX+12*s,headY-18*s]].forEach(p=>{ctx.beginPath();ctx.moveTo(p[0]-8*s,p[1]+8*s);ctx.lineTo(p[0]+1*s,p[1]-10*s);ctx.lineTo(p[0]+10*s,p[1]+7*s);ctx.closePath();ctx.fill();ctx.fillStyle='#8a4a16';ctx.beginPath();ctx.moveTo(p[0]-3*s,p[1]+5*s);ctx.lineTo(p[0]+1*s,p[1]-4*s);ctx.lineTo(p[0]+5*s,p[1]+5*s);ctx.closePath();ctx.fill();ctx.fillStyle='#c96a1e'});
+ // head
+ fluffy(headX,headY,24*s,20*s,'#e08a35','#f8cf92');
+ // muzzle pointed
+ ctx.save();ctx.translate(headX+20*s,headY+7*s+headDip*4*s);ctx.rotate(0.15+headDip*0.5);
+ let mg=ctx.createLinearGradient(0,-8*s,0,10*s);mg.addColorStop(0,'#fbe8c8');mg.addColorStop(1,'#eecfa3');ctx.fillStyle=mg;
+ ctx.beginPath();ctx.moveTo(-6*s,-7*s);ctx.lineTo(18*s,-2*s);ctx.lineTo(20*s,3*s);ctx.lineTo(8*s,9*s);ctx.lineTo(-6*s,7*s);ctx.closePath();ctx.fill();
+ ell(19*s,0,5*s,4*s,0,'#2a1a12'); // nose
+ // mouth
+ ctx.strokeStyle='#5a3420';ctx.lineWidth=1.4*s;ctx.beginPath();ctx.moveTo(2*s,7*s);ctx.lineTo(16*s,5*s);ctx.stroke();
+ if(o.mouthOpen){ctx.beginPath();ctx.ellipse(10*s,8*s,7*s,4*s,0,0,6.283);ctx.fillStyle='#6b2a20';ctx.fill()}
+ ctx.restore();
+ // eye
+ ell(headX+8*s,headY-3*s,3.6*s,4.4*s,0,'#1e120a'); ell(headX+9.5*s,headY-4.5*s,1.2*s,1.4*s,0,'#fff');
+ // brow / cheek cream
+ ell(headX+2*s,headY+8*s,12*s,8*s,0,'rgba(255,240,210,.55)');
+ if(hold){ boneShape(headX+34*s, headY+16*s+headDip*4*s, s*0.95, 0.12+headDip*0.3,'#f3e6c8'); }
+ return {headX:headX,headY:headY};
+}
+function drawFrontDog(x,feetY,s,o){
+ o=o||{};let breath=o.breath||0,wag=o.wag||0;
+ let bob=Math.sin(breath)*1.5*s;
+ let bodyY=feetY-46*s+bob;
+ // tail plume peeking right side
+ ctx.save();ctx.translate(x+44*s,bodyY-18*s);ctx.rotate(0.6+Math.sin(wag)*0.12);fluffy(0,0,24*s,15*s,'#c96f22','#f2b56b');ctx.restore();
+ // legs front
+ leg(x-24*s,bodyY+20*s,x-26*s,feetY,s,'#c96f22',2); leg(x+24*s,bodyY+20*s,x+26*s,feetY,s,'#d67c2e',2);
+ // body fluffy
+ fluffy(x,bodyY,48*s,38*s,'#d67e2c','#f6c47e');
+ ell(x,bodyY+12*s,30*s,24*s,0,'rgba(252,235,205,.9)'); // chest
+ // ruff
+ fluffy(x,bodyY-34*s,38*s,26*s,'#e99a44','#fbe0b0');
+ // ears
+ ctx.fillStyle='#c96a1e';
+ [[x-24*s,bodyY-62*s],[x+24*s,bodyY-62*s]].forEach((p,i)=>{ctx.save();ctx.translate(p[0],p[1]);ctx.rotate(i?-0.15:0.15);ctx.beginPath();ctx.moveTo(-11*s,12*s);ctx.lineTo(0,-16*s);ctx.lineTo(12*s,12*s);ctx.closePath();ctx.fill();ctx.fillStyle='#7a3f12';ctx.beginPath();ctx.moveTo(-5*s,9*s);ctx.lineTo(0,-7*s);ctx.lineTo(6*s,9*s);ctx.closePath();ctx.fill();ctx.restore();ctx.fillStyle='#c96a1e'});
+ // head
+ fluffy(x,bodyY-42*s,32*s,27*s,'#e08a35','#f8cf92');
+ ell(x-11*s,bodyY-46*s,4.2*s,5*s,0,'#1e120a'); ell(x+11*s,bodyY-46*s,4.2*s,5*s,0,'#1e120a');
+ ell(x-9.5*s,bodyY-48*s,1.3*s,1.5*s,0,'#fff'); ell(x+12.5*s,bodyY-48*s,1.3*s,1.5*s,0,'#fff');
+ // muzzle centre
+ ell(x,bodyY-30*s,14*s,10*s,0,'#fbe8c8'); ell(x,bodyY-36*s,5.5*s,4*s,0,'#2a1a12');
+ ctx.strokeStyle='#5a3420';ctx.lineWidth=1.4*s;ctx.beginPath();ctx.moveTo(x,bodyY-32*s);ctx.lineTo(x,bodyY-27*s);ctx.stroke();
+ // bone held horizontally below muzzle
+ boneShape(x,bodyY-18*s,s*1.15,0,'#f6ecd2');
+ // paws detail already
+}
+// house front panel with doorway hole
+function houseFront(){
+ // front wall
+ ctx.save();ctx.beginPath();
+ ctx.rect(668,208,250,212); // outer
+ // doorway arch as subpath reversed via evenodd
+ ctx.moveTo(812,420);ctx.lineTo(812,306);ctx.arc(767,306,45,0,Math.PI,true);ctx.lineTo(722,420);ctx.closePath();
+ ctx.fillStyle='#a66a3a';ctx.fill('evenodd');
+ // wood planks on wall (clipped away from door by same evenodd trick approximated)
+ ctx.clip('evenodd');ctx.strokeStyle='rgba(70,40,15,.28)';ctx.lineWidth=2;
+ for(let y=225;y<420;y+=26){ctx.beginPath();ctx.moveTo(668,y);ctx.lineTo(918,y);ctx.stroke()}
+ for(let x=690;x<918;x+=42){ctx.beginPath();ctx.moveTo(x,208);ctx.lineTo(x,420);ctx.stroke()}
+ ctx.restore();
+ // doorway frame
+ ctx.strokeStyle='#5e3a1c';ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(722,420);ctx.lineTo(722,306);ctx.arc(767,306,45,Math.PI,0);ctx.lineTo(812,420);ctx.stroke();
+ ctx.strokeStyle='#e8b06a';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(722,420);ctx.lineTo(722,306);ctx.arc(767,306,45,Math.PI,0);ctx.lineTo(812,420);ctx.stroke();
+ // roof
+ ctx.fillStyle='#7a3f2a';ctx.beginPath();ctx.moveTo(650,222);ctx.lineTo(793,132);ctx.lineTo(936,222);ctx.closePath();ctx.fill();
+ ctx.fillStyle='#935033';ctx.beginPath();ctx.moveTo(650,222);ctx.lineTo(793,132);ctx.lineTo(936,222);ctx.lineTo(910,222);ctx.lineTo(793,150);ctx.lineTo(676,222);ctx.closePath();ctx.fill();
+ ctx.strokeStyle='rgba(50,20,10,.35)';for(let i=0;i<6;i++){ctx.beginPath();ctx.moveTo(682+i*8,206-i*12);ctx.lineTo(904-i*8,206-i*12);ctx.stroke()}
+ ctx.fillStyle='#5e2f1d';ctx.fillRect(648,216,290,12);
+ // sign board blank, window
+ ctx.fillStyle='#ffe9a8';ctx.fillRect(842,262,48,42);ctx.strokeStyle='#5e3a1c';ctx.lineWidth=5;ctx.strokeRect(842,262,48,42);ctx.beginPath();ctx.moveTo(866,262);ctx.lineTo(866,304);ctx.moveTo(842,283);ctx.lineTo(890,283);ctx.stroke();
+ // step
+ ctx.fillStyle='#8a7355';ctx.fillRect(710,420,114,10);ctx.fillStyle='#6e5a40';ctx.fillRect(700,430,134,8);
+}
+function scene(t){
+ // sky
+ let g=ctx.createLinearGradient(0,0,0,540);g.addColorStop(0,'#8ec9e8');g.addColorStop(.45,'#cfeef7');g.addColorStop(.52,'#79b657');g.addColorStop(1,'#4e8a38');ctx.fillStyle=g;ctx.fillRect(0,0,960,540);
+ // sun & clouds deterministic
+ ell(78,62,26,26,0,'#fff3a0');ell(78,62,34,34,0,'rgba(255,240,150,.25)');
+ ctx.fillStyle='rgba(255,255,255,.9)';[[210,60,44],[255,68,32],[620,48,50],[670,58,36]].forEach(c=>{ell(c[0],c[1],c[2],16,0,'rgba(255,255,255,.9)')});
+ // distant trees / fence
+ for(let i=0;i<7;i++){let x=30+i*135;ell(x,255,42,52,0,'#3f7a2e');ctx.fillStyle='#6b4a2a';ctx.fillRect(x-5,285,10,28)}
+ ctx.fillStyle='#c9a06a';ctx.fillRect(0,282,960,10);ctx.fillRect(0,300,960,8);
+ for(let x=10;x<960;x+=52)ctx.fillRect(x,272,9,44);
+ // grass texture
+ ctx.strokeStyle='rgba(30,90,20,.35)';ctx.lineWidth=1.2;grass.forEach(p=>{ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x+Math.sin(p.p)*2,p.y-p.h);ctx.stroke()});
+ flowers.forEach(f=>{ell(f.x,f.y,f.s,f.s,0,f.c)});
+ // dirt path to house
+ ctx.fillStyle='rgba(196,160,105,.55)';ctx.beginPath();ctx.moveTo(90,452);ctx.lineTo(720,424);ctx.lineTo(760,452);ctx.lineTo(160,492);ctx.closePath();ctx.fill();
+ // house back / interior (behind dog)
+ ctx.fillStyle='#8a5a30';ctx.fillRect(668,208,250,212);
+ ctx.fillStyle='#1c120a'; // interior visible through door area
+ ctx.beginPath();ctx.moveTo(722,420);ctx.lineTo(722,306);ctx.arc(767,306,45,Math.PI,0);ctx.lineTo(812,420);ctx.closePath();ctx.fill();
+ ctx.fillStyle='rgba(255,190,90,.13)';ctx.beginPath();ctx.moveTo(722,420);ctx.lineTo(722,306);ctx.arc(767,306,45,Math.PI,0);ctx.lineTo(812,420);ctx.closePath();ctx.fill();
+ // puddle
+ let px=405,py=445;
+ let pg=ctx.createRadialGradient(px,py,8,px,py,115);pg.addColorStop(0,'#bfe6f2');pg.addColorStop(.65,'#8fc6dd');pg.addColorStop(1,'#6ea8c2');
+ ctx.beginPath();ctx.ellipse(px,py,112,20,0,0,6.283);ctx.fillStyle=pg;ctx.fill();
+ ctx.strokeStyle='rgba(255,255,255,.65)';ctx.lineWidth=2;ctx.stroke();
+ ctx.beginPath();ctx.ellipse(px-18,py-4,58,8,0,0,6.283);ctx.strokeStyle='rgba(255,255,255,.45)';ctx.stroke();
+ return {px,py};
+}
+window.renderFrame=function(time){
+ let t=clamp(time,0,12);
+ ctx.clearRect(0,0,W,H);
+ let sc=scene(t),px=sc.px,py=sc.py;
+ // ----- compute dog state -----
+ let x=150,feetY=438,s=1.02,gait=0,moving=0,air=0,crouch=0,headDip=0,hold=false,mouthOpen=false,front=0,backwards=false,breath=t*4;
+ let boneHeld=false,boneGrab=5.45;
+ if(t<1){x=150;headDip=0;breath=t*3; if(t>0.6)headDip=0} 
+ else if(t<3){let p=(t-1)/2;x=lerp(150,668,p);moving=1;gait=t*11;
+   // anticipation 1.45-1.68
+   if(t>1.42&&t<1.68)crouch=Math.sin((t-1.42)/0.26*Math.PI)*0.9;
+   // jump 1.68-2.42 over puddle (x approx 320..505)
+   if(t>=1.68&&t<2.42){let tj=(t-1.68)/0.74;air=Math.sin(tj*Math.PI)*92;crouch=0}
+   if(air>0)gait=1.68*11 + (t-1.68)*3; // legs tuck rather than cycle
+ }
+ else if(t<4.5){let p=(t-3)/1.5;x=lerp(668,782,p);s=lerp(1.02,0.88,p);feetY=lerp(438,432,p);moving=1;gait=3*11+(t-3)*7}
+ else if(t<6){x=782;s=0.88;feetY=432;moving=0;gait=0;
+   // dip head 4.7-5.8 peak
+   headDip=Math.sin(clamp((t-4.65)/1.25,0,1)*Math.PI);
+   mouthOpen=(t>4.9&&t<5.6)?1:0;
+   if(t>=boneGrab)boneHeld=true;
+ }
+ else if(t<8){let p=(t-6)/2;x=lerp(782,622,p);s=lerp(0.88,0.98,p);feetY=lerp(432,440,p);moving=1;backwards=true;gait=-(t*8);boneHeld=true;headDip=0.15}
+ else if(t<10){let p=ss(8,10,t);x=lerp(622,540,p);feetY=lerp(440,466,p);s=lerp(0.98,1.22,p);front=p;moving=p<0.85?0.5:0;gait=t*6;boneHeld=true}
+ else {x=540;feetY=466;s=1.22;front=1;boneHeld=true}
+ hold=boneHeld;
+ // resting bone (visible in doorway before grab, also before entry)
+ // contact shadow
+ let shadowScale=air>0? clamp(1-air/160,0.45,1):1;
+ ell(x,feetY+7,58*s*shadowScale,9*s*shadowScale,0,'rgba(20,40,10,.32)');
+ // puddle reflection: draw flipped side dog clipped to puddle, only when dog near puddle x range
+ if(x>180&&x<640&&front<0.5){
+   ctx.save();ctx.beginPath();ctx.ellipse(px,py,110,19,0,0,6.283);ctx.clip();ctx.globalAlpha=0.34;
+   // reflect about py: map dog feetY -> py + (py-feetY)*0.35 etc via transform
+   ctx.translate(0,py*2);ctx.scale(1,-0.42);
+   // draw simplified reflected dog at same x, using same feetY (transform handles)
+   drawSideDog(x,feetY,s,{gait:gait,moving:moving,air:-air*0.4,crouch:crouch,headDip:headDip,hold:hold,breath:breath});
+   ctx.restore();ctx.globalAlpha=1;
+   // re-sheen over reflection
+   ctx.beginPath();ctx.ellipse(px-20,py-5,52,6,0,0,6.283);ctx.fillStyle='rgba(255,255,255,.22)';ctx.fill();
+ }
+ // if inside house phase, bone resting drawn before dog (so dog can grab)
+ let insidePhase=(t>=3);
+ if(!boneHeld){
+   // bone inside doorway, discoverable from start
+   boneShape(795,420,0.78, -0.18,'#f3e6c8');
+ }
+ // dog drawing with turn morph
+ if(front<=0){
+   drawSideDog(x,feetY-air,s,{gait:gait,moving:moving,air:air,crouch:crouch,headDip:headDip,hold:hold,mouthOpen:mouthOpen,breath:breath,backwards:backwards});
+ } else if(front>=1){
+   drawFrontDog(x,feetY,s,{breath:breath,wag:t*3});
+ } else {
+   // turning: squish side then expand front
+   ctx.save();
+   if(front<0.5){ctx.translate(x,0);ctx.scale(1-front*1.6,1);ctx.translate(-x,0);drawSideDog(x,feetY,s,{gait:gait,moving:0,air:0,hold:true,breath:breath})}
+   else {ctx.translate(x,0);ctx.scale(0.2+(front-0.5)*1.6,1);ctx.translate(-x,0);drawFrontDog(x,feetY,s,{breath:breath,wag:t*3})}
+   ctx.restore();
+ }
+ // house front occludes dog when entering / inside / backing out
+ houseFront();
+ // if dog is in front of house (after backing out x<668 or final), redraw dog on top of house? Final dog x=540 not overlapping house. Backing out tail part x<... body may be left of house, fine.
+ // But during backing out, emerging part left of doorway should be visible over wall edge: if x<700 and t>6, redraw partially? Dog already drawn before wall; wall only covers x>=668. Emerging rear at x~650 not covered. Good.
+ // foreground grass blades at bottom
+ ctx.strokeStyle='rgba(35,100,25,.5)';for(let i=0;i<40;i++){let gx=grass[i].x,gy=520+ (i%20);ctx.beginPath();ctx.moveTo(gx,gy);ctx.lineTo(gx+3,gy-10);ctx.stroke()}
+};
+renderFrame(0);
+</script></body></html>

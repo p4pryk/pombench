@@ -1,0 +1,50 @@
+{
+  "modelId": "meta/muse-wonder",
+  "modelVersion": "meta/muse-wonder-20261012",
+  "returnedModel": "meta/muse-wonder",
+  "upstreamProvider": "Meta",
+  "source": "Actual OpenRouter API usage",
+  "usage": {
+    "input_tokens": 2038,
+    "output_tokens": 8480,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "total_tokens": 10518,
+    "reasoning_output_tokens": 2041
+  },
+  "rawUsage": {
+    "prompt_tokens": 2038,
+    "completion_tokens": 8480,
+    "total_tokens": 10518,
+    "cost": 0.177752,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 0.177752,
+      "upstream_inference_prompt_cost": 0.008152,
+      "upstream_inference_completions_cost": 0.1696
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 2041,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  },
+  "reportedCostUsd": 0.177752,
+  "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+  "sourceHash": "23c978fa32fbde46ff5a6cc05416259db0ca1f015af270ea3f0a8575825c12c2",
+  "requestHash": "e3eea5b1fb68524c3d1a17b2f442dc5ae46333b292d9ddda2835a3f3d971ef98",
+  "responseHash": "36b0900497899e4afad2748d4f27f974ae1affb91530ca39db50d95595f791be",
+  "streamHash": "565ef234a97fe94a724d724e9b63beaca6ed572f22ef641c275339b15d602119",
+  "sourceExtraction": "Trim outer whitespace and unwrap one surrounding HTML fence only; no source changes",
+  "tools": [],
+  "submission": 1,
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "Inspect the recorded film; browser execution does not grade realism, anatomy, reflection or narrative success."
+}

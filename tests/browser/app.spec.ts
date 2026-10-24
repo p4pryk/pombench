@@ -51,19 +51,25 @@ test('a corrected recording refreshes an open model page even when the shared pr
 });
 
 test('clean model addresses expose unique metadata and keep legacy links working',async({page})=>{
- const model=ready[0],url='/models/'+encodeURIComponent(model.id)+'/';const response=await page.goto(url);expect(response!.status()).toBe(200);
+ const model=ready[0],url='/animations/'+encodeURIComponent(model.id)+'/';const response=await page.goto(url);expect(response!.status()).toBe(200);
  await expect(page.locator('.model-editorial')).toContainText(model.name);await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href','https://pombench.com'+url);await expect(page).toHaveTitle(model.name+': animation coding benchmark | PomBench');
  await page.getByRole('navigation').getByRole('link',{name:'About the test',exact:true}).click();await expect(page).toHaveURL(/\/method\/$/);await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href','https://pombench.com/method/');
- await page.goBack();await expect(page).toHaveURL(new RegExp('/models/'+encodeURIComponent(model.id)+'/'));await expect(page.locator('.model-editorial')).toContainText(model.name);
- await page.goto('/#model/'+model.id);await expect(page).toHaveURL(new RegExp('/models/'+encodeURIComponent(model.id)+'/'));
+ await page.goBack();await expect(page).toHaveURL(new RegExp('/animations/'+encodeURIComponent(model.id)+'/'));await expect(page.locator('.model-editorial')).toContainText(model.name);
+ await page.goto('/#model/'+model.id);await expect(page).toHaveURL(new RegExp('/animations/'+encodeURIComponent(model.id)+'/'));
 });
 test('model pages and gallery are readable with JavaScript disabled',async({browser})=>{
  const context=await browser.newContext({javaScriptEnabled:false});const page=await context.newPage();const model=ready[0];
- await page.goto('http://127.0.0.1:4175/models/'+encodeURIComponent(model.id)+'/');await expect(page.getByRole('heading',{name:model.name,exact:true})).toBeVisible();await expect(page.locator('video')).toHaveAttribute('src',model.video);await expect(page.locator('.model-editorial')).toContainText('independent offline browser');
- await page.goto('http://127.0.0.1:4175/');await expect(page.locator('.model-card')).toHaveCount(ready.length);await expect(page.locator('.model-card a').first()).toHaveAttribute('href',/\/models\//);await context.close();
+ await page.goto('http://127.0.0.1:4175/animations/'+encodeURIComponent(model.id)+'/');await expect(page.getByRole('heading',{name:model.name,exact:true})).toBeVisible();await expect(page.locator('video')).toHaveAttribute('src',model.video);await expect(page.locator('.model-editorial')).toContainText('independent offline browser');
+ await page.goto('http://127.0.0.1:4175/');await expect(page.locator('.model-card')).toHaveCount(ready.length);await expect(page.locator('.model-card a').first()).toHaveAttribute('href',/\/animations\//);await context.close();
 });
 test('crawler entry points list only published films and unknown pages return real 404s',async({request,page})=>{
  const robots=await request.get('/robots.txt');expect(await robots.text()).toContain('Sitemap: https://pombench.com/sitemap.xml');
  const sitemap=await request.get('/sitemap.xml');const xml=await sitemap.text();expect(sitemap.status()).toBe(200);expect((xml.match(/<video:video>/g)||[]).length).toBe(ready.length);expect(xml).not.toContain('#model');
  const response=await page.goto('/not-a-pombench-page/');expect(response!.status()).toBe(404);await expect(page.getByRole('heading',{name:'Page not found',exact:true})).toBeVisible();await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content','noindex,follow');
+});
+
+test('Kimi K3.1 Pro and Muse Wonder join the shared gallery and synchronized comparison with actual API costs',async({page})=>{
+ const ids=['kimi-k3.1-pro','muse-wonder'];if(!c.models.some((m:any)=>m.inferenceSource==='openrouter-api'))return;
+ for(const id of ids){const model=c.models.find((m:any)=>m.id===id);expect(model.inferenceSource).toBe('openrouter-api');expect(model.video).toBeTruthy();await page.goto('/animations/'+id+'/');await expect(page.locator('.model-head')).toContainText('via OpenRouter');await expect(page.locator('.model-editorial')).toContainText('fallbacks disabled');await page.locator('#animation').evaluate((v:HTMLVideoElement)=>v.play());await expect.poll(()=>page.locator('#animation').evaluate((v:HTMLVideoElement)=>v.currentTime)).toBeGreaterThan(.1);await expect(page.locator('.model-stat')).toHaveCount(2)}
+ await page.goto('/compare/');await page.getByLabel('Animation C model').selectOption('gpt-6.1-sol');await page.getByLabel('Animation A model').selectOption(ids[0]);await page.getByLabel('Animation B model').selectOption(ids[1]);await page.getByRole('button',{name:'Play all',exact:true}).click();await expect.poll(async()=>Math.min(...await times(page))).toBeGreaterThan(.1);await page.getByRole('button',{name:'Pause',exact:true}).click();expect(Math.max(...await times(page))-Math.min(...await times(page))).toBeLessThan(.004);
 });

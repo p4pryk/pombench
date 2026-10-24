@@ -4,6 +4,7 @@ ErrorDocument 404 /404.html
 Options -Indexes
 <IfModule mod_rewrite.c>
   RewriteEngine On
+  RewriteRule ^models/([^/]+)/?$ /animations/$1/ [R=301,L,NE]
   RewriteCond %{HTTP_HOST} ^www\.pombench\.com$ [NC]
   RewriteRule ^ https://pombench.com%{REQUEST_URI} [R=301,L,NE]
 </IfModule>

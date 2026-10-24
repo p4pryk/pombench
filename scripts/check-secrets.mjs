@@ -4,6 +4,7 @@ try{files=execFileSync('git',['ls-files','-z'],{encoding:'utf8',stdio:['ignore',
 function walk(name){const p=path.join(root,name);if(!fs.existsSync(p))return [];if(fs.lstatSync(p).isSymbolicLink())throw Error('Symbolic link in public package: '+name);return fs.statSync(p).isDirectory()?fs.readdirSync(p).flatMap(e=>walk(path.join(name,e))):[name]}
 files=[...new Set([...files,...['src','public','docs','.github','README.md','CONTRIBUTING.md','SECURITY.md','.env.example','.gitignore','.gitattributes','package.json','package-lock.json','index.html','tsconfig.json','vite.config.ts','playwright.config.ts','scripts/check-build.mjs','scripts/check-secrets.mjs','scripts/sanitize-public.mjs','scripts/smoke-build.mjs','tests/catalog.test.ts','tests/outcome.test.ts','tests/public-results.test.ts','tests/browser/app.spec.ts'].flatMap(walk)])];
 const patterns=[
+ ['OpenRouter API key',/\bsk-or-v1-[A-Za-z0-9_-]{32,}\b/],
  ['private Google inference route',/https?:\/\/(?:[a-z0-9-]+-)?aiplatform\.googleapis\.com\/[^\s"<>]+/i],
  ['Google project resource path',/\bprojects\/[a-z0-9._:-]+\/(?:locations|secrets|serviceAccounts)\//i],
  ['Google API key',/\bAIza[A-Za-z0-9_-]{30,}\b/],
