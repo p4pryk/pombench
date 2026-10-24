@@ -2,6 +2,13 @@
 
 ### One little dog. Different models.
 
+**[Explore PomBench live →](https://pombench.com/)**
+
+[Animation gallery](https://pombench.com/) · [Compare models](https://pombench.com/compare/) · [How the benchmark works](https://pombench.com/method/)
+
+A visual AI coding benchmark: the same creative brief, real model-generated
+animations, and the tokens and cost behind each result.
+
 What happens when different AI models animate the same tiny dog?
 
 PomBench gives every model the same creative challenge: bring a Pomeranian to life
@@ -9,7 +16,14 @@ as it clears a shallow puddle, lands, runs into a backyard doghouse, retrieves
 a bone, and turns toward you.
 The scene stays the same. The interpretations are anything but.
 
-![The PomBench Pomeranian with a bone beside its doghouse](public/assets/pomeranian-hero.webp)
+[![The PomBench Pomeranian with a bone beside its doghouse](public/assets/pomeranian-hero.webp)](https://pombench.com/)
+
+## Start watching
+
+Watch [Kimi K3.1 Pro](https://pombench.com/animations/kimi-k3.1-pro/) or
+[Meta Muse Wonder](https://pombench.com/animations/muse-wonder/) take on the scene,
+then open the [side-by-side comparison](https://pombench.com/compare/) to explore
+how different models interpret the same challenge.
 
 ## Watch the differences
 
@@ -42,8 +56,8 @@ rendering approach. Each recording covers twelve seconds of animation.
 New results join the same gallery as the collection grows.
 
 There is no automatic beauty score: you can judge realism, movement, and
-storytelling for yourself. Token usage and cost estimates provide context;
-model settings and completion budgets can differ. The site's methodology page
+storytelling for yourself. Recorded token usage and known API costs provide context;
+model settings and completion budgets can differ. The site's [methodology page](https://pombench.com/method/)
 explains how the results are produced and what the comparison can tell you.
 
 **Same little Pomeranian. A different perspective from every model.**
