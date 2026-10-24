@@ -1,14 +1,39 @@
 {
   "modelId": "FW-Kimi-K3",
-  "promptHash": "fb3f6ca5af83d44bec1ee72b6fc1fe0da4ecc0e93241e80ac4463d81e2fb3a99",
-  "sourceHash": "d47efe5674db5ea12b126a7d5812fc9f476dacc464f732205f4079568d1f1055",
-  "responseHash": "f155d9eab6904ff0a8ac1973e636ad17e6ea88752b0eb10ff8e0e976b4aa7c9a",
-  "requestHash": "e6d52d15a3dd59da73d723dab92ee3307a15a810ba7dd82d6f711cf394dbb38d",
-  "streamHash": "c5bbefac71318ea47bfb73166acdb4a329053288488a27fb6ba4720ccb9af84a",
+  "modelVersion": "1",
+  "source": "Actual Foundry API usage",
+  "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+  "sourceHash": "70fee822af53b53b0a1d139beb349b42944c0e608bc68a48a2eda033bbd2ff44",
+  "requestHash": "4fc257610e366efcdd56ceb519d7063a12f7faed2fff61c0a38071ac9138b013",
+  "responseHash": "0eaeb275f8a3183bb39b527c803631dd2a9a7c3d9bea1863ea09f79bab4fd731",
+  "streamHash": "488b6095cf3c3a643f452bc4313294305fff3def175f47c6ba7f5b94b4524cab",
   "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
-  "submission": 1,
   "tools": [],
   "usageComplete": true,
+  "submission": 1,
+  "rawUsage": {
+    "prompt_tokens": 2118,
+    "completion_tokens": 22590,
+    "total_tokens": 24708,
+    "prompt_tokens_details": {
+      "audio_tokens": null,
+      "cached_tokens": 0
+    },
+    "completion_tokens_details": {
+      "accepted_prediction_tokens": null,
+      "audio_tokens": null,
+      "reasoning_tokens": 17748,
+      "rejected_prediction_tokens": null
+    }
+  },
+  "usage": {
+    "input_tokens": 2118,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 22590,
+    "total_tokens": 24708,
+    "reasoning_output_tokens": 17748
+  },
   "visualScore": null,
-  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+  "visualReview": "Inspect the recorded film against all seven visual criteria. Technical execution does not prove puddle clearance, realism or narrative success."
 }

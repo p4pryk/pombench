@@ -1,14 +1,43 @@
 {
   "modelId": "grok-4.7",
-  "promptHash": "20bb5d3d46815a7296b7ab81172f7127a28d8553f04042ad75c68518b86265b3",
-  "sourceHash": "494517316f096c8d26e23aee4553f4023e334c743ee21e5dd4e13e7378a0c5d6",
-  "responseHash": "d338c51359bc98785cfbb67b42d37ca16fe54b2eeae0b539eddc86e75dea1dbb",
-  "requestHash": "368440612b836d3cd756d06d2572227d95897bef68425da50be212c4fa386dbc",
-  "streamHash": "9f9cd10435bb40d30b5a948204aeb8b1bff9ef2e630e554237b98f48a48154c4",
+  "modelVersion": "1",
+  "source": "Actual Foundry API usage",
+  "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+  "sourceHash": "216c529d82c9c633463fd01c250390cafc02a325bf676f1f4cdbf986b6ad8e5c",
+  "requestHash": "b0d9cd769ad4ae482210321c7b3ca6fd10708f9b3229635b3734b25518e43b4f",
+  "responseHash": "47a43c1bbaea8072989a42f3d72f5234d78f2136162221d7d91f0ac311d58e53",
+  "streamHash": "40c388bf7d3a5601962fab0b1fd92d69ce1f7ac73aafadccc01a66394b78d9c3",
   "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
-  "submission": 1,
   "tools": [],
   "usageComplete": true,
+  "submission": 1,
+  "rawUsage": {
+    "prompt_tokens": 2029,
+    "completion_tokens": 10467,
+    "total_tokens": 31348,
+    "prompt_tokens_details": {
+      "text_tokens": 2029,
+      "audio_tokens": 0,
+      "image_tokens": 0,
+      "cached_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 18852,
+      "audio_tokens": 0,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0
+    },
+    "num_sources_used": 0,
+    "cost_in_usd_ticks": 0
+  },
+  "usage": {
+    "input_tokens": 2029,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 10467,
+    "total_tokens": 12496,
+    "reasoning_output_tokens": 18852
+  },
   "visualScore": null,
-  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+  "visualReview": "Inspect the recorded film against all seven visual criteria. Technical execution does not prove puddle clearance, realism or narrative success."
 }

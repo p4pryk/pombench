@@ -1,47 +1,122 @@
 {
-  "status": "render-error",
+  "status": "captured",
   "technicalChecks": {
-    "contract": false,
-    "renders": false,
-    "visible": false,
-    "motion": false,
+    "contract": true,
+    "renders": true,
+    "visible": true,
+    "motion": true,
     "deterministic": false,
     "offline": true
   },
-  "technicalPassed": 1,
+  "technicalPassed": 5,
   "technicalTotal": 6,
   "visualScore": null,
-  "visualReview": "Not reviewed. Technical checks do not verify anatomy, foot contact, bone contact or doghouse occlusion or task compliance.",
+  "visualReview": "Not reviewed. Technical checks do not verify anatomy, foot contact, bone contact, doghouse occlusion, puddle clearance, weight-bearing landing, water reflection or task compliance.",
   "metrics": {
     "sampleColorStd": [
-      0.8804621696472168
-    ]
+      59.22365188598633,
+      59.2198486328125,
+      59.2521858215332,
+      59.22566604614258,
+      59.22206497192383,
+      59.221588134765625,
+      59.221439361572266,
+      59.225341796875,
+      59.22566223144531,
+      59.2249870300293,
+      59.25437545776367,
+      59.25896072387695
+    ],
+    "changedPixelFractions": [
+      0.0006076388888888889,
+      0.007150848765432098,
+      0.0065451388888888885,
+      0.0021199845679012344,
+      5.208333333333334e-05,
+      0.0,
+      0.0010455246913580248,
+      0.0016126543209876542,
+      0.004440586419753086,
+      0.012673611111111111,
+      0.0016705246913580247
+    ],
+    "finalBoundaryStepRmse": 0.9313650131225586,
+    "repeatPixelRmse": {
+      "repeat-a": 0.023337190970778465,
+      "repeat-b": 0.01995042711496353,
+      "repeat-c": 0.024611173197627068
+    },
+    "renderRoundTripMedianMs": 1.3865414999997938,
+    "renderRoundTripP95Ms": 4.997271449999653
   },
-  "errors": [
-    "Unexpected token '-'"
-  ],
+  "errors": [],
   "blockedRequests": [],
   "cspViolations": [],
   "capture": {
-    "frames": 0,
+    "frames": 360,
     "fps": 30,
-    "durationSeconds": null,
+    "durationSeconds": 12,
     "width": 960,
     "height": 540,
-    "complete": false,
+    "complete": true,
     "isolation": "Separate offline Chromium process, service workers and downloads disabled, CSP, all post-bootstrap network blocked. Organizer measures screenshot pixels; candidate reports are ignored.",
-    "sourceHash": "fa00d56e7c91a85f25a64d95b1fefb53a3697ae1ac6b9adf782900da5938aed2",
-    "frameEvidenceHash": "290783af4a6d475561f9e85e86154f68b23ec43a3513557a2db0db9c6d880e55"
+    "sourceHash": "1dc5d85b408c1d736f66069626971472a12927cd896fab313a6a4a9b30e0de8d",
+    "frameEvidenceHash": "435c95a06b1dd09c1dddb6542b00983771b54475daa9d50889d668fab00f6af6"
   },
   "contactSheet": [
     {
       "time": 0,
-      "frame": "initial.png"
+      "frame": "0000.png"
+    },
+    {
+      "time": 1,
+      "frame": "0030.png"
+    },
+    {
+      "time": 2,
+      "frame": "0060.png"
+    },
+    {
+      "time": 3,
+      "frame": "0090.png"
+    },
+    {
+      "time": 4,
+      "frame": "0120.png"
+    },
+    {
+      "time": 5,
+      "frame": "0150.png"
+    },
+    {
+      "time": 6,
+      "frame": "0180.png"
+    },
+    {
+      "time": 7,
+      "frame": "0210.png"
+    },
+    {
+      "time": 8,
+      "frame": "0240.png"
+    },
+    {
+      "time": 9,
+      "frame": "0270.png"
+    },
+    {
+      "time": 10.5,
+      "frame": "0315.png"
+    },
+    {
+      "time": 11.966666666666667,
+      "frame": "0359.png"
     }
   ],
   "evidenceHashes": {
-    "capture.json": "290783af4a6d475561f9e85e86154f68b23ec43a3513557a2db0db9c6d880e55",
-    "poster.png": "c529323ee364d3e8e877c37bdf0cf0e5266cd09091832b255fea2aaea5dac449",
-    "contact-sheet.jpg": "411cf935ac51a7c2a111f7e8ca229c89b1657f400eb07051dcbcc180c3586a84"
+    "capture.json": "435c95a06b1dd09c1dddb6542b00983771b54475daa9d50889d668fab00f6af6",
+    "poster.png": "f0e50fd3e6adec68669115d2ff306a1448a50456e8106ef25e690f6a45868c2c",
+    "contact-sheet.jpg": "57048b947cb4f21fabe024879b8adab57a881a0b686d84f3c005daf6e8218d60",
+    "animation.mp4": "fc9c85bbe36f0f015572eef27fceb4f6d96d52053ca236a2f68e8b2bbd2eca0c"
   }
 }

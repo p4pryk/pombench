@@ -11,23 +11,24 @@
   "technicalPassed": 5,
   "technicalTotal": 6,
   "visualScore": null,
-  "visualReview": "Not reviewed. Technical checks do not verify anatomy, foot contact, bone contact or doghouse occlusion or task compliance.",
+  "visualReview": "Not reviewed. Technical checks do not verify anatomy, foot contact, bone contact, doghouse occlusion, puddle clearance, weight-bearing landing, water reflection or task compliance.",
   "metrics": {
     "sampleColorStd": [
-      31.586669921875,
-      31.586669921875,
-      31.586669921875,
-      31.586669921875,
-      31.586669921875,
-      31.586669921875,
-      31.586669921875,
-      31.586669921875,
-      31.586669921875,
-      32.30828857421875,
-      31.74772834777832,
-      31.74772834777832
+      68.10137176513672,
+      68.02445220947266,
+      68.02445220947266,
+      68.02445220947266,
+      68.02445220947266,
+      68.02445220947266,
+      68.02445220947266,
+      68.02445220947266,
+      68.02445220947266,
+      68.02445220947266,
+      68.02445220947266,
+      68.02445220947266
     ],
     "changedPixelFractions": [
+      0.01308449074074074,
       0.0,
       0.0,
       0.0,
@@ -36,8 +37,7 @@
       0.0,
       0.0,
       0.0,
-      0.006010802469135802,
-      0.006896219135802469,
+      0.0,
       0.0
     ],
     "finalBoundaryStepRmse": 0.0,
@@ -46,8 +46,8 @@
       "repeat-b": 0.0,
       "repeat-c": 0.0
     },
-    "renderRoundTripMedianMs": 0.488145999999972,
-    "renderRoundTripP95Ms": 0.7486062500005574
+    "renderRoundTripMedianMs": 1.2229585000000043,
+    "renderRoundTripP95Ms": 6.206324400000381
   },
   "errors": [],
   "blockedRequests": [],
@@ -60,8 +60,8 @@
     "height": 540,
     "complete": true,
     "isolation": "Separate offline Chromium process, service workers and downloads disabled, CSP, all post-bootstrap network blocked. Organizer measures screenshot pixels; candidate reports are ignored.",
-    "sourceHash": "b6ac13f41854afb0f2bae3aa7f3b43c2799da30a4431d6468f325e9fcd46c5e6",
-    "frameEvidenceHash": "f244c99485caec6ec33b3b36e72b45eb825f95c3ace9ef1bb81fb4778329b4e8"
+    "sourceHash": "507156b530c471d4ffbf495e865b3b77481aba78de4416cb31c6779444a3e434",
+    "frameEvidenceHash": "abe29efbd790dc93980d42a88e9de37560cf4922d5c845c72888e4feee7af298"
   },
   "contactSheet": [
     {
@@ -114,9 +114,9 @@
     }
   ],
   "evidenceHashes": {
-    "capture.json": "f244c99485caec6ec33b3b36e72b45eb825f95c3ace9ef1bb81fb4778329b4e8",
-    "poster.png": "e67c798abc50de75ca1b93311714e88d8549178a15663748ea350ae14fdd8720",
-    "contact-sheet.jpg": "42698c8c248e659a9a81a92e4c641e6078e16c716b48cd018abc2360c52c9605",
-    "animation.mp4": "922f34b38f2679c43e2a41ce1636196c17bcaf2d8b3db21a69e4726cb56b40a2"
+    "capture.json": "abe29efbd790dc93980d42a88e9de37560cf4922d5c845c72888e4feee7af298",
+    "poster.png": "87c2575c8c14f6e1129278df627639d0f73e2cdeefab9f7ed7ba15ab7207a23a",
+    "contact-sheet.jpg": "9c8e0718f04e4ce184fbeaf255e530d621e054f4a62c4a0db22fe5bb520e04f6",
+    "animation.mp4": "597ddddd7b15df31b31802783d3cf6ff235f338ff28cb74b9ef98f2726f4683f"
   }
 }

@@ -2,42 +2,42 @@
   "modelId": "gemini-3.1-pro-preview",
   "modelVersion": "gemini-3.1-pro-preview",
   "source": "Actual Vertex AI API usage",
-  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
-  "sourceHash": "a89cc3d7becd5312b06a40c379d03d6f22fa06706031086d7a7a5de406974ba4",
-  "requestHash": "2c93a11814b5c5504ba527cf43acda0607ec8cc3c606a5259077b38eecb561c9",
-  "responseHash": "84ee0eacf2018b31e023309995ef74abd0ec6d4e1cb9ce8a4acded9f0ff805c8",
+  "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+  "sourceHash": "266c3ea24fb9c48175afc95805ef515971520d7534ee600fd1a5a11d8fa06a7e",
+  "requestHash": "7e909a2fb678307a5cd5abca2d42356f90f799136f9540fecdb4ad98f1f6bf09",
+  "responseHash": "13588f7a08700a1a2f14faf9fe25ba0bd733384b47e6fc3a46b7e117282d27e3",
+  "streamHash": null,
   "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
-  "submission": 1,
   "tools": [],
   "usageComplete": true,
+  "submission": 1,
   "rawUsage": {
-    "promptTokenCount": 1661,
-    "candidatesTokenCount": 4566,
-    "totalTokenCount": 8187,
+    "promptTokenCount": 2116,
+    "candidatesTokenCount": 1920,
+    "totalTokenCount": 4036,
     "trafficType": "ON_DEMAND",
     "promptTokensDetails": [
       {
         "modality": "TEXT",
-        "tokenCount": 1661
+        "tokenCount": 2116
       }
     ],
     "candidatesTokensDetails": [
       {
         "modality": "TEXT",
-        "tokenCount": 4566
+        "tokenCount": 1920
       }
-    ],
-    "thoughtsTokenCount": 1960
+    ]
   },
   "usage": {
-    "input_tokens": 1661,
+    "input_tokens": 2116,
     "cached_input_tokens": 0,
     "cache_write_input_tokens": 0,
-    "output_tokens": 6526,
-    "reasoning_output_tokens": 1960,
-    "visible_output_tokens": 4566,
-    "total_tokens": 8187
+    "output_tokens": 1920,
+    "reasoning_output_tokens": 0,
+    "visible_output_tokens": 1920,
+    "total_tokens": 4036
   },
   "visualScore": null,
-  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+  "visualReview": "Inspect the recorded film against all seven visual criteria. Technical execution does not prove puddle clearance, realism or narrative success."
 }

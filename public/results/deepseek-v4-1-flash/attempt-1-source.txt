@@ -1,908 +1,769 @@
+Here is a complete, self-contained HTML document that draws a 12-second animation of a Pomeranian retrieving a bone from its doghouse. The scene includes a shallow puddle, a reflective water surface, and a final front-facing pose with the bone in its mouth.
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pomeranian / Motion — The Bone</title>
+  <title>PomBench — Puddle, Pomeranian, Bone</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #1a120e; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-    canvas { display: block; width: 960px; height: 540px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); }
+    body { background: #1a1e1a; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    canvas { display: block; width: 960px; height: 540px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); border-radius: 4px; }
   </style>
 </head>
 <body>
   <canvas id="stage" width="960" height="540"></canvas>
   <script>
-    const canvas = document.getElementById('stage');
-    const ctx = canvas.getContext('2d');
-    const W = 960, H = 540;
+    (function(){
+      const canvas = document.getElementById('stage');
+      const ctx = canvas.getContext('2d');
+      const W = 960, H = 540;
 
-    // ---------- deterministic PRNG ----------
-    function mulberry32(a) {
-      return function() {
-        a |= 0; a = a + 0x6D2B79F5 | 0;
-        let t = Math.imul(a ^ a >>> 15, 1 | a);
-        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      // ---------- deterministic PRNG ----------
+      function mulberry32(a) {
+        return function() {
+          a |= 0; a = a + 0x6D2B79F5 | 0;
+          let t = Math.imul(a ^ a >>> 15, 1 | a);
+          t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+          return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        };
+      }
+
+      // ---------- geometric helpers ----------
+      function lerp(a,b,t){ return a+(b-a)*Math.max(0,Math.min(1,t)); }
+      function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+      function smoothstep(t){ t = clamp(t,0,1); return t*t*(3-2*t); }
+
+      // ---------- scene constants ----------
+      const GROUND_Y = 400;          // main yard surface (y-coordinate at z=0)
+      const HORIZON_Y = 260;         // distant yard horizon
+      const DOGHOUSE = {
+        x: 690, y: 310,              // top-left of front face
+        w: 160, h: 140,
+        doorW: 54, doorH: 70,
+        doorX: 690 + (160-54)/2,     // centered door
+        roofPeak: 310 - 42
       };
-    }
+      const PUDDLE = {
+        cx: 430, cy: 418,
+        rx: 72, ry: 24
+      };
+      const BONE = {
+        x: 742, y: 438,              // resting inside doghouse on floor
+        w: 34, h: 11,
+        angle: 0.12
+      };
 
-    // ---------- scene constants ----------
-    const GROUND_Y = 430;
-    const HOUSE_X = 660;       // house center x
-    const HOUSE_W = 200;
-    const HOUSE_H = 190;
-    const HOUSE_FRONT_Y = GROUND_Y - HOUSE_H; // 240
-    const DOOR_W = 90;
-    const DOOR_H = 130;
-    const DOOR_LEFT = HOUSE_X - DOOR_W / 2;
-    const DOOR_RIGHT = HOUSE_X + DOOR_W / 2;
-    const DOOR_TOP = GROUND_Y - DOOR_H;
+      // ---------- key frame / state interpolation ----------
+      // Phases (seconds):
+      // 0-1   : idle look, establish
+      // 1-3   : run to puddle, leap, land
+      // 3-4.5 : enter doghouse
+      // 4.5-6 : grab bone
+      // 6-8   : reverse out with bone
+      // 8-10  : turn to face viewer
+      // 10-12 : hold front-facing pose
 
-    // Dog base dimensions (Pomeranian proportions)
-    const DOG_BODY_LEN = 70;
-    const DOG_BODY_H = 38;
-    const DOG_LEG_LEN = 42;
-    const DOG_HEAD_R = 24;
-    const DOG_NECK_LEN = 20;
-    const DOG_TAIL_LEN = 48;
+      function getDogState(t){
+        let x, y, bodyAngle, headAngle, tailCurl, legPhase, mouthOpen, hasBone, boneAngle;
+        let bodyTilt = 0;
 
-    // ---------- timing ----------
-    // 0-1: idle/notice
-    // 1-3: run to house
-    // 3-4.5: enter
-    // 4.5-6: grab bone
-    // 6-8: back out
-    // 8-10: turn to face viewer
-    // 10-12: settle / present
+        // defaults
+        x = 260; y = GROUND_Y; bodyAngle = -0.05; headAngle = 0; tailCurl = 1.0;
+        legPhase = 0; mouthOpen = 0; hasBone = false; boneAngle = BONE.angle;
+        bodyTilt = 0;
 
-    // ---------- key positions ----------
-    // The dog starts at left, runs to the house door, enters, grabs bone, backs out, turns.
-    // We'll model a path in 2D "ground plane" coordinates: X (left-right), Z (depth: 0 far, 1 near)
-    // Then project to screen.
+        if (t < 1.0) {
+          // idle: look toward house
+          const p = t;
+          x = 260;
+          bodyAngle = lerp(-0.1, -0.15, p);
+          headAngle = lerp(0.0, 0.25, Math.min(p*1.2,1));
+          tailCurl = 0.9 + 0.1*Math.sin(p*4);
+          legPhase = 0;
+        } else if (t < 3.0) {
+          // run from x=260 to x=600 (approach puddle, leap, land)
+          const p = (t - 1.0) / 2.0; // 0..1
+          // piecewise: run, anticipate, leap, land
+          if (p < 0.35) {
+            // run forward on ground
+            const q = p / 0.35;
+            x = lerp(260, 390, q);
+            y = GROUND_Y;
+            bodyAngle = -0.1 - 0.08*Math.sin(q*Math.PI*2);
+            legPhase = q * 6;
+            headAngle = 0.15;
+          } else if (p < 0.5) {
+            // anticipation: shorten stride, lower body
+            const q = (p - 0.35) / 0.15;
+            x = lerp(390, 410, q);
+            y = GROUND_Y + 6 * Math.sin(q*Math.PI);
+            bodyAngle = -0.18;
+            legPhase = 2.0 + q*2;
+            headAngle = 0.1;
+            bodyTilt = 0.08 * Math.sin(q*Math.PI);
+          } else if (p < 0.72) {
+            // leap: arc over puddle, all paws off
+            const q = (p - 0.5) / 0.22;
+            x = lerp(410, 530, q);
+            // parabolic arc: peak height ~55px above ground
+            const arc = 4 * 55 * q * (1 - q);
+            y = GROUND_Y - arc;
+            bodyAngle = -0.2 + 0.15 * Math.sin(q*Math.PI);
+            legPhase = 4.0 + q*4;
+            tailCurl = 0.8 + 0.4 * Math.sin(q*Math.PI);
+            headAngle = -0.1;
+            bodyTilt = -0.15 * Math.sin(q*Math.PI);
+          } else {
+            // landing and resume
+            const q = (p - 0.72) / 0.28;
+            x = lerp(530, 600, q);
+            // landing compression then up
+            if (q < 0.2) {
+              y = GROUND_Y + 8 * Math.sin((q/0.2)*Math.PI);
+            } else {
+              y = GROUND_Y;
+            }
+            bodyAngle = lerp(-0.05, -0.1, q);
+            legPhase = 2.0 + q*6;
+            headAngle = 0.1;
+          }
+        } else if (t < 4.5) {
+          // enter doghouse: x from 600 to 720, y constant
+          const p = (t - 3.0) / 1.5;
+          const q = smoothstep(p);
+          x = lerp(600, 720, q);
+          y = GROUND_Y;
+          bodyAngle = -0.08;
+          legPhase = q * 6;
+          headAngle = lerp(0.2, 0.5, Math.min(q*1.5,1));
+          tailCurl = 0.7;
+        } else if (t < 6.0) {
+          // inside, grab bone (4.5-6s)
+          const p = (t - 4.5) / 1.5;
+          x = 740 + 8 * Math.sin(p*Math.PI);
+          y = GROUND_Y + 4 * Math.sin(p*Math.PI); // slight head lower
+          bodyAngle = 0.05;
+          headAngle = 0.8 - 0.6 * smoothstep(p);
+          mouthOpen = Math.sin(p * Math.PI * 0.8) * 0.9;
+          hasBone = (p > 0.75);
+          boneAngle = 0.1;
+          tailCurl = 0.6;
+        } else if (t < 8.0) {
+          // reverse out (6-8s)
+          const p = (t - 6.0) / 2.0;
+          const q = smoothstep(p);
+          x = lerp(740, 620, q);
+          y = GROUND_Y;
+          bodyAngle = 0.1 - 0.15 * q;
+          headAngle = 0.2;
+          legPhase = -q * 5;
+          mouthOpen = 0.55 - 0.05*Math.sin(p*Math.PI*3);
+          hasBone = true;
+          boneAngle = 0.15 + 0.1*Math.sin(p*Math.PI*2);
+          tailCurl = 0.9;
+          bodyTilt = 0.08 * Math.sin(q*Math.PI);
+        } else if (t < 10.0) {
+          // turn to face viewer (8-10s)
+          const p = (t - 8.0) / 2.0;
+          const q = smoothstep(p);
+          // pivot: x moves slightly, bodyAngle rotates from side to front
+          x = lerp(620, 580, q);
+          y = GROUND_Y;
+          bodyAngle = lerp(-0.1, 0.0, q); // 0 = front-facing
+          headAngle = lerp(0.1, 0.0, q);
+          legPhase = Math.sin(q*Math.PI*2) * 2;
+          mouthOpen = 0.5 - 0.2*q;
+          hasBone = true;
+          boneAngle = 0.05 + 0.1*(1-q);
+          tailCurl = lerp(0.8, 1.0, q);
+          bodyTilt = 0.1 * Math.sin(q*Math.PI);
+        } else {
+          // hold front-facing (10-12s) with subtle breathing
+          const p = (t - 10.0) / 2.0;
+          x = 580;
+          y = GROUND_Y;
+          bodyAngle = 0.0;
+          headAngle = 0.0;
+          legPhase = 0;
+          mouthOpen = 0.3 + 0.05 * Math.sin(p * Math.PI * 6);
+          hasBone = true;
+          boneAngle = 0.05;
+          tailCurl = 1.0 + 0.04 * Math.sin(p * Math.PI * 8);
+          // breathing
+          bodyTilt = 0.015 * Math.sin(p * Math.PI * 4);
+        }
 
-    // Camera: simple perspective-ish. Screen x = cx + X * scale; screen y = GROUND_Y + (1-Z)*something - height.
-    // Actually simpler: use isometric-ish projection with a fixed camera facing the yard.
-
-    // Let's use a readable 3/4 view: house at right, dog approaches from left.
-    // The yard extends from x=0 to 960. Ground line at y=430. Depth is suggested by scale and y offset.
-
-    // We'll define the dog's world position (wx, wz) where:
-    //   wx: 0 (left) .. 1 (right)
-    //   wz: 0 (far/back) .. 1 (near/front)
-    // House doorway is at wx ≈ 0.70, wz ≈ 0.35 (slightly back).
-    // Dog starts at wx = 0.12, wz = 0.65.
-    // Final pose at wx = 0.38, wz = 0.85, facing viewer.
-
-    // Projection: screenX = wx * W, screenY = GROUND_Y - wz * 60 - heightOffset
-    // But we want depth to feel 3D. Let's use:
-    //   projX(wx) = wx * W
-    //   projY(wz) = GROUND_Y - wz * 50  (higher = further back)
-    // Dog body drawn at (projX, projY) with scale = 0.8 + wz*0.3
-
-    function projX(wx) { return wx * W; }
-    function projY(wz) { return GROUND_Y - wz * 55; }
-    function projScale(wz) { return 0.75 + wz * 0.35; }
-
-    // ---------- dog state at time t ----------
-    // We'll build a piecewise keyframe system for the dog's pose.
-
-    function easeInOut(t) { return t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t+2,2)/2; }
-    function easeOut(t) { return 1 - (1-t)*(1-t); }
-    function easeIn(t) { return t*t; }
-    function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
-
-    // Dog state object
-    function getDogState(t) {
-      // defaults
-      let wx = 0.12, wz = 0.62;
-      let facing = 0; // radians, 0 = facing right, PI/2 = facing viewer (down-ish)
-      let bodyBob = 0;
-      let legPhase = 0;
-      let headTurn = 0;
-      let mouthOpen = 0;
-      let tailWag = 0;
-      let hasBone = false;
-      let boneVisible = false;
-      let boneInMouth = false;
-      let bodyAngle = 0; // extra rotation for turn
-      let lean = 0;
-
-      // ---- Phase 0-1: idle, notice ----
-      if (t < 1) {
-        const p = t;
-        wx = 0.12;
-        wz = 0.62;
-        facing = 0;
-        bodyBob = Math.sin(t * 8) * 0.8;
-        headTurn = -0.3 + p * 0.3; // looking left, then toward house
-        legPhase = 0;
-        tailWag = Math.sin(t * 6) * 0.4;
-        mouthOpen = 0;
-      }
-      // ---- Phase 1-3: run to house ----
-      else if (t < 3) {
-        const p = (t - 1) / 2; // 0..1
-        const ep = easeInOut(p);
-        wx = 0.12 + ep * 0.58; // 0.12 -> 0.70
-        wz = 0.62 - ep * 0.27; // 0.62 -> 0.35
-        facing = 0;
-        bodyBob = Math.abs(Math.sin(t * 14)) * 2.5;
-        legPhase = t * 18;
-        headTurn = 0.1;
-        tailWag = Math.sin(t * 10) * 0.6;
-        mouthOpen = 0;
-        lean = 0.06; // leaning forward
-      }
-      // ---- Phase 3-4.5: enter house ----
-      else if (t < 4.5) {
-        const p = (t - 3) / 1.5;
-        const ep = easeInOut(p);
-        wx = 0.70 + ep * 0.04;
-        wz = 0.35 - ep * 0.10; // moves back into house
-        facing = 0;
-        bodyBob = Math.abs(Math.sin(t * 12)) * 1.5 * (1 - p * 0.7);
-        legPhase = p * 6;
-        headTurn = 0.05;
-        tailWag = Math.sin(t * 8) * 0.3 * (1 - p);
-        mouthOpen = 0;
-      }
-      // ---- Phase 4.5-6: grab bone ----
-      else if (t < 6) {
-        const p = (t - 4.5) / 1.5;
-        wx = 0.74;
-        wz = 0.25;
-        facing = 0;
-        bodyBob = 0;
-        legPhase = 0;
-        headTurn = -0.1 + p * 0.2;
-        tailWag = Math.sin(t * 5) * 0.5;
-        // mouth opens then closes on bone
-        mouthOpen = p < 0.4 ? p / 0.4 * 0.8 : (0.8 - (p - 0.4) / 0.6 * 0.8);
-        hasBone = p > 0.5;
-        boneVisible = true;
-        boneInMouth = p > 0.5;
-      }
-      // ---- Phase 6-8: back out ----
-      else if (t < 8) {
-        const p = (t - 6) / 2;
-        const ep = easeInOut(p);
-        wx = 0.74 - ep * 0.16; // 0.74 -> 0.58
-        wz = 0.25 + ep * 0.30; // 0.25 -> 0.55
-        facing = Math.PI * (1 - ep); // turn from facing right (0) to facing left-ish during backout
-        // Wait, backing out means going backward, so the dog's tail leads.
-        // If dog entered head-first facing right, backing out means it moves left while facing right.
-        // So facing should remain ~0 (right) while moving left.
-        facing = 0;
-        bodyBob = Math.abs(Math.sin(t * 12)) * 1.2;
-        legPhase = (t - 6) * 14;
-        headTurn = -0.15;
-        tailWag = Math.sin(t * 9) * 0.4;
-        mouthOpen = 0.15; // slightly open holding bone
-        hasBone = true;
-        boneVisible = true;
-        boneInMouth = true;
-      }
-      // ---- Phase 8-10: turn to face viewer ----
-      else if (t < 10) {
-        const p = (t - 8) / 2;
-        const ep = easeInOut(p);
-        wx = 0.58 - ep * 0.18; // 0.58 -> 0.40
-        wz = 0.55 + ep * 0.32; // 0.55 -> 0.87
-        // Turn from facing right (0) to facing viewer (PI/2)
-        facing = ep * Math.PI * 0.5;
-        bodyBob = Math.abs(Math.sin(t * 10)) * 0.8;
-        legPhase = (t - 8) * 10;
-        headTurn = 0;
-        tailWag = Math.sin(t * 8) * 0.5;
-        mouthOpen = 0.1;
-        hasBone = true;
-        boneVisible = true;
-        boneInMouth = true;
-      }
-      // ---- Phase 10-12: settle / present ----
-      else {
-        const p = clamp((t - 10) / 2, 0, 1);
-        wx = 0.40;
-        wz = 0.87;
-        facing = Math.PI * 0.5;
-        bodyBob = Math.sin((t - 10) * 3) * 0.6;
-        legPhase = 0;
-        headTurn = Math.sin((t - 10) * 2) * 0.05;
-        tailWag = Math.sin((t - 10) * 4) * 0.3;
-        mouthOpen = 0.08;
-        hasBone = true;
-        boneVisible = true;
-        boneInMouth = true;
+        return { x, y, bodyAngle, headAngle, tailCurl, legPhase, mouthOpen, hasBone, boneAngle, bodyTilt };
       }
 
-      return { wx, wz, facing, bodyBob, legPhase, headTurn, mouthOpen, tailWag, hasBone, boneVisible, boneInMouth, lean };
-    }
+      // ---------- drawing functions ----------
 
-    // ---------- drawing helpers ----------
+      function drawBackground(){
+        // sky gradient
+        const skyGrad = ctx.createLinearGradient(0, 0, 0, HORIZON_Y+60);
+        skyGrad.addColorStop(0, '#6a8a9a');
+        skyGrad.addColorStop(0.5, '#9ab0b8');
+        skyGrad.addColorStop(1, '#c8d4c8');
+        ctx.fillStyle = skyGrad;
+        ctx.fillRect(0, 0, W, HORIZON_Y+60);
 
-    // Draw a soft ellipse
-    function ellipse(x, y, rx, ry, rot, fill) {
-      ctx.save();
-      ctx.translate(x, y);
-      if (rot) ctx.rotate(rot);
-      ctx.beginPath();
-      ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
-      ctx.fillStyle = fill;
-      ctx.fill();
-      ctx.restore();
-    }
-
-    // Fur texture: deterministic strokes
-    function furStrokes(x, y, rx, ry, count, color1, color2, seed, rot, lenScale) {
-      const rng = mulberry32(seed);
-      ctx.save();
-      ctx.translate(x, y);
-      if (rot) ctx.rotate(rot);
-      for (let i = 0; i < count; i++) {
-        const a = rng() * Math.PI * 2;
-        const r = rng();
-        const px = Math.cos(a) * rx * Math.sqrt(r) * 0.8;
-        const py = Math.sin(a) * ry * Math.sqrt(r) * 0.8;
-        const len = (3 + rng() * 6) * (lenScale || 1);
-        const dir = a + (rng() - 0.5) * 0.6;
+        // distant trees/foliage
+        ctx.fillStyle = '#4a6a4a';
         ctx.beginPath();
-        ctx.moveTo(px, py);
-        ctx.lineTo(px + Math.cos(dir) * len, py + Math.sin(dir) * len * 0.6);
-        ctx.strokeStyle = rng() > 0.5 ? color1 : color2;
-        ctx.lineWidth = 0.7 + rng() * 1.2;
-        ctx.globalAlpha = 0.25 + rng() * 0.35;
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-      ctx.restore();
-    }
-
-    // ---------- draw background ----------
-    function drawBackground() {
-      // Sky
-      const skyGrad = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
-      skyGrad.addColorStop(0, '#c9d9e8');
-      skyGrad.addColorStop(0.5, '#d8e4ee');
-      skyGrad.addColorStop(1, '#e8ede4');
-      ctx.fillStyle = skyGrad;
-      ctx.fillRect(0, 0, W, GROUND_Y);
-
-      // Distant trees / hedge
-      ctx.fillStyle = '#5a7a4a';
-      for (let i = 0; i < 12; i++) {
-        const x = i * 85 + 20;
-        const h = 40 + (i % 3) * 15;
-        ctx.beginPath();
-        ctx.ellipse(x, GROUND_Y - 20, 45, h, 0, Math.PI, 0);
-        ctx.fill();
-      }
-      ctx.fillStyle = '#4a6a3a';
-      for (let i = 0; i < 10; i++) {
-        const x = i * 100 + 60;
-        const h = 30 + (i % 4) * 10;
-        ctx.beginPath();
-        ctx.ellipse(x, GROUND_Y - 15, 55, h, 0, Math.PI, 0);
-        ctx.fill();
-      }
-
-      // Fence in back
-      ctx.strokeStyle = '#8a7a60';
-      ctx.lineWidth = 2;
-      for (let i = 0; i < 20; i++) {
-        const x = i * 50 + 10;
-        ctx.beginPath();
-        ctx.moveTo(x, GROUND_Y - 45);
-        ctx.lineTo(x, GROUND_Y - 5);
-        ctx.stroke();
-      }
-      ctx.beginPath();
-      ctx.moveTo(0, GROUND_Y - 40);
-      ctx.lineTo(W, GROUND_Y - 40);
-      ctx.strokeStyle = '#7a6a50';
-      ctx.lineWidth = 3;
-      ctx.stroke();
-
-      // Ground
-      const groundGrad = ctx.createLinearGradient(0, GROUND_Y - 20, 0, H);
-      groundGrad.addColorStop(0, '#7a9a5a');
-      groundGrad.addColorStop(0.3, '#6a8a4a');
-      groundGrad.addColorStop(1, '#4a6a3a');
-      ctx.fillStyle = groundGrad;
-      ctx.fillRect(0, GROUND_Y - 10, W, H - GROUND_Y + 10);
-
-      // Grass texture
-      const rng = mulberry32(12345);
-      for (let i = 0; i < 400; i++) {
-        const x = rng() * W;
-        const y = GROUND_Y - 5 + rng() * (H - GROUND_Y + 5);
-        const len = 2 + rng() * 4;
-        const shade = 60 + rng() * 40;
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + (rng() - 0.5) * 3, y - len);
-        ctx.strokeStyle = `rgba(${shade}, ${shade + 40}, ${shade - 20}, 0.5)`;
-        ctx.lineWidth = 0.8;
-        ctx.stroke();
-      }
-
-      // Sunlight patch
-      const sunGrad = ctx.createRadialGradient(300, 100, 20, 300, 100, 500);
-      sunGrad.addColorStop(0, 'rgba(255, 245, 200, 0.25)');
-      sunGrad.addColorStop(1, 'rgba(255, 245, 200, 0)');
-      ctx.fillStyle = sunGrad;
-      ctx.fillRect(0, 0, W, H);
-    }
-
-    // ---------- draw doghouse ----------
-    function drawDoghouse() {
-      const hx = HOUSE_X;
-      const hy = GROUND_Y - HOUSE_H;
-      const hw = HOUSE_W;
-      const hh = HOUSE_H;
-
-      // Shadow
-      ctx.fillStyle = 'rgba(30, 20, 10, 0.3)';
-      ctx.beginPath();
-      ctx.ellipse(hx, GROUND_Y + 5, hw * 0.7, 18, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Back wall (interior visible through door)
-      ctx.fillStyle = '#2a1e14';
-      ctx.fillRect(hx - hw/2, hy, hw, hh);
-
-      // Roof
-      ctx.beginPath();
-      ctx.moveTo(hx - hw/2 - 18, hy);
-      ctx.lineTo(hx, hy - 55);
-      ctx.lineTo(hx + hw/2 + 18, hy);
-      ctx.closePath();
-      ctx.fillStyle = '#8a5a3a';
-      ctx.fill();
-      ctx.strokeStyle = '#6a3a1a';
-      ctx.lineWidth = 3;
-      ctx.stroke();
-
-      // Roof shingles
-      for (let i = 0; i < 6; i++) {
-        const frac = i / 6;
-        const y1 = hy - 55 * (1 - frac);
-        const x1 = hx - (hw/2 + 18) * (1 - frac);
-        const x2 = hx + (hw/2 + 18) * (1 - frac);
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y1);
-        ctx.strokeStyle = 'rgba(80, 40, 20, 0.4)';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-      }
-
-      // Front wall
-      ctx.fillStyle = '#a0704a';
-      ctx.fillRect(hx - hw/2, hy, hw, hh);
-
-      // Wall texture / planks
-      for (let i = 0; i < 8; i++) {
-        const y = hy + i * (hh / 8);
-        ctx.beginPath();
-        ctx.moveTo(hx - hw/2, y);
-        ctx.lineTo(hx + hw/2, y);
-        ctx.strokeStyle = 'rgba(60, 30, 10, 0.2)';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      }
-
-      // Doorway
-      ctx.fillStyle = '#1a0e08';
-      ctx.beginPath();
-      ctx.moveTo(DOOR_LEFT, GROUND_Y);
-      ctx.lineTo(DOOR_LEFT, DOOR_TOP + 15);
-      ctx.quadraticCurveTo(DOOR_LEFT, DOOR_TOP - 10, (DOOR_LEFT + DOOR_RIGHT)/2, DOOR_TOP - 10);
-      ctx.quadraticCurveTo(DOOR_RIGHT, DOOR_TOP - 10, DOOR_RIGHT, DOOR_TOP + 15);
-      ctx.lineTo(DOOR_RIGHT, GROUND_Y);
-      ctx.closePath();
-      ctx.fill();
-
-      // Door frame
-      ctx.strokeStyle = '#6a4a2a';
-      ctx.lineWidth = 6;
-      ctx.beginPath();
-      ctx.moveTo(DOOR_LEFT, GROUND_Y);
-      ctx.lineTo(DOOR_LEFT, DOOR_TOP + 15);
-      ctx.quadraticCurveTo(DOOR_LEFT, DOOR_TOP - 10, (DOOR_LEFT + DOOR_RIGHT)/2, DOOR_TOP - 10);
-      ctx.quadraticCurveTo(DOOR_RIGHT, DOOR_TOP - 10, DOOR_RIGHT, DOOR_TOP + 15);
-      ctx.lineTo(DOOR_RIGHT, GROUND_Y);
-      ctx.stroke();
-
-      // Interior darkness gradient
-      const doorGrad = ctx.createLinearGradient(0, DOOR_TOP, 0, GROUND_Y);
-      doorGrad.addColorStop(0, '#0a0604');
-      doorGrad.addColorStop(1, '#1a0e08');
-      ctx.fillStyle = doorGrad;
-      ctx.beginPath();
-      ctx.moveTo(DOOR_LEFT + 3, GROUND_Y);
-      ctx.lineTo(DOOR_LEFT + 3, DOOR_TOP + 18);
-      ctx.quadraticCurveTo(DOOR_LEFT + 3, DOOR_TOP - 7, (DOOR_LEFT + DOOR_RIGHT)/2, DOOR_TOP - 7);
-      ctx.quadraticCurveTo(DOOR_RIGHT - 3, DOOR_TOP - 7, DOOR_RIGHT - 3, DOOR_TOP + 18);
-      ctx.lineTo(DOOR_RIGHT - 3, GROUND_Y);
-      ctx.closePath();
-      ctx.fill();
-    }
-
-    // ---------- draw bone (in world/resting position inside house) ----------
-    function drawRestingBone(alpha) {
-      if (alpha <= 0) return;
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      // Bone resting inside house, visible through door, on ground
-      const bx = HOUSE_X - 15;
-      const by = GROUND_Y - 12;
-      ctx.translate(bx, by);
-      ctx.rotate(-0.15);
-      // Bone shape: two knobs at each end
-      ctx.fillStyle = '#e8dcc8';
-      ctx.strokeStyle = '#b8a888';
-      ctx.lineWidth = 1.5;
-      // shaft
-      ctx.beginPath();
-      ctx.roundRect(-14, -4, 28, 8, 3);
-      ctx.fill();
-      ctx.stroke();
-      // knobs
-      ctx.beginPath();
-      ctx.arc(-14, -3, 5, 0, Math.PI * 2);
-      ctx.arc(-14, 3, 5, 0, Math.PI * 2);
-      ctx.arc(14, -3, 5, 0, Math.PI * 2);
-      ctx.arc(14, 3, 5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // ---------- draw Pomeranian dog ----------
-    // We draw the dog in local coordinates (origin at body center),
-    // then transform based on world position and facing.
-
-    function drawDog(state) {
-      const { wx, wz, facing, bodyBob, legPhase, headTurn, mouthOpen, tailWag, hasBone, boneVisible, boneInMouth } = state;
-
-      const px = projX(wx);
-      const py = projY(wz);
-      const scale = projScale(wz);
-
-      // Ground contact shadow (drawn first, independent of dog body)
-      const shadowY = py + 8 * scale;
-      ctx.save();
-      ctx.translate(px, shadowY);
-      ctx.scale(scale, scale * 0.5);
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 50, 18, 0, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(20, 12, 5, 0.35)';
-      ctx.fill();
-      ctx.restore();
-
-      // Now draw the dog with full transform
-      ctx.save();
-      ctx.translate(px, py + bodyBob * scale);
-      ctx.scale(scale, scale);
-
-      // Apply facing rotation. If facing viewer at end, we need a special handling.
-      // We'll draw a side-view dog for facing=0..PI/2, using an approach that
-      // morphs between side and front.
-
-      const faceAmount = facing / (Math.PI * 0.5); // 0 = side, 1 = front
-      const sideAmount = 1 - faceAmount;
-
-      // Body center is at origin (0,0).
-      // Ground at y = +DOG_LEG_LEN.
-
-      // ---- BODY / TORSO ----
-      // Pomeranian: compact, slightly longer than tall, thick coat.
-      const bodyLen = DOG_BODY_LEN * (0.6 + 0.4 * sideAmount);
-      const bodyH = DOG_BODY_H;
-      const bodyY = -bodyH * 0.2;
-
-      // Body volume shading
-      const bodyGrad = ctx.createLinearGradient(0, bodyY - bodyH/2, 0, bodyY + bodyH/2);
-      bodyGrad.addColorStop(0, '#e8a050');
-      bodyGrad.addColorStop(0.4, '#d88a3a');
-      bodyGrad.addColorStop(0.8, '#b86a20');
-      bodyGrad.addColorStop(1, '#8a4a10');
-
-      ctx.beginPath();
-      ctx.ellipse(0, bodyY, bodyLen * 0.55, bodyH * 0.5, 0, 0, Math.PI * 2);
-      ctx.fillStyle = bodyGrad;
-      ctx.fill();
-
-      // Fur texture on body
-      furStrokes(0, bodyY, bodyLen * 0.55, bodyH * 0.5, 60, '#e8a050', '#c07020', 42, 0, 1.2);
-
-      // ---- LEGS ----
-      // Four legs. In side view, front legs at x ≈ +15, back legs at x ≈ -18.
-      // In front view, legs split left/right.
-      // We'll compute leg positions based on faceAmount.
-
-      const legL = DOG_LEG_LEN;
-      const legW = 7;
-      const pawR = 5;
-
-      // Leg positions in local coords
-      // Back-left, back-right, front-left, front-right
-      let legPositions = [];
-
-      if (faceAmount < 0.5) {
-        // Side view dominant: two front legs (x≈+15), two back legs (x≈-18)
-        // Slight offset for depth
-        const frontX = 15 * sideAmount + 8 * faceAmount;
-        const backX = -18 * sideAmount + 8 * faceAmount;
-        legPositions = [
-          { x: backX - 4, z: -1, phase: legPhase + Math.PI, color: '#a85a15' },   // back far
-          { x: backX + 4, z: 1, phase: legPhase, color: '#c07020' },             // back near
-          { x: frontX - 4, z: -1, phase: legPhase + Math.PI + 0.5, color: '#c07020' }, // front far
-          { x: frontX + 4, z: 1, phase: legPhase + 0.5, color: '#e09040' },      // front near
-        ];
-      } else {
-        // Front view: legs spread left/right
-        const spread = 18;
-        legPositions = [
-          { x: -spread, z: -0.5, phase: legPhase + Math.PI, color: '#b06018' },  // back left
-          { x: spread, z: -0.5, phase: legPhase + Math.PI, color: '#b06018' },   // back right
-          { x: -spread * 0.7, z: 0.5, phase: legPhase, color: '#d08030' },       // front left
-          { x: spread * 0.7, z: 0.5, phase: legPhase, color: '#d08030' },        // front right
-        ];
-      }
-
-      // Sort legs by z so far legs draw first
-      legPositions.sort((a, b) => a.z - b.z);
-
-      for (const leg of legPositions) {
-        const swing = Math.sin(leg.phase) * 0.5;
-        const lift = Math.max(0, Math.sin(leg.phase)) * 6;
-
-        ctx.save();
-        ctx.translate(leg.x, bodyY + bodyH * 0.3);
-
-        // Upper leg
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        const kneeX = swing * 8;
-        const kneeY = legL * 0.5;
-        ctx.quadraticCurveTo(kneeX * 0.5, kneeY * 0.5, kneeX, kneeY);
-        // Lower leg
-        const pawX = kneeX + swing * 4;
-        const pawY = legL - lift;
-        ctx.quadraticCurveTo(kneeX + swing * 2, kneeY + (legL - kneeY) * 0.5, pawX, pawY);
-        ctx.strokeStyle = leg.color;
-        ctx.lineWidth = legW;
-        ctx.lineCap = 'round';
-        ctx.stroke();
-
-        // Paw
-        ctx.beginPath();
-        ctx.ellipse(pawX, pawY + 2, pawR, pawR * 0.7, 0, 0, Math.PI * 2);
-        ctx.fillStyle = '#3a2010';
-        ctx.fill();
-
-        ctx.restore();
-      }
-
-      // ---- TAIL (plumed, curled over back) ----
-      const tailBaseX = -bodyLen * 0.45;
-      const tailBaseY = bodyY - bodyH * 0.2;
-      const tailCurl = 1.1 + tailWag * 0.3;
-      const tailSwing = Math.sin(tailWag * 3) * 0.15;
-
-      ctx.save();
-      ctx.translate(tailBaseX, tailBaseY);
-      ctx.rotate(-0.4 + tailSwing);
-
-      // Draw plumed tail as layered arcs
-      const tailGrad = ctx.createLinearGradient(-10, -20, 10, 10);
-      tailGrad.addColorStop(0, '#f0b060');
-      tailGrad.addColorStop(0.5, '#d88a30');
-      tailGrad.addColorStop(1, '#a85a15');
-
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.quadraticCurveTo(-25, -25, -18, -45);
-      ctx.quadraticCurveTo(-10, -55, 5, -48);
-      ctx.quadraticCurveTo(15, -40, 10, -25);
-      ctx.quadraticCurveTo(5, -10, 0, 0);
-      ctx.closePath();
-      ctx.fillStyle = tailGrad;
-      ctx.fill();
-
-      // Tail fur detail
-      for (let i = 0; i < 20; i++) {
-        const a = -1.2 + i * 0.12;
-        const r = 15 + i * 1.5;
-        const fx = Math.cos(a) * r - 5;
-        const fy = Math.sin(a) * r - 25;
-        ctx.beginPath();
-        ctx.moveTo(fx, fy);
-        ctx.lineTo(fx - 3, fy - 6);
-        ctx.strokeStyle = i % 2 ? '#f0b060' : '#e0a040';
-        ctx.lineWidth = 1.5;
-        ctx.globalAlpha = 0.5;
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-      ctx.restore();
-
-      // ---- NECK / RUFF ----
-      const neckBaseX = bodyLen * 0.3;
-      const neckBaseY = bodyY - bodyH * 0.3;
-      const neckAngle = -0.3 + headTurn * 0.5;
-
-      // Pronounced neck ruff (Pomeranian signature)
-      ctx.save();
-      ctx.translate(neckBaseX, neckBaseY);
-      ctx.rotate(neckAngle);
-
-      // Ruff volume
-      const ruffGrad = ctx.createRadialGradient(0, 0, 5, 0, 0, 28);
-      ruffGrad.addColorStop(0, '#f5c880');
-      ruffGrad.addColorStop(0.6, '#e8a850');
-      ruffGrad.addColorStop(1, '#c07828');
-
-      ctx.beginPath();
-      ctx.ellipse(0, -5, 26, 22, 0.1, 0, Math.PI * 2);
-      ctx.fillStyle = ruffGrad;
-      ctx.fill();
-
-      // Ruff fur strands
-      furStrokes(0, -5, 24, 20, 50, '#f5c880', '#d89040', 77, 0.1, 1.5);
-
-      ctx.restore();
-
-      // ---- HEAD ----
-      const headX = neckBaseX + Math.cos(neckAngle) * DOG_NECK_LEN;
-      const headY = neckBaseY + Math.sin(neckAngle) * DOG_NECK_LEN - 5;
-
-      ctx.save();
-      ctx.translate(headX, headY);
-
-      // Head turn rotation
-      ctx.rotate(headTurn * 0.4);
-
-      // Head shape: short pointed muzzle, but rounded skull
-      const headGrad = ctx.createRadialGradient(-5, -8, 3, 0, 0, 30);
-      headGrad.addColorStop(0, '#f5c880');
-      headGrad.addColorStop(0.5, '#e8a850');
-      headGrad.addColorStop(1, '#b07028');
-
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 22, 20, 0.1, 0, Math.PI * 2);
-      ctx.fillStyle = headGrad;
-      ctx.fill();
-
-      // Fur on head
-      furStrokes(0, 0, 20, 18, 35, '#f5c880', '#d89040', 88, 0.1, 1.0);
-
-      // ---- MUZZLE ----
-      const muzzleLen = 14 * (0.5 + 0.5 * sideAmount);
-      const muzzleX = 12 * sideAmount + 0 * faceAmount;
-
-      ctx.beginPath();
-      ctx.ellipse(muzzleX, 4, muzzleLen, 8, 0.1, 0, Math.PI * 2);
-      ctx.fillStyle = '#e8a850';
-      ctx.fill();
-
-      // Nose
-      ctx.beginPath();
-      ctx.ellipse(muzzleX + muzzleLen * 0.7, 2, 4, 3, 0, 0, Math.PI * 2);
-      ctx.fillStyle = '#1a0e08';
-      ctx.fill();
-
-      // ---- EYES ----
-      // Dark expressive eyes. Position depends on view angle.
-      const eyeSpread = 10 * (0.4 + 0.6 * faceAmount);
-      const eyeX = 6 * sideAmount;
-      const eyeY = -6;
-
-      // Left eye
-      ctx.beginPath();
-      ctx.ellipse(eyeX - eyeSpread * 0.5, eyeY, 4.5, 5.5, 0, 0, Math.PI * 2);
-      ctx.fillStyle = '#1a0e08';
-      ctx.fill();
-      // Eye highlight
-      ctx.beginPath();
-      ctx.ellipse(eyeX - eyeSpread * 0.5 + 1.5, eyeY - 1.5, 1.8, 2, 0, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(255,255,255,0.7)';
-      ctx.fill();
-
-      // Right eye
-      ctx.beginPath();
-      ctx.ellipse(eyeX + eyeSpread * 0.5, eyeY, 4.5, 5.5, 0, 0, Math.PI * 2);
-      ctx.fillStyle = '#1a0e08';
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(eyeX + eyeSpread * 0.5 + 1.5, eyeY - 1.5, 1.8, 2, 0, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(255,255,255,0.7)';
-      ctx.fill();
-
-      // ---- EARS ----
-      // Small upright triangular ears
-      const earSpread = 10 * (0.4 + 0.6 * faceAmount);
-      const earX = 2 * sideAmount;
-      const earY = -16;
-
-      // Left ear
-      ctx.beginPath();
-      ctx.moveTo(earX - earSpread * 0.5 - 6, earY + 4);
-      ctx.lineTo(earX - earSpread * 0.5 - 2, earY - 14);
-      ctx.lineTo(earX - earSpread * 0.5 + 6, earY + 2);
-      ctx.closePath();
-      ctx.fillStyle = '#d88a30';
-      ctx.fill();
-      ctx.strokeStyle = '#a06020';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-
-      // Inner ear
-      ctx.beginPath();
-      ctx.moveTo(earX - earSpread * 0.5 - 3, earY + 2);
-      ctx.lineTo(earX - earSpread * 0.5 - 1, earY - 9);
-      ctx.lineTo(earX - earSpread * 0.5 + 3, earY + 1);
-      ctx.closePath();
-      ctx.fillStyle = '#e8a880';
-      ctx.fill();
-
-      // Right ear
-      ctx.beginPath();
-      ctx.moveTo(earX + earSpread * 0.5 - 6, earY + 4);
-      ctx.lineTo(earX + earSpread * 0.5 + 2, earY - 14);
-      ctx.lineTo(earX + earSpread * 0.5 + 6, earY + 2);
-      ctx.closePath();
-      ctx.fillStyle = '#d88a30';
-      ctx.fill();
-      ctx.strokeStyle = '#a06020';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(earX + earSpread * 0.5 - 3, earY + 2);
-      ctx.lineTo(earX + earSpread * 0.5 + 1, earY - 9);
-      ctx.lineTo(earX + earSpread * 0.5 + 3, earY + 1);
-      ctx.closePath();
-      ctx.fillStyle = '#e8a880';
-      ctx.fill();
-
-      // ---- MOUTH / BONE ----
-      if (boneInMouth && hasBone) {
-        // Draw bone held in mouth
-        const boneX = muzzleX + muzzleLen * 0.9;
-        const boneY = 6;
-        ctx.save();
-        ctx.translate(boneX, boneY);
-        // Slight rotation based on head turn
-        ctx.rotate(0.1 + headTurn * 0.2);
-
-        // Bone shaft
-        ctx.fillStyle = '#e8dcc8';
-        ctx.strokeStyle = '#b8a888';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.roundRect(-18, -3.5, 36, 7, 3);
-        ctx.fill();
-        ctx.stroke();
-
-        // Bone knobs
-        ctx.beginPath();
-        ctx.arc(-18, -2.5, 4.5, 0, Math.PI * 2);
-        ctx.arc(-18, 2.5, 4.5, 0, Math.PI * 2);
-        ctx.arc(18, -2.5, 4.5, 0, Math.PI * 2);
-        ctx.arc(18, 2.5, 4.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.restore();
-      } else {
-        // Mouth line
-        ctx.beginPath();
-        ctx.moveTo(muzzleX + 2, 6);
-        ctx.quadraticCurveTo(muzzleX + muzzleLen * 0.5, 8 + mouthOpen * 6, muzzleX + muzzleLen * 0.9, 5 + mouthOpen * 3);
-        ctx.strokeStyle = '#6a3010';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-      }
-
-      ctx.restore(); // end head
-
-      ctx.restore(); // end dog transform
-    }
-
-    // ---------- main render ----------
-    function renderFrame(t) {
-      // Clamp time
-      if (t < 0) t = 0;
-      if (t > 12) t = 12;
-
-      const dog = getDogState(t);
-
-      // Clear
-      ctx.clearRect(0, 0, W, H);
-
-      // Background
-      drawBackground();
-
-      // Draw doghouse (behind dog if dog is in front, but we need proper occlusion)
-      // Strategy: draw house first. Then dog. Then house front-wall occlusion for entry phase.
-      drawDoghouse();
-
-      // Draw resting bone inside house (visible when dog hasn't taken it)
-      if (!dog.hasBone) {
-        drawRestingBone(1);
-      }
-
-      // Determine if dog is inside the house (occluded by front wall)
-      // Dog is "inside" during entry (3-6) when wz < 0.30 and wx near door
-      const insideHouse = (t > 3.2 && t < 6.2 && dog.wz < 0.32);
-
-      if (insideHouse) {
-        // Clip dog drawing to doorway area only
-        ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(DOOR_LEFT, GROUND_Y);
-        ctx.lineTo(DOOR_LEFT, DOOR_TOP + 15);
-        ctx.quadraticCurveTo(DOOR_LEFT, DOOR_TOP - 10, (DOOR_LEFT + DOOR_RIGHT)/2, DOOR_TOP - 10);
-        ctx.quadraticCurveTo(DOOR_RIGHT, DOOR_TOP - 10, DOOR_RIGHT, DOOR_TOP + 15);
-        ctx.lineTo(DOOR_RIGHT, GROUND_Y);
+        ctx.moveTo(0, HORIZON_Y+60);
+        for (let i=0; i<W; i+=30) {
+          ctx.lineTo(i, HORIZON_Y - 20 + Math.sin(i*0.03)*15);
+        }
+        ctx.lineTo(W, HORIZON_Y+60);
         ctx.closePath();
+        ctx.fill();
+
+        // yard ground
+        const groundGrad = ctx.createLinearGradient(0, HORIZON_Y+40, 0, H+20);
+        groundGrad.addColorStop(0, '#6d8a5a');
+        groundGrad.addColorStop(0.3, '#7a9a65');
+        groundGrad.addColorStop(1, '#5a7a4a');
+        ctx.fillStyle = groundGrad;
+        ctx.fillRect(0, HORIZON_Y+40, W, H - HORIZON_Y - 40);
+
+        // grass texture (deterministic)
+        const rng = mulberry32(42);
+        ctx.fillStyle = 'rgba(60, 100, 50, 0.25)';
+        for (let i=0; i<200; i++) {
+          const gx = rng() * W;
+          const gy = HORIZON_Y + 60 + rng() * (H - HORIZON_Y - 80);
+          const gw = 2 + rng()*3;
+          const gh = 3 + rng()*6;
+          ctx.fillRect(gx, gy, gw, gh);
+        }
+      }
+
+      function drawPuddle(){
+        const {cx, cy, rx, ry} = PUDDLE;
+        // puddle bed
+        ctx.save();
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI*2);
+        ctx.fillStyle = '#3a4a5a';
+        ctx.fill();
+        // water surface with slight gradient
+        const wg = ctx.createRadialGradient(cx-10, cy-5, 5, cx, cy, rx);
+        wg.addColorStop(0, 'rgba(140, 180, 200, 0.85)');
+        wg.addColorStop(0.6, 'rgba(80, 130, 160, 0.75)');
+        wg.addColorStop(1, 'rgba(50, 90, 120, 0.9)');
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI*2);
+        ctx.fillStyle = wg;
+        ctx.fill();
+        // rim highlight
+        ctx.strokeStyle = 'rgba(200, 220, 240, 0.3)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rx*0.95, ry*0.9, 0, 0, Math.PI*2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawPuddleReflection(t, dogState){
+        const {cx, cy, rx, ry} = PUDDLE;
+        // Only if dog is near puddle and above it
+        const dx = dogState.x - cx;
+        const dy = dogState.y - cy;
+        const dist = Math.sqrt(dx*dx/(rx*rx) + dy*dy/(ry*ry));
+        if (dist > 2.2 || dogState.y < cy) return;
+
+        // Simple masked reflection: draw a vertically flipped, faded silhouette
+        ctx.save();
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rx-2, ry-2, 0, 0, Math.PI*2);
         ctx.clip();
-        drawDog(dog);
+
+        // Draw a simplified reflected dog (mirrored below puddle line)
+        const reflectY = cy + (cy - dogState.y) * 0.6;
+        ctx.globalAlpha = 0.35;
+        ctx.translate(dogState.x, reflectY);
+        ctx.scale(1, -0.7);
+        ctx.rotate(-dogState.bodyAngle);
+
+        // body mass
+        ctx.fillStyle = '#b86a2a';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 32, 18, 0, 0, Math.PI*2);
+        ctx.fill();
+        // head
+        ctx.fillStyle = '#c07a30';
+        ctx.beginPath();
+        ctx.ellipse(28, -6, 16, 12, 0.2, 0, Math.PI*2);
+        ctx.fill();
+        // tail
+        ctx.fillStyle = '#d08030';
+        ctx.beginPath();
+        ctx.ellipse(-28, -12, 14, 8, -0.4, 0, Math.PI*2);
+        ctx.fill();
+
         ctx.restore();
-      } else {
-        drawDog(dog);
       }
 
-      // Front-wall occlusion: redraw the front wall portions that should cover the dog
-      // when the dog is partially behind the front wall (entering/backing out)
-      if (t > 3.0 && t < 8.0) {
-        // Redraw front wall except doorway
-        ctx.save();
+      function drawDoghouse(){
+        const {x, y, w, h, doorW, doorH, doorX} = DOGHOUSE;
+        // shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.2)';
         ctx.beginPath();
-        // Outer wall rectangle
-        ctx.rect(HOUSE_X - HOUSE_W/2, HOUSE_FRONT_Y, HOUSE_W, HOUSE_H);
-        // Cut out doorway (even-odd fill rule via path direction)
-        ctx.moveTo(DOOR_LEFT, GROUND_Y);
-        ctx.lineTo(DOOR_LEFT, DOOR_TOP + 15);
-        ctx.quadraticCurveTo(DOOR_LEFT, DOOR_TOP - 10, (DOOR_LEFT + DOOR_RIGHT)/2, DOOR_TOP - 10);
-        ctx.quadraticCurveTo(DOOR_RIGHT, DOOR_TOP - 10, DOOR_RIGHT, DOOR_TOP + 15);
-        ctx.lineTo(DOOR_RIGHT, GROUND_Y);
-        ctx.closePath();
+        ctx.ellipse(x+w/2, y+h+6, w*0.6, 12, 0, 0, Math.PI*2);
+        ctx.fill();
 
-        ctx.clip('evenodd');
+        // back wall (darker interior)
+        ctx.fillStyle = '#3a2a1a';
+        ctx.fillRect(x+8, y+8, w-16, h-8);
 
-        // Redraw wall
-        ctx.fillStyle = '#a0704a';
-        ctx.fillRect(HOUSE_X - HOUSE_W/2, HOUSE_FRONT_Y, HOUSE_W, HOUSE_H);
-        // Wall planks
-        for (let i = 0; i < 8; i++) {
-          const y = HOUSE_FRONT_Y + i * (HOUSE_H / 8);
+        // interior darkness
+        ctx.fillStyle = '#1a1008';
+        ctx.fillRect(x+12, y+12, w-24, h-16);
+
+        // walls
+        ctx.fillStyle = '#8a6a4a';
+        ctx.fillRect(x, y, w, h);
+
+        // wall texture (wood planks)
+        ctx.strokeStyle = '#6a4a2a';
+        ctx.lineWidth = 1.5;
+        for (let i=0; i<4; i++) {
+          const px = x + 15 + i * 42;
           ctx.beginPath();
-          ctx.moveTo(HOUSE_X - HOUSE_W/2, y);
-          ctx.lineTo(HOUSE_X + HOUSE_W/2, y);
-          ctx.strokeStyle = 'rgba(60, 30, 10, 0.2)';
-          ctx.lineWidth = 1;
+          ctx.moveTo(px, y);
+          ctx.lineTo(px, y+h);
           ctx.stroke();
         }
+        // horizontal grain
+        ctx.strokeStyle = '#7a5a3a';
+        ctx.lineWidth = 1;
+        for (let i=0; i<5; i++) {
+          const py = y + 20 + i * 26;
+          ctx.beginPath();
+          ctx.moveTo(x, py);
+          ctx.lineTo(x+w, py);
+          ctx.stroke();
+        }
+
+        // roof (triangular)
+        ctx.fillStyle = '#6a4a2a';
+        ctx.beginPath();
+        ctx.moveTo(x-12, y);
+        ctx.lineTo(x+w/2, y-48);
+        ctx.lineTo(x+w+12, y);
+        ctx.closePath();
+        ctx.fill();
+
+        // roof texture
+        ctx.strokeStyle = '#4a3018';
+        ctx.lineWidth = 1.2;
+        for (let i=0; i<6; i++) {
+          const frac = i/6;
+          const rx1 = lerp(x-12, x+w/2, frac);
+          const ry1 = lerp(y, y-48, frac);
+          const rx2 = lerp(x+w/2, x+w+12, frac);
+          const ry2 = lerp(y-48, y, frac);
+          ctx.beginPath();
+          ctx.moveTo(rx1, ry1);
+          ctx.lineTo(rx2, ry2);
+          ctx.stroke();
+        }
+
+        // door opening
+        ctx.fillStyle = '#1a1008';
+        ctx.beginPath();
+        ctx.moveTo(doorX, y+h);
+        ctx.lineTo(doorX, y+h-doorH);
+        ctx.quadraticCurveTo(doorX+doorW/2, y+h-doorH-14, doorX+doorW, y+h-doorH);
+        ctx.lineTo(doorX+doorW, y+h);
+        ctx.closePath();
+        ctx.fill();
+
+        // door frame
+        ctx.strokeStyle = '#5a3a1a';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(doorX, y+h);
+        ctx.lineTo(doorX, y+h-doorH);
+        ctx.quadraticCurveTo(doorX+doorW/2, y+h-doorH-14, doorX+doorW, y+h-doorH);
+        ctx.lineTo(doorX+doorW, y+h);
+        ctx.stroke();
+
+        // interior floor
+        ctx.fillStyle = '#4a3520';
+        ctx.fillRect(doorX+6, y+h-6, doorW-12, 6);
+      }
+
+      function drawBoneInHouse(){
+        // bone resting inside on the floor, partially visible through doorway
+        ctx.save();
+        ctx.translate(BONE.x, BONE.y);
+        ctx.rotate(BONE.angle);
+        drawBoneShape(0, 0, BONE.w, BONE.h);
         ctx.restore();
       }
 
-      // Subtle vignette
-      const vig = ctx.createRadialGradient(W/2, H/2, 250, W/2, H/2, 600);
-      vig.addColorStop(0, 'rgba(0,0,0,0)');
-      vig.addColorStop(1, 'rgba(0,0,0,0.25)');
-      ctx.fillStyle = vig;
-      ctx.fillRect(0, 0, W, H);
-    }
+      function drawBoneShape(x, y, w, h){
+        // bone: two knobs at each end, shaft in middle
+        const knobR = h * 1.3;
+        ctx.fillStyle = '#e8d8b0';
+        ctx.strokeStyle = '#b8a070';
+        ctx.lineWidth = 0.8;
 
-    // ---------- startup ----------
-    window.renderFrame = renderFrame;
-    renderFrame(0);
+        // shaft
+        ctx.beginPath();
+        ctx.ellipse(x, y, w*0.35, h*0.45, 0, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
 
-    // For testing only (no rAF loop per spec)
+        // left knobs
+        ctx.beginPath();
+        ctx.arc(x - w*0.32, y - h*0.4, knobR*0.7, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(x - w*0.32, y + h*0.4, knobR*0.7, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+
+        // right knobs
+        ctx.beginPath();
+        ctx.arc(x + w*0.32, y - h*0.4, knobR*0.7, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(x + w*0.32, y + h*0.4, knobR*0.7, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      function drawDog(state, t){
+        const {x, y, bodyAngle, headAngle, tailCurl, legPhase, mouthOpen, hasBone, boneAngle, bodyTilt} = state;
+
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(bodyAngle + bodyTilt);
+
+        // ---- shadow on ground ----
+        ctx.save();
+        ctx.rotate(-(bodyAngle + bodyTilt));
+        ctx.translate(-x, -y);
+        const shadowAlpha = clamp(0.25 - (GROUND_Y - y) * 0.004, 0.08, 0.3);
+        ctx.fillStyle = `rgba(20, 15, 10, ${shadowAlpha})`;
+        ctx.beginPath();
+        ctx.ellipse(x, GROUND_Y + 7, 42, 10, 0, 0, Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+
+        // ---- legs ----
+        // hind legs
+        drawLeg(-20, 4, legPhase + Math.PI, 'hind');
+        drawLeg(-14, 4, legPhase + Math.PI*0.3, 'hind');
+        // front legs
+        drawLeg(18, 2, legPhase, 'front');
+        drawLeg(24, 2, legPhase + Math.PI*0.5, 'front');
+
+        // ---- body ----
+        // main body (fur volume)
+        const bodyGrad = ctx.createRadialGradient(-5, -8, 5, 0, 0, 40);
+        bodyGrad.addColorStop(0, '#e8a050');
+        bodyGrad.addColorStop(0.6, '#d08030');
+        bodyGrad.addColorStop(1, '#b06828');
+        ctx.fillStyle = bodyGrad;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 38, 22, 0, 0, Math.PI*2);
+        ctx.fill();
+
+        // chest / neck ruff (lighter)
+        const chestGrad = ctx.createRadialGradient(18, -6, 4, 20, -4, 20);
+        chestGrad.addColorStop(0, '#f0d8a0');
+        chestGrad.addColorStop(0.7, '#e0b870');
+        chestGrad.addColorStop(1, '#c89848');
+        ctx.fillStyle = chestGrad;
+        ctx.beginPath();
+        ctx.ellipse(22, -4, 16, 18, 0.15, 0, Math.PI*2);
+        ctx.fill();
+
+        // back fur ridge
+        ctx.fillStyle = '#c87830';
+        ctx.beginPath();
+        ctx.ellipse(-12, -10, 24, 12, -0.2, 0, Math.PI*2);
+        ctx.fill();
+
+        // ---- tail (curled over back) ----
+        ctx.save();
+        ctx.translate(-32, -12);
+        ctx.rotate(-0.6 + tailCurl * 0.3);
+        const tailGrad = ctx.createLinearGradient(0, 0, -18, -8);
+        tailGrad.addColorStop(0, '#d08030');
+        tailGrad.addColorStop(0.5, '#e8a050');
+        tailGrad.addColorStop(1, '#f0c080');
+        ctx.fillStyle = tailGrad;
+        ctx.beginPath();
+        ctx.ellipse(-12, -6, 16, 9, -0.3, 0, Math.PI*2);
+        ctx.fill();
+        // tail plume
+        ctx.fillStyle = '#f0c888';
+        ctx.beginPath();
+        ctx.ellipse(-18, -12, 12, 7, -0.5, 0, Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+
+        // ---- head ----
+        ctx.save();
+        ctx.translate(28, -14);
+        ctx.rotate(headAngle * 0.7);
+
+        // head base
+        const headGrad = ctx.createRadialGradient(2, -4, 3, 0, 0, 18);
+        headGrad.addColorStop(0, '#f0c080');
+        headGrad.addColorStop(0.7, '#e0a050');
+        headGrad.addColorStop(1, '#c88838');
+        ctx.fillStyle = headGrad;
+        ctx.beginPath();
+        ctx.ellipse(2, -2, 15, 14, 0.1, 0, Math.PI*2);
+        ctx.fill();
+
+        // muzzle (short, pointed)
+        ctx.fillStyle = '#e8b060';
+        ctx.beginPath();
+        ctx.ellipse(14, 0, 9, 7, 0.1, 0, Math.PI*2);
+        ctx.fill();
+
+        // nose
+        ctx.fillStyle = '#2a1a0a';
+        ctx.beginPath();
+        ctx.ellipse(21, -1, 3, 2.5, 0.1, 0, Math.PI*2);
+        ctx.fill();
+
+        // eyes (dark, expressive)
+        ctx.fillStyle = '#1a1008';
+        ctx.beginPath();
+        ctx.arc(6, -7, 3.2, 0, Math.PI*2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(15, -8, 2.8, 0, Math.PI*2);
+        ctx.fill();
+        // eye highlights
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.beginPath();
+        ctx.arc(5, -8, 1.2, 0, Math.PI*2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(14, -9, 1.1, 0, Math.PI*2);
+        ctx.fill();
+
+        // ears (small triangular, upright)
+        ctx.fillStyle = '#d09040';
+        // left ear
+        ctx.beginPath();
+        ctx.moveTo(-2, -12);
+        ctx.lineTo(-6, -26);
+        ctx.lineTo(6, -18);
+        ctx.closePath();
+        ctx.fill();
+        // right ear
+        ctx.beginPath();
+        ctx.moveTo(10, -14);
+        ctx.lineTo(12, -28);
+        ctx.lineTo(20, -18);
+        ctx.closePath();
+        ctx.fill();
+
+        // ear inner
+        ctx.fillStyle = '#e8b080';
+        ctx.beginPath();
+        ctx.moveTo(0, -14);
+        ctx.lineTo(-4, -23);
+        ctx.lineTo(4, -17);
+        ctx.closePath();
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(12, -16);
+        ctx.lineTo(13, -25);
+        ctx.lineTo(18, -18);
+        ctx.closePath();
+        ctx.fill();
+
+        // mouth (visible when grabbing bone)
+        if (mouthOpen > 0.1) {
+          ctx.fillStyle = '#4a2010';
+          ctx.beginPath();
+          ctx.ellipse(16, 2, 6, 3 * mouthOpen, 0.1, 0, Math.PI*2);
+          ctx.fill();
+          // tongue hint
+          if (mouthOpen > 0.4) {
+            ctx.fillStyle = '#d06060';
+            ctx.beginPath();
+            ctx.ellipse(17, 3, 3, 1.8 * (mouthOpen-0.4)/0.6, 0.1, 0, Math.PI*2);
+            ctx.fill();
+          }
+        }
+
+        ctx.restore(); // head
+
+        // ---- bone in mouth ----
+        if (hasBone) {
+          ctx.save();
+          ctx.translate(40, -8);
+          ctx.rotate(boneAngle + bodyAngle*0.3);
+          drawBoneShape(0, 0, 28, 9);
+          ctx.restore();
+        }
+
+        ctx.restore(); // body
+      }
+
+      function drawLeg(ox, oy, phase, type){
+        // ox, oy = offset from body center
+        const angle = Math.sin(phase) * 0.35;
+        const lift = Math.max(0, Math.sin(phase)) * 5;
+        const kneeBend = 0.3 + 0.3 * Math.abs(Math.sin(phase));
+
+        ctx.save();
+        ctx.translate(ox, oy);
+        // upper leg
+        ctx.save();
+        ctx.rotate(angle);
+        ctx.fillStyle = '#c88030';
+        ctx.beginPath();
+        ctx.ellipse(0, 10, 5, 12, 0, 0, Math.PI*2);
+        ctx.fill();
+        // lower leg
+        ctx.translate(0, 18 - lift * 0.3);
+        ctx.save();
+        ctx.rotate(-angle * 1.2 + (type==='front'?0.1:-0.1));
+        ctx.fillStyle = '#d08838';
+        ctx.beginPath();
+        ctx.ellipse(0, 8, 4.2, 10, 0, 0, Math.PI*2);
+        ctx.fill();
+        // paw
+        ctx.fillStyle = '#e0a050';
+        ctx.beginPath();
+        ctx.ellipse(2, 16, 5.5, 3.5, 0.1, 0, Math.PI*2);
+        ctx.fill();
+        // paw pads
+        ctx.fillStyle = '#a86828';
+        ctx.beginPath();
+        ctx.arc(-1, 16, 1.5, 0, Math.PI*2);
+        ctx.arc(2, 17, 1.5, 0, Math.PI*2);
+        ctx.arc(5, 16, 1.5, 0, Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+        ctx.restore();
+        ctx.restore();
+      }
+
+      // ---------- main render ----------
+      function renderFrame(timeSeconds){
+        // clamp time: t<0 opening, t>=12 hold final
+        let t = timeSeconds;
+        if (t < 0) t = 0;
+        if (t > 12) t = 12;
+
+        // clear
+        ctx.clearRect(0, 0, W, H);
+
+        // background
+        drawBackground();
+
+        // puddle (with reflection)
+        const dogState = getDogState(t);
+        drawPuddle();
+        drawPuddleReflection(t, dogState);
+
+        // doghouse (with bone inside)
+        drawDoghouse();
+        drawBoneInHouse();
+
+        // dog (on top, but behind doghouse walls when entering)
+        // For correct occlusion: if dog is inside house (x > 700 and t > 3.5), draw dog first then house overlay
+        if (dogState.x > 700 && t > 3.5 && t < 8.5) {
+          // dog is inside — draw dog first, then re-draw front wall
+          drawDog(dogState, t);
+          // redraw front wall and roof over dog's rear
+          const {x, y, w, h, doorW, doorH, doorX} = DOGHOUSE;
+          ctx.fillStyle = '#8a6a4a';
+          ctx.fillRect(x, y, w, h);
+          ctx.strokeStyle = '#6a4a2a';
+          ctx.lineWidth = 1.5;
+          for (let i=0; i<4; i++) {
+            const px = x + 15 + i * 42;
+            ctx.beginPath();
+            ctx.moveTo(px, y);
+            ctx.lineTo(px, y+h);
+            ctx.stroke();
+          }
+          ctx.strokeStyle = '#7a5a3a';
+          ctx.lineWidth = 1;
+          for (let i=0; i<5; i++) {
+            const py = y + 20 + i * 26;
+            ctx.beginPath();
+            ctx.moveTo(x, py);
+            ctx.lineTo(x+w, py);
+            ctx.stroke();
+          }
+          // roof
+          ctx.fillStyle = '#6a4a2a';
+          ctx.beginPath();
+          ctx.moveTo(x-12, y);
+          ctx.lineTo(x+w/2, y-48);
+          ctx.lineTo(x+w+12, y);
+          ctx.closePath();
+          ctx.fill();
+          // redraw door opening
+          ctx.fillStyle = '#1a1008';
+          ctx.beginPath();
+          ctx.moveTo(doorX, y+h);
+          ctx.lineTo(doorX, y+h-doorH);
+          ctx.quadraticCurveTo(doorX+doorW/2, y+h-doorH-14, doorX+doorW, y+h-doorH);
+          ctx.lineTo(doorX+doorW, y+h);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = '#5a3a1a';
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.moveTo(doorX, y+h);
+          ctx.lineTo(doorX, y+h-doorH);
+          ctx.quadraticCurveTo(doorX+doorW/2, y+h-doorH-14, doorX+doorW, y+h-doorH);
+          ctx.lineTo(doorX+doorW, y+h);
+          ctx.stroke();
+        } else {
+          drawDog(dogState, t);
+        }
+
+        // foreground grass tufts
+        const rng = mulberry32(123);
+        ctx.fillStyle = 'rgba(80, 120, 60, 0.4)';
+        for (let i=0; i<40; i++) {
+          const fx = rng() * W;
+          const fy = GROUND_Y + 20 + rng() * 80;
+          const fw = 3 + rng()*5;
+          const fh = 5 + rng()*10;
+          ctx.beginPath();
+          ctx.moveTo(fx, fy);
+          ctx.lineTo(fx + fw*0.5, fy - fh);
+          ctx.lineTo(fx + fw, fy);
+          ctx.fill();
+        }
+
+        // subtle vignette
+        const vg = ctx.createRadialGradient(W/2, H/2, H*0.4, W/2, H/2, H*0.9);
+        vg.addColorStop(0, 'rgba(0,0,0,0)');
+        vg.addColorStop(1, 'rgba(0,0,0,0.25)');
+        ctx.fillStyle = vg;
+        ctx.fillRect(0, 0, W, H);
+      }
+
+      // expose
+      window.renderFrame = renderFrame;
+
+      // initial draw
+      renderFrame(0);
+    })();
   </script>
 </body>
 </html>
+```

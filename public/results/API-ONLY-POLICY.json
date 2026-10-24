@@ -1,18 +1,17 @@
 {
-  "id": "direct-api-only-v2",
+  "id": "direct-api-only-v4",
   "allowedRoutes": [
     "responses",
     "chat",
     "mai",
     "anthropic",
-    "anthropic-extended",
     "foundry-chat",
-    "vertex-generate-content"
+    "vertex-generate-content",
+    "foundry-fireworks-responses"
   ],
   "allowedReceiptSources": [
     "Actual Foundry API usage",
-    "Actual Foundry API usage recovered from already-received terminal response",
     "Actual Vertex AI API usage"
   ],
-  "requirements": "Direct Microsoft Foundry or Google Vertex AI API. Preserve actual response, raw usage, request/source/response hashes and provider-reported version. Foundry uses pinned deployment versions; Google uses named publisher identifiers with actual modelVersion retained. No subscription authoring, local inference, manual submissions, latest aliases or routers. See GOOGLE-VERTEX.json for the additional provider policy."
+  "requirements": "Foundry deployment metadata must match the previously tested model and version. Google uses named publisher identifiers and retains actual returned modelVersion, including explicitly named previews. No latest aliases or routers. Actual raw provider usage, request and response receipts and source hashes are verified privately. No local inference or subscription authoring. See V4-CAMPAIGN.json."
 }

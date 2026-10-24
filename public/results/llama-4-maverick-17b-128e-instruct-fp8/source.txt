@@ -35,105 +35,46 @@
     gl.linkProgram(program);
     gl.useProgram(program);
 
-    // Simple 3D model data for dog, doghouse, and bone
-    const dogModel = new Float32Array([
-      // Body
-      -0.1, -0.1,  0.0,  0.1, -0.1,  0.0,  0.0,  0.1,  0.0,
-      // Head
-      -0.05,  0.1,  0.0,  0.05,  0.1,  0.0,  0.0,  0.2,  0.0,
-      // Legs
-      -0.05, -0.1, -0.1,  0.05, -0.1, -0.1, -0.05, -0.2, -0.1,
-       0.05, -0.1, -0.1,  0.05, -0.2, -0.1, -0.05, -0.2, -0.1,
+    const modelViewProjectionUniform = gl.getUniformLocation(program, 'modelViewProjection');
+
+    // Simple 3D data for dog, doghouse, bone, and puddle
+    const dogVertices = new Float32Array([
+      // Simplified dog model for demonstration
+      -0.1, -0.1,  0.0,
+       0.1, -0.1,  0.0,
+       0.0,  0.1,  0.0,
     ]);
 
-    const doghouseModel = new Float32Array([
-      // Front wall
-      -0.5, -0.5,  0.5,  0.5, -0.5,  0.5,  0.5,  0.5,  0.5,
-      -0.5, -0.5,  0.5,  0.5,  0.5,  0.5, -0.5,  0.5,  0.5,
-      // Back wall
-      -0.5, -0.5, -0.5,  0.5, -0.5, -0.5,  0.5,  0.5, -0.5,
-      -0.5, -0.5, -0.5,  0.5,  0.5, -0.5, -0.5,  0.5, -0.5,
-    ]);
+    const dogVertexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, dogVertexBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, dogVertices, gl.STATIC_DRAW);
 
-    const boneModel = new Float32Array([
-      -0.05,  0.0,  0.0,  0.05,  0.0,  0.0,  0.0,  0.1,  0.0,
-    ]);
+    const positionAttrib = gl.getAttribLocation(program, 'position');
+    gl.enableVertexAttribArray(positionAttrib);
+    gl.vertexAttribPointer(positionAttrib, 3, gl.FLOAT, false, 0, 0);
 
-    // Buffers for models
-    const dogBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, dogBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, dogModel, gl.STATIC_DRAW);
-
-    const doghouseBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, doghouseBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, doghouseModel, gl.STATIC_DRAW);
-
-    const boneBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, boneBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, boneModel, gl.STATIC_DRAW);
-
-    // Animation logic
-    window.renderFrame = (timeSeconds) => {
+    function renderFrame(timeSeconds) {
       gl.clear(gl.COLOR_BUFFER_BIT);
 
-      // Animate dog position and orientation
-      let dogX = 0.0, dogZ = 0.0, dogRotation = 0.0;
-      if (timeSeconds > 1 && timeSeconds < 3) {
-        dogX = (timeSeconds - 1) * 0.5;
-      } else if (timeSeconds >= 3 && timeSeconds < 6) {
-        dogX = 0.5;
-        dogZ = (timeSeconds - 3) * -0.2;
-      } else if (timeSeconds >= 6 && timeSeconds < 8) {
-        dogX = 0.5 + (timeSeconds - 6) * -0.25;
-        dogZ = -0.2;
-        dogRotation = (timeSeconds - 6) * 90.0;
-      } else if (timeSeconds >= 8 && timeSeconds < 10) {
-        dogRotation = 90.0 + (timeSeconds - 8) * 45.0;
-      }
+      // Animate and render the scene
+      if (timeSeconds < 0) timeSeconds = 0;
+      if (timeSeconds > 12) timeSeconds = 12;
 
-      // Draw doghouse
-      gl.bindBuffer(gl.ARRAY_BUFFER, doghouseBuffer);
+      // Simplified animation logic for demonstration
+      const dogPosition = [timeSeconds * 0.1, 0.0, 0.0];
       const modelViewProjection = [
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, -0.3, -1, 1
+        1.0, 0.0, 0.0, 0.0,
+        0.0, 1.0, 0.0, 0.0,
+        0.0, 0.0, 1.0, 0.0,
+        dogPosition[0], dogPosition[1], dogPosition[2], 1.0
       ];
-      gl.uniformMatrix4fv(gl.getUniformLocation(program, 'modelViewProjection'), false, new Float32Array(modelViewProjection));
-      gl.vertexAttribPointer(gl.getAttribLocation(program, 'position'), 3, gl.FLOAT, false, 0, 0);
-      gl.enableVertexAttribArray(gl.getAttribLocation(program, 'position'));
-      gl.drawArrays(gl.TRIANGLES, 0, 12);
 
-      // Draw dog
-      gl.bindBuffer(gl.ARRAY_BUFFER, dogBuffer);
-      const dogModelViewProjection = [
-        Math.cos(dogRotation * Math.PI / 180), 0, Math.sin(dogRotation * Math.PI / 180), 0,
-        0, 1, 0, 0,
-        -Math.sin(dogRotation * Math.PI / 180), 0, Math.cos(dogRotation * Math.PI / 180), 0,
-        dogX, -0.2, dogZ, 1
-      ];
-      gl.uniformMatrix4fv(gl.getUniformLocation(program, 'modelViewProjection'), false, new Float32Array(dogModelViewProjection));
-      gl.vertexAttribPointer(gl.getAttribLocation(program, 'position'), 3, gl.FLOAT, false, 0, 0);
-      gl.enableVertexAttribArray(gl.getAttribLocation(program, 'position'));
-      gl.drawArrays(gl.TRIANGLES, 0, 15);
+      gl.uniformMatrix4fv(modelViewProjectionUniform, false, new Float32Array(modelViewProjection));
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }
 
-      // Draw bone
-      if (timeSeconds >= 4.5) {
-        gl.bindBuffer(gl.ARRAY_BUFFER, boneBuffer);
-        const boneModelViewProjection = [
-          Math.cos(dogRotation * Math.PI / 180), 0, Math.sin(dogRotation * Math.PI / 180), 0,
-          0, 1, 0, 0,
-          -Math.sin(dogRotation * Math.PI / 180), 0, Math.cos(dogRotation * Math.PI / 180), 0,
-          dogX, -0.1, dogZ, 1
-        ];
-        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'modelViewProjection'), false, new Float32Array(boneModelViewProjection));
-        gl.vertexAttribPointer(gl.getAttribLocation(program, 'position'), 3, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(gl.getAttribLocation(program, 'position'));
-        gl.drawArrays(gl.LINES, 0, 3);
-      }
-    };
-
-    window.renderFrame(0);
+    window.renderFrame = renderFrame;
+    renderFrame(0);
   </script>
 </body>
 </html>

@@ -1,638 +1,346 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
+<title>PomBench — Puddle, Pomeranian and Bone</title>
 <style>
-  html, body {
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    background: #000;
-  }
-  #stage {
-    display: block;
-    width: 960px;
-    height: 540px;
-    image-rendering: optimizeSpeed;
-    image-rendering: pixelated;
-    image-rendering: -moz-crisp-edges;
-    image-rendering: crisp-edges;
-  }
+html,body{margin:0;padding:0;overflow:hidden;background:#0b0b0b}
+#stage{display:block;width:960px;height:540px;margin:0;padding:0}
 </style>
 </head>
 <body>
 <canvas id="stage" width="960" height="540"></canvas>
 <script>
-(function () {
-  'use strict';
-
-  var canvas = document.getElementById('stage');
-  var ctx = canvas.getContext('2d', { alpha: false });
-
-  // ===== FIXED SCENE CONSTANTS =====
-  var SCENE = {
-    W: 960,
-    H: 540,
-    GRAV_Y: 0,
-    // Ground
-    GROUND_Y: 430,
-    GROUND_COLOR_0: [0xC7, 0xD5, 0xA3],
-    GROUND_COLOR_1: [0xB5, 0xC5, 0x92],
-    // Lighting
-    SUN_DIR_X: 0.25,
-    SUN_DIR_Y: -0.55,
-    AMBIENT: 0.28,
-    DIRECT: 0.72,
-    // Doghouse
-    DH_X: 620,
-    DH_Y: 360,
-    DH_W: 130,
-    DH_H: 120,
-    DH_ROOF_H: 48,
-    DH_DOOR_W: 44,
-    DH_DOOR_H: 76,
-    DH_DOOR_XOFF: 43,
-    DH_INTERIOR: [0x3C, 0x2F, 0x1D],
-    DH_WALL: [0x8F, 0x6B, 0x3F],
-    DH_ROOF: [0x7A, 0x4F, 0x2C],
-    DH_TRIM: [0x6C, 0x4A, 0x25],
-    // Bone
-    BONE_REST_X: 660,
-    BONE_REST_Y: 435,
-    BONE_R: 5.2,
-    BONE_LEN: 20,
-    BONE_COLOR: [0xD9, 0xD2, 0xC3],
-    // Dog root
-    DOG_START_X: -80,
-    DOG_START_Y: 422,
-    DOG_SCALE: 1.0,
-    // Pomeranian colors
-    COAT_ORANGE: [0xF5, 0xA9, 0x4D],
-    COAT_CREAM: [0xF2, 0xE6, 0xD6],
-    COAT_RUFF: [0xF6, 0xF0, 0xE6],
-    COAT_TAIL_DARK: [0xE9, 0x9A, 0x47],
-    NOSE: [0x1F, 0x1A, 0x15],
-    EYE_DARK: [0x16, 0x12, 0x0C],
-    PAW: [0xF2, 0xEC, 0xE2],
-    LIP: [0xD9, 0xC9, 0xC2]
-  };
-
-  // ===== DETERMINISTIC HASH =====
-  function hash2(ix, iy) {
-    var x = (ix >>> 0) * 131542391;
-    var y = (iy >>> 0) * 1000000009;
-    var h = (x ^ y) ^ ((x << 13) | (x >>> 19)) ^ ((y << 7) | (y >>> 25));
-    h = (h * 1664525 + 1013904223) >>> 0;
-    return (h & 0xFFFFFF) / 16777216.0;
-  }
-  function hash3(ix, iy, iz) {
-    var h = hash2(ix, iy);
-    var xz = (iz >>> 0) * 201326611;
-    h = (h * 16777216.0 + ((xz ^ (xz << 17)) >>> 0) & 0xFFFFFF) / 16777216.0;
-    return h - Math.floor(h);
-  }
-
-  function clamp(v, a, b) {
-    return v < a ? a : (v > b ? b : v);
-  }
-  function smoothstep(e0, e1, x) {
-    var t = clamp((x - e0) / (e1 - e0), 0.0, 1.0);
-    return t * t * (3.0 - 2.0 * t);
-  }
-  function smootherstep(e0, e1, x) {
-    var t = clamp((x - e0) / (e1 - e0), 0.0, 1.0);
-    return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
-  }
-  function lerp(a, b, t) {
-    return a + (b - a) * t;
-  }
-  function sinDet(t) {
-    return Math.sin(t * 2.0 * Math.PI);
-  }
-
-  // ===== ANIMATION STATE COMPUTATION =====
-  function computePose(t) {
-    var pose = {
-      rootX: 0, rootY: 0, rootRot: 0,
-      spine0: 0, spine1: 0, spine2: 0,
-      headX: 0, headY: 0, headRot: 0,
-      muzzleRot: 0,
-      earL: 0, earR: 0,
-      neck: 0, ruff: 0,
-      tailBase: 0, tailMid: 0, tailTip: 0,
-      jaw: 0,
-      mouthOpen: 0,
-      // Legs: angles in radians (simplified)
-      FL: {s:0,e:0,p:0,con:0}, FR: {s:0,e:0,p:0,con:0},
-      BL: {s:0,e:0,p:0,con:0}, BR: {s:0,e:0,p:0,con:0},
-      // Bone
-      boneX: SCENE.BONE_REST_X, boneY: SCENE.BONE_REST_Y, boneRot: 0, inMouth: false,
-      // Camera
-      camX: 0, camY: 0,
-      // Breathing
-      breath: 0
-    };
-
-    var tt = t;
-    if (tt < 0) tt = 0;
-    if (tt > 12) tt = 12;
-
-    pose.breath = 0.012 * Math.sin(tt * 2.0 * Math.PI * 0.8);
-
-    // Phases
-    var pRunStart = 1.0, pRunEnd = 3.0;
-    var pEnterStart = 3.0, pEnterEnd = 4.5;
-    var pGrabStart = 4.5, pGrabEnd = 6.0;
-    var pBackStart = 6.0, pBackEnd = 8.0;
-    var pTurnStart = 8.0, pTurnEnd = 10.0;
-    var pSettleStart = 10.0, pSettleEnd = 12.0;
-
-    // 0–1: establish
-    var est = smoothstep(0, 1.0, tt);
-    pose.rootX = SCENE.DOG_START_X + (180 - SCENE.DOG_START_X) * est * 0.15;
-    pose.rootY = SCENE.DOG_START_Y - 1.0 * est;
-    pose.rootRot = -0.05 * est;
-    pose.spine0 = 0.02 * est; pose.spine1 = -0.01 * est; pose.spine2 = 0.01 * est;
-    pose.headRot = 0.08 * est; pose.muzzleRot = -0.02 * est;
-    pose.earL = 0.25 * est; pose.earR = 0.28 * est;
-    pose.tailBase = -0.35 * est; pose.tailMid = -0.45 * est; pose.tailTip = -0.35 * est;
-    pose.mouthOpen = 0.0;
-
-    // 1–3: run
-    if (tt >= pRunStart) {
-      var tr = clamp((tt - pRunStart) / (pRunEnd - pRunStart), 0, 1);
-      var stride = tr * 2.0 * Math.PI;
-      // Root
-      pose.rootX = 170 + (SCENE.DH_X - 50 - 170) * tr;
-      pose.rootY = SCENE.DOG_START_Y - Math.abs(Math.sin(stride * 2.0)) * 2.2;
-      pose.rootRot = -0.03 + Math.sin(stride) * 0.004;
-      // Spine
-      pose.spine0 = 0.06 + Math.sin(stride * 2.0 + 0.5) * 0.01;
-      pose.spine1 = -0.02 + Math.sin(stride * 2.0) * 0.006;
-      pose.spine2 = 0.03 + Math.sin(stride * 2.0 - 0.3) * 0.005;
-      // Head
-      pose.headRot = 0.12 + Math.sin(stride * 2.0 - 1.0) * 0.02;
-      pose.muzzleRot = -0.01;
-      pose.earL = 0.35 + Math.sin(stride * 2.0) * 0.05; pose.earR = 0.38 + Math.sin(stride * 2.0 - 0.2) * 0.05;
-      // Tail
-      pose.tailBase = -0.42 + Math.sin(stride * 2.0 + 1.0) * 0.04;
-      pose.tailMid = -0.55 + Math.sin(stride * 2.0 + 1.2) * 0.05;
-      pose.tailTip = -0.45 + Math.sin(stride * 2.0 + 1.4) * 0.04;
-      // Gait
-      var cFL = Math.max(0, Math.sin(stride));
-      var cFR = Math.max(0, Math.sin(stride + Math.PI));
-      var cBL = Math.max(0, Math.sin(stride + Math.PI));
-      var cBR = Math.max(0, Math.sin(stride));
-      pose.FL = {s: 0.4*cFL, e: 0.9*cFL, p: 0.2*cFL, con: cFL};
-      pose.FR = {s: 0.4*cFR, e: 0.9*cFR, p: 0.2*cFR, con: cFR};
-      pose.BL = {s: 0.35*cBL, e: 0.8*cBL, p: 0.25*cBL, con: cBL};
-      pose.BR = {s: 0.35*cBR, e: 0.8*cBR, p: 0.25*cBR, con: cBR};
-    }
-
-    // 3–4.5: enter
-    if (tt >= pEnterStart) {
-      var te = clamp((tt - pEnterStart) / (pEnterEnd - pEnterStart), 0, 1);
-      var tee = smootherstep(0,1,te);
-      pose.rootX = (SCENE.DH_X - 50) + (SCENE.DH_X - 18 - (SCENE.DH_X - 50)) * tee;
-      pose.rootY = SCENE.DOG_START_Y - Math.sin(tee * Math.PI) * 1.0;
-      pose.rootRot = -0.03 - tee * 0.01;
-      pose.spine0 = 0.05 - tee * 0.01; pose.spine1 = -0.01; pose.spine2 = 0.02;
-      pose.headRot = 0.08 - tee * 0.04;
-      pose.muzzleRot = -0.005;
-      pose.earL = 0.32; pose.earR = 0.34;
-      pose.tailBase = -0.38; pose.tailMid = -0.48; pose.tailTip = -0.36;
-      var g = 0.5 + 0.5*Math.sin(tee*Math.PI*2.0);
-      pose.FL = {s:0.25*g,e:0.6*g,p:0.15*g,con:g};
-      pose.FR = {s:0.22*g,e:0.55*g,p:0.12*g,con:g};
-      pose.BL = {s:0.18*g,e:0.5*g,p:0.1*g,con:g*0.8};
-      pose.BR = {s:0.16*g,e:0.48*g,p:0.08*g,con:g*0.8};
-      pose.mouthOpen = 0.0;
-    }
-
-    // 4.5–6: grab
-    if (tt >= pGrabStart) {
-      var tg = clamp((tt - pGrabStart) / (pGrabEnd - pGrabStart), 0, 1);
-      var tgs = smoothstep(0,1,tg);
-      pose.rootX = SCENE.DH_X - 16 + Math.sin(tgs*Math.PI*1.5)*0.8;
-      pose.rootY = SCENE.DOG_START_Y - 0.5 + Math.sin(tgs*Math.PI*2.0)*0.2;
-      pose.rootRot = -0.04;
-      pose.spine0 = 0.03; pose.spine1 = -0.008; pose.spine2 = 0.015;
-      pose.headRot = -0.05 - tgs * 0.09;
-      pose.muzzleRot = 0.01;
-      pose.earL = 0.28 - tgs*0.04; pose.earR = 0.30 - tgs*0.04;
-      pose.tailBase = -0.32; pose.tailMid = -0.40; pose.tailTip = -0.30;
-      pose.mouthOpen = 0.0 + tgs * 0.55;
-      pose.FL = {s:0.12,e:0.3,p:0.08,con:0.6};
-      pose.FR = {s:0.1,e:0.28,p:0.07,con:0.6};
-      pose.BL = {s:0.08,e:0.24,p:0.06,con:0.5};
-      pose.BR = {s:0.07,e:0.22,p:0.05,con:0.5};
-      // Bone grab
-      if (tg >= 0.25) {
-        var bg = smoothstep(0.25, 0.9, tg);
-        pose.boneX = lerp(SCENE.BONE_REST_X, SCENE.DH_X + 6, bg);
-        pose.boneY = lerp(SCENE.BONE_REST_Y, SCENE.GROUND_Y - 34, bg);
-        pose.boneRot = bg * 0.6;
-        pose.inMouth = (tg >= 0.45);
-      } else {
-        pose.boneX = SCENE.BONE_REST_X; pose.boneY = SCENE.BONE_REST_Y; pose.boneRot = 0; pose.inMouth = false;
-      }
-    } else {
-      pose.boneX = SCENE.BONE_REST_X; pose.boneY = SCENE.BONE_REST_Y; pose.boneRot = 0; pose.inMouth = false;
-    }
-
-    // 6–8: back out
-    if (tt >= pBackStart) {
-      var tb = clamp((tt - pBackStart) / (pBackEnd - pBackStart), 0, 1);
-      var tbs = smootherstep(0,1,tb);
-      pose.rootX = (SCENE.DH_X - 16) + (SCENE.DH_X - 70 - (SCENE.DH_X - 16)) * tbs;
-      pose.rootY = SCENE.DOG_START_Y - 0.2 - Math.sin(tbs*Math.PI)*0.6;
-      pose.rootRot = -0.02 + Math.sin(tbs*Math.PI*1.5)*0.002;
-      pose.spine0 = 0.02; pose.spine1 = -0.006; pose.spine2 = 0.01;
-      pose.headRot = -0.08 + Math.sin(tbs*Math.PI*2.0)*0.003;
-      pose.muzzleRot = 0.005;
-      pose.earL = 0.24; pose.earR = 0.26;
-      pose.tailBase = -0.28; pose.tailMid = -0.36; pose.tailTip = -0.26;
-      pose.mouthOpen = 0.48;
-      pose.inMouth = true;
-      pose.boneX = pose.rootX + 22;
-      pose.boneY = pose.rootY - 34;
-      pose.boneRot = -0.15 + Math.sin(tbs*Math.PI*1.2)*0.05;
-      var gb = 0.6 + 0.4*Math.sin(tbs*Math.PI*2.0);
-      pose.BL = {s:0.2*gb,e:0.5*gb,p:0.12*gb,con:gb};
-      pose.BR = {s:0.18*gb,e:0.48*gb,p:0.1*gb,con:gb};
-      pose.FL = {s:0.14*gb,e:0.4*gb,p:0.08*gb,con:gb*0.9};
-      pose.FR = {s:0.12*gb,e:0.38*gb,p:0.07*gb,con:gb*0.9};
-    }
-
-    // 8–10: turn
-    if (tt >= pTurnStart) {
-      var tu = clamp((tt - pTurnStart) / (pTurnEnd - pTurnStart), 0, 1);
-      var tus = smootherstep(0,1,tu);
-      pose.rootX = SCENE.DH_X - 70 + (SCENE.DH_X - 40 - (SCENE.DH_X - 70)) * tu * 0.2;
-      pose.rootY = SCENE.DOG_START_Y - 0.8 + Math.sin(tus*Math.PI)*0.8;
-      pose.rootRot = -0.02 + tus * 0.65;
-      pose.spine0 = 0.01 + tus*0.02; pose.spine1 = -0.004; pose.spine2 = 0.008;
-      pose.headRot = -0.06 + tus * 0.38;
-      pose.muzzleRot = 0.002 + tus*0.01;
-      pose.earL = 0.22 + tus*0.08; pose.earR = 0.24 + tus*0.1;
-      pose.tailBase = -0.24 - tus*0.05;
-      pose.tailMid = -0.32 - tus*0.08;
-      pose.tailTip = -0.22 - tus*0.06;
-      pose.mouthOpen = 0.45;
-      pose.inMouth = true;
-      pose.boneX = pose.rootX + Math.cos(pose.rootRot)*26 - Math.sin(pose.rootRot)*(-4);
-      pose.boneY = pose.rootY - 34 + Math.sin(pose.rootRot)*26 + Math.cos(pose.rootRot)*(-4);
-      pose.boneRot = -0.1 + pose.rootRot*0.2;
-      var gt = 0.5 + 0.5*Math.sin(tus*Math.PI*2.5);
-      pose.FL = {s:0.16*gt,e:0.42*gt,p:0.1*gt,con:gt};
-      pose.FR = {s:0.14*gt,e:0.4*gt,p:0.09*gt,con:gt};
-      pose.BL = {s:0.18*gt,e:0.45*gt,p:0.11*gt,con:gt};
-      pose.BR = {s:0.15*gt,e:0.43*gt,p:0.1*gt,con:gt};
-    }
-
-    // 10–12: settle frontal
-    if (tt >= pSettleStart) {
-      var ts = clamp((tt - pSettleStart) / (pSettleEnd - pSettleStart), 0, 1);
-      var tss = smoothstep(0,1,ts);
-      pose.rootX = SCENE.DH_X - 40 + 8*tss;
-      pose.rootY = SCENE.DOG_START_Y - 0.4 - 1.2*tss + pose.breath*6.0;
-      pose.rootRot = 0.65 - tss*0.03;
-      pose.spine0 = 0.03 + pose.breath*0.4;
-      pose.spine1 = -0.002 + pose.breath*0.25;
-      pose.spine2 = 0.006 + pose.breath*0.2;
-      pose.headRot = 0.32 - tss*0.0 + pose.breath*0.15;
-      pose.muzzleRot = 0.012 + Math.sin(tt*2.0*Math.PI*0.6)*0.0015;
-      pose.earL = 0.30 + Math.sin(tt*2.0*Math.PI*0.7)*0.008;
-      pose.earR = 0.34 + Math.sin(tt*2.0*Math.PI*0.65)*0.009;
-      pose.tailBase = -0.29 + Math.sin(tt*2.0*Math.PI*0.5)*0.004;
-      pose.tailMid = -0.40 + Math.sin(tt*2.0*Math.PI*0.5 - 0.2)*0.005;
-      pose.tailTip = -0.30 + Math.sin(tt*2.0*Math.PI*0.5 - 0.4)*0.004;
-      pose.mouthOpen = 0.42;
-      pose.inMouth = true;
-      var bx = pose.rootX + 20 * Math.cos(pose.rootRot) - (-6) * Math.sin(pose.rootRot);
-      var by = pose.rootY - 32 + 20 * Math.sin(pose.rootRot) + (-6) * Math.cos(pose.rootRot);
-      pose.boneX = lerp(pose.boneX, bx, tss);
-      pose.boneY = lerp(pose.boneY, by, tss);
-      pose.boneRot = lerp(pose.boneRot, pose.rootRot * 0.1, tss);
-      pose.FL = {s:0.08,e:0.22,p:0.05,con:0.8};
-      pose.FR = {s:0.07,e:0.2,p:0.04,con:0.8};
-      pose.BL = {s:0.06,e:0.18,p:0.04,con:0.7};
-      pose.BR = {s:0.05,e:0.16,p:0.03,con:0.7};
-    }
-
-    pose.camX = 0; pose.camY = 0;
-    return pose;
-  }
-
-  // ===== DRAWING HELPERS =====
-  function drawRect(x,y,w,h,c) {
-    ctx.fillStyle = 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')';
-    ctx.fillRect(x,y,w,h);
-  }
-  function shadeRGB(c, s) {
-    var r = clamp(c[0]*s, 0, 255)|0;
-    var g = clamp(c[1]*s, 0, 255)|0;
-    var b = clamp(c[2]*s, 0, 255)|0;
-    return 'rgb(' + r + ',' + g + ',' + b + ')';
-  }
-  function mixRGB(c0,c1,t) {
-    var r = clamp(c0[0]*(1-t)+c1[0]*t,0,255)|0;
-    var g = clamp(c0[1]*(1-t)+c1[1]*t,0,255)|0;
-    var b = clamp(c0[2]*(1-t)+c1[2]*t,0,255)|0;
-    return 'rgb(' + r + ',' + g + ',' + b + ')';
-  }
-
-  // ===== MAIN RENDER =====
-  window.renderFrame = function (timeSeconds) {
-    var t = timeSeconds;
-    if (t < 0) t = 0;
-    if (t > 12) t = 12;
-    var pose = computePose(t);
-
-    ctx.save();
-    // Clear
-    ctx.fillStyle = '#C9D6B5';
-    ctx.fillRect(0,0,SCENE.W,SCENE.H);
-
-    // Ground
-    var gGrad = ctx.createLinearGradient(0, SCENE.GROUND_Y, 0, SCENE.H);
-    gGrad.addColorStop(0, 'rgb(' + SCENE.GROUND_COLOR_0[0] + ',' + SCENE.GROUND_COLOR_0[1] + ',' + SCENE.GROUND_COLOR_0[2] + ')');
-    gGrad.addColorStop(1, 'rgb(' + SCENE.GROUND_COLOR_1[0] + ',' + SCENE.GROUND_COLOR_1[1] + ',' + SCENE.GROUND_COLOR_1[2] + ')');
-    ctx.fillStyle = gGrad;
-    ctx.fillRect(0, SCENE.GROUND_Y, SCENE.W, SCENE.H - SCENE.GROUND_Y);
-
-    // Doghouse exterior back
-    drawRect(SCENE.DH_X, SCENE.DH_Y - SCENE.DH_ROOF_H, SCENE.DH_W, SCENE.DH_H + SCENE.DH_ROOF_H, SCENE.DH_WALL);
-    // Roof
-    ctx.fillStyle = 'rgb(' + SCENE.DH_ROOF[0] + ',' + SCENE.DH_ROOF[1] + ',' + SCENE.DH_ROOF[2] + ')';
-    ctx.beginPath();
-    ctx.moveTo(SCENE.DH_X - 6, SCENE.DH_Y - SCENE.DH_ROOF_H);
-    ctx.lineTo(SCENE.DH_X + SCENE.DH_W + 6, SCENE.DH_Y - SCENE.DH_ROOF_H);
-    ctx.lineTo(SCENE.DH_X + SCENE.DH_W - 4, SCENE.DH_Y - SCENE.DH_ROOF_H - 18);
-    ctx.lineTo(SCENE.DH_X + 4, SCENE.DH_Y - SCENE.DH_ROOF_H - 18);
-    ctx.closePath();
-    ctx.fill();
-    // Trim
-    drawRect(SCENE.DH_X, SCENE.DH_Y, SCENE.DH_W, 6, SCENE.DH_TRIM);
-
-    // Interior (draw before dog parts that may be behind opening? draw area)
-    var doorX = SCENE.DH_X + SCENE.DH_DOOR_XOFF;
-    var doorY = SCENE.DH_Y + (SCENE.DH_H - SCENE.DH_DOOR_H);
-    // Interior floor/wall
-    ctx.fillStyle = 'rgb(' + SCENE.DH_INTERIOR[0] + ',' + SCENE.DH_INTERIOR[1] + ',' + SCENE.DH_INTERIOR[2] + ')';
-    ctx.fillRect(doorX, doorY, SCENE.DH_DOOR_W, SCENE.DH_DOOR_H);
-
-    // Bone rest (before dog when outside)
-    if (!pose.inMouth || t < 4.5) {
-      var brx = SCENE.BONE_REST_X, bry = SCENE.BONE_REST_Y;
-      if (t >= 4.5 && t < 6.0) { brx = pose.boneX; bry = pose.boneY; }
-      drawBone(brx, bry, 0, false);
-    }
-
-    // Dog
-    drawDog(pose, t);
-
-    // Bone in mouth
-    if (pose.inMouth) {
-      drawBone(pose.boneX, pose.boneY, pose.boneRot, true);
-    }
-
-    // Doghouse front frame & occlusion refinement (door frame)
-    ctx.fillStyle = 'rgb(' + SCENE.DH_WALL[0] + ',' + SCENE.DH_WALL[1] + ',' + SCENE.DH_WALL[2] + ')';
-    ctx.fillRect(doorX - 2, doorY, 2, SCENE.DH_DOOR_H);
-    ctx.fillRect(doorX + SCENE.DH_DOOR_W, doorY, 2, SCENE.DH_DOOR_H);
-    ctx.fillRect(doorX - 2, doorY - 2, SCENE.DH_DOOR_W + 4, 2);
-    drawRect(SCENE.DH_X, SCENE.DH_Y, 6, SCENE.DH_H, SCENE.DH_TRIM);
-    drawRect(SCENE.DH_X + SCENE.DH_W - 6, SCENE.DH_Y, 6, SCENE.DH_H, SCENE.DH_TRIM);
-    drawRect(SCENE.DH_X, SCENE.DH_Y + SCENE.DH_H - 6, SCENE.DH_W, 6, SCENE.DH_TRIM);
-
-    ctx.restore();
-  };
-
-  function drawBone(x,y,rot,inMouth) {
-    ctx.save();
-    ctx.translate(x,y);
-    ctx.rotate(rot);
-    var col = SCENE.BONE_COLOR;
-    ctx.fillStyle = 'rgb(' + col[0] + ',' + col[1] + ',' + col[2] + ')';
-    ctx.beginPath();
-    ctx.ellipse(-SCENE.BONE_LEN*0.25, 0, SCENE.BONE_LEN*0.25, SCENE.BONE_R*0.7, 0, 0, 2*Math.PI);
-    ctx.ellipse(SCENE.BONE_LEN*0.25, 0, SCENE.BONE_LEN*0.25, SCENE.BONE_R*0.7, 0, 0, 2*Math.PI);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(120,112,96,0.25)';
-    ctx.beginPath();
-    ctx.arc(0, 1, SCENE.BONE_R*0.5, 0, 2*Math.PI);
-    ctx.fill();
-    ctx.restore();
-  }
-
-  function drawDog(pose, t) {
-    ctx.save();
-    ctx.translate(pose.rootX, pose.rootY);
-    ctx.rotate(pose.rootRot);
-
-    // Body
-    drawBody(pose, t);
-    // Head
-    drawHead(pose, t);
-    // Legs
-    drawLegs(pose, t);
-    // Tail
-    drawTail(pose, t);
-
-    ctx.restore();
-    // Contact shadows
-    drawShadows(pose);
-  }
-
-  function drawBody(pose, t) {
-    ctx.save();
-    var bx = 0, by = -26;
-    ctx.translate(bx, by + pose.spine0*6);
-    // Main body
-    var coat = SCENE.COAT_ORANGE;
-    var col = shadeRGB(coat, 0.95 + Math.sin(t*1.37)*0.002);
-    ctx.fillStyle = col;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 46, 28, 0.1 + pose.spine1, 0, 2*Math.PI);
-    ctx.fill();
-    // Ruff
-    var rcol = SCENE.COAT_RUFF;
-    ctx.fillStyle = 'rgb(' + rcol[0] + ',' + rcol[1] + ',' + rcol[2] + ')';
-    ctx.beginPath();
-    ctx.ellipse(-8, -6, 18, 16, -0.2, 0, 2*Math.PI);
-    ctx.ellipse(4, -8, 16, 14, 0.3, 0, 2*Math.PI);
-    ctx.fill();
-    // Fur volume
-    drawFur(0, 0, 46, 28, 0.1, coat, t);
-    ctx.restore();
-  }
-
-  function drawHead(pose, t) {
-    ctx.save();
-    var hx = -18 + pose.headX, hy = -46 + pose.headY + pose.spine2*4;
-    ctx.translate(hx, hy);
-    ctx.rotate(pose.headRot);
-    // Skull
-    var c = SCENE.COAT_ORANGE;
-    ctx.fillStyle = shadeRGB(c, 0.98);
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 26, 22, -0.15, 0, 2*Math.PI);
-    ctx.fill();
-    // Muzzle
-    ctx.save();
-    ctx.translate(18, 4);
-    ctx.rotate(pose.muzzleRot);
-    ctx.fillStyle = shadeRGB(SCENE.COAT_CREAM, 0.98);
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 14, 10, -0.1, 0, 2*Math.PI);
-    ctx.fill();
-    // Nose
-    ctx.fillStyle = 'rgb(' + SCENE.NOSE[0] + ',' + SCENE.NOSE[1] + ',' + SCENE.NOSE[2] + ')';
-    ctx.beginPath();
-    ctx.ellipse(10, -1, 2.6, 2.0, -0.2, 0, 2*Math.PI);
-    ctx.fill();
-    // Mouth
-    if (pose.mouthOpen > 0.05) {
-      ctx.fillStyle = 'rgb(' + SCENE.LIP[0] + ',' + SCENE.LIP[1] + ',' + SCENE.LIP[2] + ')';
-      ctx.beginPath();
-      ctx.ellipse(6, 2, 6, 2.5 * pose.mouthOpen, -0.1, 0, Math.PI);
-      ctx.fill();
-    }
-    ctx.restore();
-    // Eyes
-    ctx.fillStyle = 'rgb(' + SCENE.EYE_DARK[0] + ',' + SCENE.EYE_DARK[1] + ',' + SCENE.EYE_DARK[2] + ')';
-    ctx.beginPath();
-    ctx.arc(4, -6, 1.8, 0, 2*Math.PI);
-    ctx.arc(14, -4, 1.6, 0, 2*Math.PI);
-    ctx.fill();
-    // Ears
-    drawEar(-6, -14, -pose.earL, t);
-    drawEar(6, -12, pose.earR, t);
-    // Head fur
-    drawFur(0, 0, 26, 22, -0.15, c, t);
-    ctx.restore();
-  }
-
-  function drawEar(x,y,r,t) {
-    ctx.save();
-    ctx.translate(x,y);
-    ctx.rotate(r);
-    var c = SCENE.COAT_ORANGE;
-    ctx.fillStyle = shadeRGB(c, 0.9);
-    ctx.beginPath();
-    ctx.moveTo(0,0);
-    ctx.lineTo(-6,-10);
-    ctx.quadraticCurveTo(-2,-16, 2,-10);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = shadeRGB(SCENE.COAT_CREAM, 0.8);
-    ctx.beginPath();
-    ctx.moveTo(0,-2);
-    ctx.lineTo(-3,-9);
-    ctx.quadraticCurveTo(-1,-12, 1,-9);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-  }
-
-  function drawLegs(pose, t) {
-    function leg(side, lx, ly, angs, t) {
-      ctx.save();
-      ctx.translate(lx, ly);
-      // Shoulder/hip simplified
-      ctx.rotate(angs.s * 0.8);
-      ctx.fillStyle = shadeRGB(SCENE.COAT_ORANGE, 0.92);
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 8, 14, 0, 0, 2*Math.PI);
-      ctx.fill();
-      ctx.translate(0, 12);
-      ctx.rotate(angs.e * 0.9);
-      ctx.fillStyle = shadeRGB(SCENE.COAT_ORANGE, 0.9);
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 6, 12, 0, 0, 2*Math.PI);
-      ctx.fill();
-      ctx.translate(0, 10);
-      ctx.rotate(angs.p * 0.5);
-      ctx.fillStyle = 'rgb(' + SCENE.PAW[0] + ',' + SCENE.PAW[1] + ',' + SCENE.PAW[2] + ')';
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 5, 3, 0, 0, 2*Math.PI);
-      ctx.fill();
-      ctx.restore();
-    }
-    // Front
-    leg('FL', -14, -12, pose.FL, t);
-    leg('FR', 6, -14, pose.FR, t);
-    // Back
-    leg('BL', -10, 4, pose.BL, t);
-    leg('BR', 10, 2, pose.BR, t);
-  }
-
-  function drawTail(pose, t) {
-    ctx.save();
-    ctx.translate(20, -20);
-    ctx.rotate(pose.tailBase);
-    var c = SCENE.COAT_ORANGE;
-    ctx.fillStyle = shadeRGB(c, 0.88);
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 6, 16, 0.4, 0, 2*Math.PI);
-    ctx.fill();
-    ctx.translate(4, 14);
-    ctx.rotate(pose.tailMid);
-    ctx.fillStyle = shadeRGB(c, 0.86);
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 5, 14, 0.6, 0, 2*Math.PI);
-    ctx.fill();
-    ctx.translate(4, 12);
-    ctx.rotate(pose.tailTip);
-    ctx.fillStyle = shadeRGB(SCENE.COAT_TAIL_DARK, 0.9);
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 4, 10, 0.8, 0, 2*Math.PI);
-    ctx.fill();
-    ctx.restore();
-  }
-
-  function drawFur(cx, cy, rx, ry, rot, baseCol, t) {
-    var count = 18;
-    for (var i = 0; i < count; i++) {
-      var a = (i / count) * 2.0 * Math.PI;
-      var r = rx * (0.6 + 0.4 * hash3(i, 7, Math.floor(t*0)));
-      var fx = cx + Math.cos(a + rot) * r * 0.8;
-      var fy = cy + Math.sin(a + rot) * r * 0.6;
-      var h = hash3(i, 11, 1);
-      var sc = 0.85 + 0.08 * h;
-      ctx.fillStyle = shadeRGB(baseCol, sc);
-      ctx.beginPath();
-      ctx.ellipse(fx, fy, 2 + h*2, 1 + h, a, 0, 2*Math.PI);
-      ctx.fill();
-    }
-  }
-
-  function drawShadows(pose) {
-    ctx.save();
-    ctx.globalAlpha = 0.18;
-    ctx.fillStyle = '#000';
-    // Simple ground contact under approximate feet
-    var feet = [
-      {x: pose.rootX - 14 + 2, y: SCENE.GROUND_Y},
-      {x: pose.rootX + 6 + 2, y: SCENE.GROUND_Y},
-      {x: pose.rootX - 10 + 2, y: SCENE.GROUND_Y},
-      {x: pose.rootX + 10 + 2, y: SCENE.GROUND_Y}
-    ];
-    for (var i = 0; i < 4; i++) {
-      ctx.beginPath();
-      ctx.ellipse(feet[i].x, feet[i].y, 6 + i*0.5, 3, 0, 0, 2*Math.PI);
-      ctx.fill();
-    }
-    ctx.globalAlpha = 0.12;
-    ctx.beginPath();
-    ctx.ellipse(pose.rootX, SCENE.GROUND_Y + 1, 30, 8, pose.rootRot*0.2, 0, 2*Math.PI);
-    ctx.fill();
-    ctx.restore();
-  }
-
-  // Init
-  window.renderFrame(0);
+(function(){
+'use strict';
+var canvas=document.getElementById('stage');
+var ctx=canvas.getContext('2d',{alpha:true,desynchronized:false});
+function clamp(v,a,b){if(v<a)return a;if(v>b)return b;return v}
+function lerp(a,b,t){return a+(b-a)*t}
+function smoothstep(e0,e1,x){var t;var v=(x-e0)/(e1-e0);if(v<=0)return 0;if(v>=1)return 1;t=v*v*(3-2*v);return t}
+function stepEdge(x,e){if(x<e)return 0;return 1}
+function cubicHermite(p0,m0,p1,m1,t){var t2=t*t,t3=t2*t;return (2*t3-3*t2+1)*p0+(t3-2*t2+t)*m0+(-2*t3+3*t2)*p1+(t3-t2)*m1}
+function hash2(i,j){var h=( (i*131542391)|0 )^( (j*1009)|0 );h^=(h>>>16);h*=0x85ebca6b;h^=(h>>>13);h*=0xc2b2ae35;h^=(h>>>16);return (h&0x7fffffff)/2147483647}
+function hash3(i,j,k){var h=( (i*131542391)|0 )^( (j*1009)|0 )^( (k*2003)|0 );h^=(h>>>16);h*=0x85ebca6b;h^=(h>>>13);h*=0xc2b2ae35;h^=(h>>>16);return (h&0x7fffffff)/2147483647}
+function angLerp(a,b,t){var da=((b-a)%6.283185307179586+9.42477796076938)%6.283185307179586-3.141592653589793;return a+da*t}
+var WORLD={
+groundY:0.0,
+puddleX:-0.95,
+puddleZ:0.42,
+puddleR0:0.36,
+puddleR1:0.28,
+puddleDepth:0.008,
+camX:-1.25,
+camY:0.62,
+camZ:-1.55,
+lookX:-0.05,
+lookY:0.14,
+lookZ:0.58,
+fov:1.08,
+houseX:0.10,
+houseZ:0.78,
+houseW:0.48,
+houseD:0.36,
+houseH:0.42,
+doorW:0.16,
+doorH:0.24,
+doorZoff:0.188,
+boneX:0.10,
+boneY:0.08,
+boneZ:0.76,
+boneR:0.0085
+};
+var DOG={
+scale:0.165,
+rootX:-1.40,
+rootZ:0.20,
+rootY:0.0
+};
+var TIME_PHASE=[
+{t0:-1e12,t1:1.0},
+{t0:1.0,t1:3.0},
+{t0:3.0,t1:4.5},
+{t0:4.5,t1:6.0},
+{t0:6.0,t1:8.0},
+{t0:8.0,t1:10.0},
+{t0:10.0,t1:1e12}
+];
+function getPhaseIndex(t){for(var i=0;i<TIME_PHASE.length;i++){if(t<TIME_PHASE[i].t1)return i}return TIME_PHASE.length-1}
+var ANIM=(()=>{
+var curves={};
+function key(t,x,y,m){return {t:t,x:x,y:y,m:m}}
+function evalCurve(keys,t){if(keys.length==0)return 0;var i;for(i=1;i<keys.length;i++){if(t<=keys[i].t)break}if(i==1){var k0=keys[0],k1=keys[1];var dt=k1.t-k0.t;if(dt<=0)return k0.y;var s=(t-k0.t)/dt;return cubicHermite(k0.y,k0.m*(dt),k1.y,k1.m*(dt),s)}if(i>=keys.length){var kl=keys[keys.length-1];return kl.y}var k0=keys[i-1],k1=keys[i];var dt=k1.t-k0.t;if(dt<=0)return k0.y;var s=(t-k0.t)/dt;return cubicHermite(k0.y,k0.m*(dt),k1.y,k1.m*(dt),s)}
+curves.rootX=[
+key(0.0,-1.40,0.0,0.58),key(0.90,-0.90,0.0,0.56),key(1.20,-0.70,0.0,0.52),key(1.70,-0.36,0.0,0.48),key(2.20,-0.08,0.0,0.40),key(2.60,0.06,0.0,0.34),key(2.90,0.10,0.0,0.26),key(3.05,0.11,0.0,0.20),key(3.40,0.11,0.0,0.10),key(4.20,0.11,0.0,-0.04),key(4.80,0.11,0.0,-0.02),key(5.60,0.11,0.0,0.00),key(6.20,0.11,0.0,-0.06),key(6.80,0.085,0.0,-0.08),key(7.40,0.045,0.0,-0.09),key(7.90,0.015,0.0,-0.08),key(8.20,-0.010,0.0,-0.06),key(8.60,-0.020,0.0,-0.02),key(9.20,-0.005,0.0,0.04),key(9.80,0.015,0.0,0.06),key(10.40,0.020,0.0,0.02),key(11.00,0.020,0.0,0.00),key(12.00,0.020,0.0,0.00)
+];
+curves.rootZ=[
+key(0.0,0.20,0.0,0.00),key(0.80,0.26,0.0,0.08),key(1.40,0.36,0.0,0.10),key(2.00,0.48,0.0,0.08),key(2.60,0.58,0.0,0.06),key(2.95,0.62,0.0,0.04),key(3.15,0.65,0.0,0.02),key(3.60,0.72,0.0,0.00),key(4.40,0.75,0.0,0.00),key(5.40,0.75,0.0,0.00),key(6.40,0.74,0.0,-0.04),key(7.00,0.71,0.0,-0.06),key(7.60,0.66,0.0,-0.08),key(8.10,0.61,0.0,-0.08),key(8.60,0.56,0.0,-0.06),key(9.20,0.52,0.0,-0.04),key(9.80,0.50,0.0,-0.02),key(10.40,0.49,0.0,0.00),key(12.00,0.49,0.0,0.00)
+];
+curves.rootYaw=[
+key(0.0,0.08,0.0,-0.02),key(0.80,0.04,0.0,-0.04),key(1.60,-0.02,0.0,-0.04),key(2.40,-0.06,0.0,-0.02),key(2.90,-0.07,0.0,0.00),key(3.30,-0.07,0.0,0.02),key(4.00,-0.05,0.0,0.02),key(5.20,-0.04,0.0,0.00),key(6.20,-0.04,0.0,-0.04),key(7.00,-0.08,0.0,-0.08),key(7.80,-0.14,0.0,-0.08),key(8.40,-0.18,0.0,0.06),key(8.80,-0.12,0.0,0.28),key(9.20,0.06,0.0,0.40),key(9.60,0.30,0.0,0.44),key(10.00,0.56,0.0,0.40),key(10.30,0.72,0.0,0.26),key(10.60,0.80,0.0,0.12),key(11.00,0.82,0.0,0.02),key(11.40,0.82,0.0,0.00),key(12.00,0.82,0.0,0.00)
+];
+curves.rootPitch=[
+key(0.0,0.02,0.0,0.00),key(0.90,0.00,0.0,-0.02),key(1.80,-0.04,0.0,-0.04),key(2.40,-0.08,0.0,-0.04),key(2.80,-0.10,0.0,-0.02),key(3.00,-0.11,0.0,0.00),key(3.20,-0.10,0.0,0.04),key(3.60,-0.06,0.0,0.06),key(4.40,-0.02,0.0,0.02),key(5.60,-0.01,0.0,0.00),key(6.80,-0.02,0.0,-0.02),key(7.80,-0.06,0.0,-0.02),key(8.80,-0.07,0.0,0.00),key(10.00,-0.06,0.0,0.02),key(10.80,-0.04,0.0,0.02),key(11.40,-0.03,0.0,0.00),key(12.00,-0.03,0.0,0.00)
+];
+curves.rootY=[
+key(0.0,0.000,0.0,0.00),key(1.10,0.000,0.0,0.00),key(1.60,0.002,0.0,0.02),key(2.00,0.010,0.0,0.04),key(2.30,0.024,0.0,0.06),key(2.50,0.038,0.0,0.08),key(2.65,0.052,0.0,0.09),key(2.80,0.068,0.0,0.10),key(2.90,0.080,0.0,0.10),key(3.00,0.090,0.0,0.08),key(3.08,0.096,0.0,0.06),key(3.18,0.100,0.0,0.04),key(3.30,0.102,0.0,0.02),key(3.50,0.102,0.0,0.00),key(3.80,0.098,0.0,-0.04),key(4.20,0.088,0.0,-0.06),key(4.80,0.080,0.0,-0.02),key(6.00,0.078,0.0,-0.00),key(7.20,0.076,0.0,-0.00),key(8.40,0.074,0.0,-0.00),key(9.60,0.072,0.0,0.00),key(10.80,0.072,0.0,0.00),key(12.00,0.072,0.0,0.00)
+];
+curves.jumpPhase=key(2.58,0,0,0);
+curves.neckPitch=[key(0,0.08,0,0),key(1.0,0.04,0,-0.02),key(2.0,-0.04,0,-0.06),key(2.8,-0.12,0,-0.04),key(3.1,-0.14,0,0.04),key(3.6,-0.08,0,0.08),key(4.4,-0.02,0,0.04),key(5.4,0.00,0,0.00),key(6.4,-0.02,0,-0.02),key(7.4,-0.08,0,-0.04),key(8.4,-0.10,0,0.00),key(9.4,-0.08,0,0.04),key(10.2,-0.04,0,0.04),key(11.0,-0.02,0,0.02),key(12.0,-0.02,0,0.00)];
+curves.headPitch=[key(0,0.04,0,0),key(1.0,0.02,0,-0.02),key(2.0,-0.06,0,-0.06),key(2.8,-0.16,0,-0.04),key(3.1,-0.18,0,0.06),key(3.6,-0.10,0,0.10),key(4.4,-0.04,0,0.06),key(4.9,-0.14,0,-0.10),key(5.2,-0.18,0,-0.04),key(5.6,-0.16,0,0.04),key(6.2,-0.10,0,0.06),key(7.2,-0.08,0,-0.02),key(8.2,-0.12,0,-0.02),key(9.2,-0.10,0,0.04),key(10.0,-0.04,0,0.06),key(10.8,-0.00,0,0.04),key(11.6,0.00,0,0.00),key(12.0,0.00,0,0.00)];
+curves.headYaw=[key(0,0.02,0,0),key(1.5,0.00,0,-0.02),key(2.8,-0.04,0,0.00),key(3.8,-0.02,0,0.02),key(5.0,-0.01,0,0.00),key(6.0,-0.02,0,-0.02),key(7.0,-0.06,0,-0.04),key(8.0,-0.10,0,0.00),key(8.6,-0.06,0,0.12),key(9.2,0.08,0,0.20),key(9.8,0.24,0,0.20),key(10.2,0.34,0,0.14),key(10.6,0.38,0,0.06),key(11.2,0.39,0,0.00),key(12.0,0.39,0,0.00)];
+curves.mouth=[key(0,0.0,0,0),key(4.6,0.0,0,0.20),key(4.9,0.28,0,0.24),key(5.4,0.34,0,-0.08),key(5.8,0.26,0,-0.16),key(6.2,0.14,0,-0.12),key(7.0,0.04,0,-0.04),key(8.5,0.00,0,0.00),key(12.0,0.00,0,0.00)];
+curves.tailYaw=[key(0,0.24,0,0),key(1.0,0.20,0,-0.04),key(2.0,0.12,0,-0.06),key(3.0,0.06,0,-0.04),key(4.0,0.04,0,-0.00),key(5.0,0.04,0,0.00),key(6.0,0.02,0,-0.04),key(7.0,-0.04,0,-0.08),key(8.0,-0.14,0,-0.06),key(8.6,-0.16,0,0.08),key(9.2,-0.04,0,0.18),key(9.8,0.12,0,0.20),key(10.2,0.22,0,0.14),key(10.6,0.28,0,0.08),key(11.2,0.30,0,0.02),key(12.0,0.30,0,0.00)];
+curves.tailPitch=[key(0,-0.08,0,0),key(1.2,-0.06,0,0.02),key(2.4,-0.02,0,0.04),key(3.6,0.02,0,0.02),key(5.0,0.04,0,0.00),key(6.5,0.02,0,-0.02),key(8.0,-0.02,0,-0.02),key(9.5,0.00,0,0.02),key(11.0,0.02,0,0.00),key(12.0,0.02,0,0.00)];
+curves.earL=[key(0,-0.08,0,0),key(0.8,-0.06,0,0.02),key(2.0,-0.02,0,0.04),key(3.5,0.00,0,0.02),key(5.5,0.02,0,0.00),key(7.5,0.00,0,-0.02),key(9.5,-0.02,0,-0.02),key(10.5,-0.04,0,-0.02),key(11.5,-0.04,0,0.00),key(12.0,-0.04,0,0.00)];
+curves.earR=[key(0,-0.06,0,0),key(0.9,-0.04,0,0.02),key(2.1,-0.00,0,0.04),key(3.6,0.02,0,0.02),key(5.6,0.04,0,0.00),key(7.6,0.02,0,-0.02),key(9.6,0.00,0,-0.02),key(10.6,-0.02,0,-0.02),key(11.6,-0.02,0,0.00),key(12.0,-0.02,0,0.00)];
+curves.boneGrip=[key(0,0.0,0,0),key(4.8,0.0,0,0.00),key(5.0,0.10,0,0.40),key(5.4,0.90,0,0.20),key(5.8,1.00,0,0.00),key(12.0,1.00,0,0.00)];
+curves.breath=[key(0,0.0,0,0),key(10.0,0.0,0,0.00),key(10.4,0.012,0,0.008),key(10.9,0.014,0,-0.004),key(11.4,0.008,0,-0.006),key(12.0,0.004,0,-0.002)];
+return {
+eval:function(name,t){return evalCurve(curves[name],t)},
+getGrip:function(t){return clamp(evalCurve(curves.boneGrip,t),0,1)}
+}
+})();
+function legAngles(t,side,phaseOff){
+var g=(t*1.90+phaseOff)%1.0;
+var s1=smoothstep(0,0.22,g);
+var s2=smoothstep(0.22,0.48,g);
+var s3=smoothstep(0.48,0.70,g);
+var s4=smoothstep(0.70,1.0,g);
+var lift=0;var extend=0;var knee=0;
+if(g<0.22){lift=lerp(0,0.28,s1);extend=lerp(0,-0.08,s1);knee=lerp(0,0.18,s1)}
+else if(g<0.48){lift=lerp(0.28,0.00,s2);extend=lerp(-0.08,0.06,s2);knee=lerp(0.18,0.10,s2)}
+else if(g<0.70){lift=lerp(0.00,-0.02,s3);extend=lerp(0.06,0.00,s3);knee=lerp(0.10,0.00,s3)}
+else{lift=lerp(-0.02,0.00,s4);extend=lerp(0.00,0.00,s4);knee=lerp(0.00,0.00,s4)}
+if(t>=2.50&&t<3.08){
+var jt=clamp((t-2.50)/0.58,0,1);
+var j2=jt*jt*(3-2*jt);
+lift=lerp(lift,0.42,j2);
+extend=lerp(extend,-0.16,j2);
+knee=lerp(knee,0.28,j2);
+}
+if(t>=3.08&&t<3.40){
+var jt=clamp((t-3.08)/0.32,0,1);
+var j2=jt*jt*(3-2*jt);
+lift=lerp(0.42,-0.04,j2);
+extend=lerp(-0.16,0.08,j2);
+knee=lerp(0.28,0.12,j2);
+}
+if(t>=6.0&&t<8.0){
+var rt=clamp((t-6.0)/2.0,0,1);
+var r2=rt*rt*(3-2*rt);
+lift=lerp(lift,0.06,r2*0.8);
+extend=lerp(extend,-0.04,r2);
+knee=lerp(knee,0.04,r2);
+}
+if(t>=8.0&&t<10.0){
+var tt=clamp((t-8.0)/2.0,0,1);
+var t2s=tt*tt*(3-2*tt);
+lift=lerp(lift,-0.02,t2s*0.6);
+extend=lerp(extend,0.02,t2s);
+knee=lerp(knee,0.00,t2s);
+}
+return {lift:lift,extend:extend,knee:knee}
+}
+function getDogPose(t){
+var rootX=ANIM.eval('rootX',t);
+var rootZ=ANIM.eval('rootZ',t);
+var rootYaw=ANIM.eval('rootYaw',t);
+var rootPitch=ANIM.eval('rootPitch',t);
+var rootY0=ANIM.eval('rootY',t);
+var breath=ANIM.eval('breath',t);
+var rootY=rootY0+breath*0.08;
+var neckPitch=ANIM.eval('neckPitch',t);
+var headPitch=ANIM.eval('headPitch',t);
+var headYaw=ANIM.eval('headYaw',t);
+var mouth=ANIM.eval('mouth',t);
+var tailYaw=ANIM.eval('tailYaw',t);
+var tailPitch=ANIM.eval('tailPitch',t);
+var earL=ANIM.eval('earL',t);
+var earR=ANIM.eval('earR',t);
+var la=legAngles(t,'L',0.00);
+var ra=legAngles(t,'R',0.22);
+var lp=legAngles(t,'L',0.50);
+var rp=legAngles(t,'R',0.72);
+return{
+root:{x:rootX,y:rootY,z:rootZ,yaw:rootYaw,pitch:rootPitch,roll:0},
+neck:{pitch:neckPitch},
+head:{pitch:headPitch,yaw:headYaw,mouth:mouth},
+earL:{ang:earL},earR:{ang:earR},
+tail:{yaw:tailYaw,pitch:tailPitch},
+legLF:la,legRF:ra,legLH:lp,legRH:rp,
+grip:ANIM.getGrip(t)
+}
+}
+function worldToScreen(wx,wy,wz){
+var dx=wx-WORLD.camX,dy=wy-WORLD.camY,dz=wz-WORLD.camZ;
+var lx=WORLD.lookX-WORLD.camX,ly=WORLD.lookY-WORLD.camY,lz=WORLD.lookZ-WORLD.camZ;
+var lenL=Math.sqrt(lx*lx+ly*ly+lz*lz);lx/=lenL;ly/=lenL;lz/=lenL;
+var upx=0,upy=1,upz=0;
+var rx=ly*upz-lz*upy,ry=lz*upx-lx*upz,rz=lx*upy-ly*upx;
+var rlen=Math.sqrt(rx*rx+ry*ry+rz*rz);rx/=rlen;ry/=rlen;rz/=rlen;
+var ux=ry*lz-rz*ly,uy=rz*lx-rx*lz,uz=rx*ly-ry*lx;
+var vx=dx*rx+dy*ry+dz*rz;
+var vy=dx*ux+dy*uy+dz*uz;
+var vz=dx*lx+dy*ly+dz*lz;
+if(vz<=0.01)vz=0.01;
+var s=canvas.height*WORLD.fov/vz;
+var sx=canvas.width*0.5 + vx*s;
+var sy=canvas.height*0.5 - vy*s;
+return{x:sx,y:sy,scale:s}
+}
+function drawEllipse(sx,sy,rx,ry,fill,stroke,sw){
+ctx.beginPath();
+ctx.ellipse(sx,sy,rx,ry,0,0,6.283185307179586);
+if(fill){ctx.fillStyle=fill;ctx.fill()}
+if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=sw;ctx.stroke()}
+}
+function drawGround(){
+var g0=worldToScreen(-3.0,0.0,-1.5),g1=worldToScreen(2.5,0.0,-1.5),g2=worldToScreen(2.5,0.0,2.2),g3=worldToScreen(-3.0,0.0,2.2);
+ctx.save();
+var grd=ctx.createLinearGradient(g0.x,g0.y,g1.x,g0.y);
+grd.addColorStop(0,'#a89a6b');grd.addColorStop(1,'#9f8f5f');
+ctx.fillStyle=grd;
+ctx.beginPath();
+ctx.moveTo(g0.x,g0.y);ctx.lineTo(g1.x,g1.y);ctx.lineTo(g2.x,g2.y);ctx.lineTo(g3.x,g3.y);ctx.closePath();
+ctx.fill();
+ctx.restore();
+}
+function drawPuddle(){
+var c=worldToScreen(WORLD.puddleX,0.0005,WORLD.puddleZ);
+var s0=worldToScreen(WORLD.puddleX+WORLD.puddleR0,0.0005,WORLD.puddleZ);
+var r0=Math.abs(s0.x-c.x);
+var s1=worldToScreen(WORLD.puddleX+WORLD.puddleR1,0.0005,WORLD.puddleZ);
+var r1=Math.abs(s1.x-c.x);
+ctx.save();
+var g=ctx.createRadialGradient(c.x,c.y,r1*0.2,c.x,c.y,r0);
+g.addColorStop(0,'rgba(110,150,170,0.28)');
+g.addColorStop(1,'rgba(70,110,130,0.16)');
+ctx.fillStyle=g;
+drawEllipse(c.x,c.y,r0,r1,'rgba(70,110,130,0.12)','rgba(80,120,140,0.18)',0.8);
+ctx.restore();
+}
+function clipPuddle(){
+var c=worldToScreen(WORLD.puddleX,0.0005,WORLD.puddleZ);
+var s0=worldToScreen(WORLD.puddleX+WORLD.puddleR0,0.0005,WORLD.puddleZ);
+var r0=Math.abs(s0.x-c.x);
+var s1=worldToScreen(WORLD.puddleX+WORLD.puddleR1,0.0005,WORLD.puddleZ);
+var r1=Math.abs(s1.x-c.x);
+ctx.beginPath();
+ctx.ellipse(c.x,c.y,r0,r1,0,0,6.283185307179586);
+ctx.clip();
+}
+function drawDoghouse(){
+var hx=WORLD.houseX,hy=0,hz=WORLD.houseZ,hw=WORLD.houseW,hd=WORLD.houseD,hh=WORLD.houseH,dw=WORLD.houseW*WORLD.doorW/0.48,dh=WORLD.houseH*WORLD.doorH/0.42,dz=WORLD.houseZoff;
+var p=[];
+p[0]=worldToScreen(hx-hw*0.5,0,hz-hd*0.5);p[1]=worldToScreen(hx+hw*0.5,0,hz-hd*0.5);p[2]=worldToScreen(hx+hw*0.5,0,hz+hd*0.5);p[3]=worldToScreen(hx-hw*0.5,0,hz+hd*0.5);
+var w0=worldToScreen(hx-hw*0.5,0,hz-hd*0.5),w1=worldToScreen(hx+hw*0.5,0,hz-hd*0.5),w2b=worldToScreen(hx+hw*0.5,hh,hz-hd*0.5),w3b=worldToScreen(hx-hw*0.5,hh,hz-hd*0.5);
+var s0=worldToScreen(hx-hw*0.5,0,hz+hd*0.5),s1=worldToScreen(hx+hw*0.5,0,hz+hd*0.5),s2b=worldToScreen(hx+hw*0.5,hh,hz+hd*0.5),s3b=worldToScreen(hx-hw*0.5,hh,hz+hd*0.5);
+var r0=worldToScreen(hx-hw*0.5,hh,hz-hd*0.5),r1=worldToScreen(hx+hw*0.5,hh,hz-hd*0.5),r2=worldToScreen(hx,hh+0.08,hz);
+ctx.save();
+ctx.fillStyle='#8c7a4a';
+ctx.beginPath();ctx.moveTo(s0.x,s0.y);ctx.lineTo(s1.x,s1.y);ctx.lineTo(s2b.x,s2b.y);ctx.lineTo(s3b.x,s3b.y);ctx.closePath();ctx.fill();
+ctx.fillStyle='#7f6e42';
+ctx.beginPath();ctx.moveTo(w0.x,w0.y);ctx.lineTo(w1.x,w1.y);ctx.lineTo(w2b.x,w2b.y);ctx.lineTo(w3b.x,w3b.y);ctx.closePath();ctx.fill();
+ctx.fillStyle='#a39056';
+ctx.beginPath();ctx.moveTo(w0.x,w0.y);ctx.lineTo(s0.x,s0.y);ctx.lineTo(s3b.x,s3b.y);ctx.lineTo(w3b.x,w3b.y);ctx.closePath();ctx.fill();
+ctx.fillStyle='#6f5d36';
+ctx.beginPath();ctx.moveTo(w1.x,w1.y);ctx.lineTo(s1.x,s1.y);ctx.lineTo(s2b.x,s2b.y);ctx.lineTo(w2b.x,w2b.y);ctx.closePath();ctx.fill();
+ctx.beginPath();ctx.moveTo(r0.x,r0.y);ctx.lineTo(r1.x,r1.y);ctx.lineTo(r2.x,r2.y);ctx.closePath();
+var grdR=ctx.createLinearGradient(r0.x,r0.y,r2.x,r2.y);
+grdR.addColorStop(0,'#7a6034');grdR.addColorStop(1,'#5f4c2a');
+ctx.fillStyle=grdR;ctx.fill();
+ctx.fillStyle='rgba(20,16,10,0.22)';
+ctx.beginPath();ctx.moveTo(hx-hw*0.5,0,hz-hd*0.5);ctx.lineTo(hx+hw*0.5,0,hz-hd*0.5);ctx.lineTo(hx+hw*0.5,hh,hz-hd*0.5);ctx.lineTo(hx-hw*0.5,hh,hz-hd*0.5);ctx.closePath();
+ctx.restore();
+}
+function drawDoghouseFront(){
+var hx=WORLD.houseX,hy=0,hz=WORLD.houseZ,hw=WORLD.houseW,hd=WORLD.houseD,hh=WORLD.houseH,dw=WORLD.doorW,dh=WORLD.doorH,dz=WORLD.doorZoff;
+var f0=worldToScreen(hx-hw*0.5,0,hz+hd*0.5),f1=worldToScreen(hx+hw*0.5,0,hz+hd*0.5),f2=worldToScreen(hx+hw*0.5,hh,hz+hd*0.5),f3=worldToScreen(hx-hw*0.5,hh,hz+hd*0.5);
+var drLx=hx-dw*0.5,drRx=hx+dw*0.5,drBy=0,drTy=dh;
+var d0=worldToScreen(drLx,drBy,hz+hd*0.5+dz*0.1),d1=worldToScreen(drRx,drBy,hz+hd*0.5+dz*0.1),d2=worldToScreen(drRx,drTy,hz+hd*0.5+dz*0.1),d3=worldToScreen(drLx,drTy,hz+hd*0.5+dz*0.1);
+ctx.save();
+ctx.fillStyle='#a39056';
+ctx.beginPath();ctx.moveTo(f0.x,f0.y);ctx.lineTo(f1.x,f1.y);ctx.lineTo(f2.x,f2.y);ctx.lineTo(f3.x,f3.y);ctx.closePath();ctx.fill();
+ctx.fillStyle='#6b5a32';
+ctx.beginPath();ctx.moveTo(d0.x,d0.y);ctx.lineTo(d1.x,d1.y);ctx.lineTo(d2.x,d2.y);ctx.lineTo(d3.x,d3.y);ctx.closePath();ctx.fill();
+ctx.fillStyle='rgba(0,0,0,0.18)';
+ctx.beginPath();ctx.ellipse(d1.x-2,d2.y+2,4,1,0,0,6.283);ctx.fill();
+ctx.restore();
+}
+function drawBone(pos,rotY){
+var bx=pos.x,by=pos.y,bz=pos.z,ry=rotY||0;
+var p0=worldToScreen(bx-0.012*Math.cos(ry),by,bz-0.012*Math.sin(ry));
+var p1=worldToScreen(bx+0.012*Math.cos(ry),by,bz+0.012*Math.sin(ry));
+ctx.save();
+ctx.strokeStyle='#d8c9a3';
+ctx.lineWidth=Math.max(1.2,(p1.x-p0.x)*0.5);
+ctx.beginPath();ctx.moveTo(p0.x,p0.y);ctx.lineTo(p1.x,p1.y);ctx.stroke();
+ctx.fillStyle='#e6dbb5';
+var c=worldToScreen(bx,by,bz);drawEllipse(c.x,c.y,1.8,1.0,'#e6dbb5',null,0);
+ctx.restore();
+}
+function drawDog(t,pose,reflection){
+var s=reflection?-1:1;
+var rx=pose.root.x,ry=pose.root.y,rz=pose.root.z,ryaw=pose.root.yaw,rpitch=pose.root.pitch;
+function v(wx,wy,wz){return worldToScreen(rx+wx,ry+wy*s,rz+wz)}
+var sc=DOG.scale;
+ctx.save();
+if(reflection){
+ctx.globalAlpha=0.26;
+ctx.filter='blur(0.4px)';
+}
+var cTor=v(0,0.14,0);var rtx=Math.abs(v(0.09,0,0).x-cTor.x);
+drawEllipse(cTor.x,cTor.y,rtx*1.25,rtx*0.9,'rgba(170,120,70,0.85)',null,0);
+var cRuf=v(0,0.18,-0.01);drawEllipse(cRuf.x,cRuf.y,rtx*1.05,rtx*0.8,'rgba(190,140,80,0.9)',null,0);
+var cHead=v(0.06,0.20,0.05);
+var rhx=Math.abs(v(0.10,0,0).x-cHead.x);drawEllipse(cHead.x,cHead.y,rhx*0.95,rhx*0.8,'rgba(180,130,75,0.9)',null,0);
+var cMuz=v(0.11,0.19,0.06);drawEllipse(cMuz.x,cMuz.y,rhx*0.6,rhx*0.45,'rgba(175,125,72,0.88)',null,0);
+var cEarL=v(0.04,0.24,0.04),cEarR=v(0.08,0.24,0.04);
+drawEllipse(cEarL.x,cEarL.y,2.2,4.2,'rgba(165,115,68,0.9)',null,0);
+drawEllipse(cEarR.x,cEarR.y,2.0,4.0,'rgba(165,115,68,0.9)',null,0);
+var cEyeL=v(0.09,0.205,0.065),cEyeR=v(0.105,0.205,0.065);
+drawEllipse(cEyeL.x,cEyeL.y,1.6,1.8,'#0e0e0e',null,0);drawEllipse(cEyeR.x,cEyeR.y,1.5,1.7,'#0e0e0e',null,0);
+var cTail=v(-0.08,0.16,-0.02);drawEllipse(cTail.x,cTail.y,rtx*0.7,rtx*0.45,'rgba(170,120,70,0.85)',null,0);
+var cP=[v(0.04,0.06,0.03),v(-0.02,0.06,0.03),v(0.02,0.06,-0.02),v(-0.04,0.06,-0.02)];
+for(var i=0;i<4;i++){var cp=cP[i];drawEllipse(cp.x,cp.y,3.0,2.2,'rgba(160,110,65,0.9)',null,0)}
+ctx.restore();
+}
+function drawReflectionDog(t,pose){
+ctx.save();
+clipPuddle();
+drawDog(t,pose,true);
+ctx.restore();
+}
+function drawScene(t){
+var pose=getDogPose(t);
+drawGround();
+drawPuddle();
+drawReflectionDog(t,pose);
+drawDoghouse();
+var gx=pose.grip;
+var bonePos={x:WORLD.boneX,y:WORLD.boneY,z:WORLD.boneZ};
+if(gx>=0.98){
+var bx=pose.root.x,by=pose.root.y,bz=pose.root.z;
+bonePos.x=bx+0.10*Math.cos(pose.root.yaw)-0.00*Math.sin(pose.root.yaw);
+bonePos.y=by+0.165;
+bonePos.z=bz+0.10*Math.sin(pose.root.yaw)+0.00*Math.cos(pose.root.yaw);
+}
+drawBone(bonePos,0);
+drawDog(t,pose,false);
+drawDoghouseFront();
+}
+function renderFrame(timeSeconds){
+if(typeof timeSeconds!=='number')timeSeconds=0;
+var t=timeSeconds;
+if(t<0)t=0;
+if(t>=12)t=12;
+ctx.setTransform(1,0,0,1,0,0);
+ctx.clearRect(0,0,canvas.width,canvas.height);
+drawScene(t);
+}
+window.renderFrame=renderFrame;
+renderFrame(0);
 })();
 </script>
 </body>

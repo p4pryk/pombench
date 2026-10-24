@@ -1,14 +1,40 @@
 {
   "modelId": "claude-opus-5-5",
-  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
-  "sourceHash": "b54cfddc3c62293b4478d91719abc45afe4b25a6ffe8267c44536315e0857947",
-  "responseHash": "b01cef383a76e57026f026054a7ba5e661f789cf13f3383ef61294e04ed02dc6",
-  "requestHash": "5c62affe3bdc193679a9f1f09f99d5679c0fd183f488eda6cdba05a99162f9c2",
-  "streamHash": "5865a9f30965700d62dfcff61c0456279453eb5c96b630db6c39d3e4a6e52a7f",
+  "modelVersion": "2",
+  "source": "Actual Foundry API usage",
+  "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+  "sourceHash": "f876010c8592d688f5bef79a07f61d864449ac1b9b7f5f62b8cc305bbe6f3254",
+  "requestHash": "9ab85d235b60252d4ef681ccfff7ff1043306c86feebfd3f207a63c467669dd6",
+  "responseHash": "6c9abc7bf96d31528b09fe249cb0f932b324a86908d8ba0177035dd89a15e23b",
+  "streamHash": "0412f09901980aaea7b5e004bf3e9896f89c2738b0b2db1396567686875b7dfe",
   "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
-  "submission": 1,
   "tools": [],
   "usageComplete": true,
+  "submission": 1,
+  "rawUsage": {
+    "input_tokens": 3313,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 0,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 8093,
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "speed": "standard",
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    }
+  },
+  "usage": {
+    "input_tokens": 3313,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 8093,
+    "total_tokens": 11406,
+    "reasoning_output_tokens": 0
+  },
   "visualScore": null,
-  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+  "visualReview": "Inspect the recorded film against all seven visual criteria. Technical execution does not prove puddle clearance, realism or narrative success."
 }

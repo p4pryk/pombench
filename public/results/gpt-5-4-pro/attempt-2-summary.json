@@ -11,10 +11,10 @@
   "technicalPassed": 1,
   "technicalTotal": 6,
   "visualScore": null,
-  "visualReview": "Not reviewed. Technical checks do not verify anatomy, foot contact, bone contact or doghouse occlusion or task compliance.",
+  "visualReview": "Not reviewed. Technical checks do not verify anatomy, foot contact, bone contact, doghouse occlusion, puddle clearance, weight-bearing landing, water reflection or task compliance.",
   "metrics": {
     "sampleColorStd": [
-      0.0
+      0.8716161847114563
     ]
   },
   "errors": [],
@@ -28,8 +28,8 @@
     "height": 540,
     "complete": false,
     "isolation": "Separate offline Chromium process, service workers and downloads disabled, CSP, all post-bootstrap network blocked. Organizer measures screenshot pixels; candidate reports are ignored.",
-    "sourceHash": "827d1830fc4ba1d3765fbd7c17ac0d107ec48d0e4f66b1372d491897c291dca1",
-    "frameEvidenceHash": "8789a1bd488cd6276f6219ae06fc76e8ca8d0a0d6a3c343944debf838f766eb7"
+    "sourceHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "frameEvidenceHash": "2d265f93f95ba7f06db98dd41586b00ac5e568f856fbf241df54d746fb0b7727"
   },
   "contactSheet": [
     {
@@ -38,8 +38,8 @@
     }
   ],
   "evidenceHashes": {
-    "capture.json": "8789a1bd488cd6276f6219ae06fc76e8ca8d0a0d6a3c343944debf838f766eb7",
-    "poster.png": "ab8e8df20a9954fd2b59bdac0d78be2a1b5ecd27c6b9679f6fb0d264d8f04a92",
-    "contact-sheet.jpg": "d0e908a5612b966eeb60cdb3626c135ff0be9dd7e8c496bc078a51c95a050ddc"
+    "capture.json": "2d265f93f95ba7f06db98dd41586b00ac5e568f856fbf241df54d746fb0b7727",
+    "poster.png": "8961570704c6af4c68d1584b2ccba52401c8fa3ac666fea6ecd5586138f9531f",
+    "contact-sheet.jpg": "a834799d4bce88303bc73a7f6768518bf1d3ac96b4b2b2112b49ca4c8fa480dd"
   }
 }

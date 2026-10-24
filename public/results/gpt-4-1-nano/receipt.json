@@ -1,14 +1,39 @@
 {
   "modelId": "gpt-4.1-nano",
-  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
-  "sourceHash": "b6ac13f41854afb0f2bae3aa7f3b43c2799da30a4431d6468f325e9fcd46c5e6",
-  "responseHash": "4c1fefb7f87ed3117b19eec79a4db5b42c3a14dd86f87a62079d15799f5c9cc5",
-  "requestHash": "6831083d502f0d6dd1896072fa7b1aad01a329aaace581e0c6bc382fc28e8e35",
-  "streamHash": null,
+  "modelVersion": "2025-04-14",
+  "source": "Actual Foundry API usage",
+  "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+  "sourceHash": "507156b530c471d4ffbf495e865b3b77481aba78de4416cb31c6779444a3e434",
+  "requestHash": "247b086dd438e9f799d5442eae53f360b5360e28d9c52831b64a508de9aad4c5",
+  "responseHash": "826c5e59906ea0314ff8da4b4b70d41da1de84069c8e28b7e3bec12b641aaeff",
+  "streamHash": "cebb26174387eb5212f2a6a2ed8adb5a63cefc588d0fcb78606e71ec8a1de093",
   "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
-  "submission": 1,
   "tools": [],
   "usageComplete": true,
+  "submission": 1,
+  "rawUsage": {
+    "completion_tokens": 2521,
+    "completion_tokens_details": {
+      "accepted_prediction_tokens": 0,
+      "audio_tokens": 0,
+      "reasoning_tokens": 0,
+      "rejected_prediction_tokens": 0
+    },
+    "prompt_tokens": 2032,
+    "prompt_tokens_details": {
+      "audio_tokens": 0,
+      "cached_tokens": 0
+    },
+    "total_tokens": 4553
+  },
+  "usage": {
+    "input_tokens": 2032,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 2521,
+    "total_tokens": 4553,
+    "reasoning_output_tokens": 0
+  },
   "visualScore": null,
-  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+  "visualReview": "Inspect the recorded film against all seven visual criteria. Technical execution does not prove puddle clearance, realism or narrative success."
 }

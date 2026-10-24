@@ -3,14 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <style>
-  body {
+  body, html {
     margin: 0;
-    background: #111;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
+    padding: 0;
+    width: 960px;
+    height: 540px;
     overflow: hidden;
+    background: #111;
   }
   canvas {
     display: block;
@@ -25,436 +24,356 @@
 const canvas = document.getElementById('stage');
 const ctx = canvas.getContext('2d');
 
-// Deterministic PRNG for consistent fur/grass details
-function pseudoRandom(seed) {
-  let x = Math.sin(seed++) * 10000;
-  return x - Math.floor(x);
-}
-
-// Draw environment (backyard, grass, fence, doghouse)
-function drawEnvironment(t) {
-  // Sky
-  const gradSky = ctx.createLinearGradient(0, 0, 0, 300);
-  gradSky.addColorStop(0, '#87CEEB');
-  gradSky.addColorStop(1, '#E0F6FF');
-  ctx.fillStyle = gradSky;
-  ctx.fillRect(0, 0, 960, 300);
-
-  // Distant fence / trees
-  ctx.fillStyle = '#6B8E23';
-  ctx.fillRect(0, 240, 960, 60);
-  ctx.fillStyle = '#556B2F';
-  for (let i = 0; i < 960; i += 40) {
-    ctx.beginPath();
-    ctx.moveTo(i, 240);
-    ctx.lineTo(i + 20, 200);
-    ctx.lineTo(i + 40, 240);
-    ctx.fill();
-  }
-
-  // Backyard ground (grass)
-  const gradGround = ctx.createLinearGradient(0, 300, 0, 540);
-  gradGround.addColorStop(0, '#7CFC00');
-  gradGround.addColorStop(1, '#556B2F');
-  ctx.fillStyle = gradGround;
-  ctx.fillRect(0, 300, 960, 240);
-
-  // Grass blades details (deterministic)
-  ctx.strokeStyle = '#387c17';
-  ctx.lineWidth = 1.5;
-  for (let i = 0; i < 960; i += 15) {
-    let h = 8 + (i % 7);
-    ctx.beginPath();
-    ctx.moveTo(i, 300);
-    ctx.lineTo(i + (i % 3 - 1) * 3, 300 - h);
-    ctx.stroke();
-  }
-
-  // Doghouse structure (positioned on the right side, angled)
-  // House coordinates: center around x=720, y=320
+function renderFrame(timeSeconds) {
+  let t = Math.max(0, Math.min(12, timeSeconds));
   
-  // Shadow under doghouse
-  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  // Clear screen (backyard gradient: grass and fence/sky)
+  ctx.clearRect(0, 0, 960, 540);
+  
+  // Sky
+  let gradSky = ctx.createLinearGradient(0, 0, 0, 250);
+  gradSky.addColorStop(0, '#8cb8e2');
+  gradSky.addColorStop(1, '#d4e6f1');
+  ctx.fillStyle = gradSky;
+  ctx.fillRect(0, 0, 960, 250);
+
+  // Wooden fence background
+  ctx.fillStyle = '#8b6b43';
+  ctx.fillRect(0, 180, 960, 70);
+  ctx.fillStyle = '#654826';
+  for(let x=0; x<960; x+=40) {
+    ctx.fillRect(x, 180, 4, 70);
+  }
+
+  // Grass ground
+  let gradGrass = ctx.createLinearGradient(0, 250, 0, 540);
+  gradGrass.addColorStop(0, '#567d46');
+  gradGrass.addColorStop(1, '#334d28');
+  ctx.fillStyle = gradGrass;
+  ctx.fillRect(0, 250, 960, 290);
+
+  // Puddle (centered around x: 320, y: 390)
+  ctx.fillStyle = '#3a6073';
   ctx.beginPath();
-  ctx.ellipse(720, 420, 140, 40, 0, 0, Math.PI * 2);
+  ctx.ellipse(320, 390, 80, 30, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.strokeStyle = '#85c1e9';
+  ctx.lineWidth = 2;
+  ctx.stroke();
 
-  // Back/Side wall
-  ctx.fillStyle = '#DEB887';
-  ctx.fillRect(630, 260, 180, 140);
-
+  // Doghouse (positioned at x: 650, y: 220)
+  // Base
+  ctx.fillStyle = '#a0522d';
+  ctx.fillRect(600, 300, 220, 180);
+  // Doorway
+  ctx.fillStyle = '#2b1700';
+  ctx.beginPath();
+  ctx.roundRect(670, 360, 80, 120, [40, 40, 0, 0]);
+  ctx.fill();
   // Roof
-  ctx.fillStyle = '#8B4513';
+  ctx.fillStyle = '#78281f';
   ctx.beginPath();
-  ctx.moveTo(610, 260);
-  ctx.setInt = true;
-  ctx.lineTo(720, 170);
-  ctx.lineTo(830, 260);
+  ctx.moveTo(580, 300);
+  ctx.lineTo(710, 190);
+  ctx.arcTo(715, 185, 720, 190, 5);
+  ctx.lineTo(840, 300);
   ctx.closePath();
   ctx.fill();
 
-  // Roof overhang shadow
-  ctx.fillStyle = '#A0522D';
-  ctx.beginPath();
-  ctx.moveTo(630, 260);
-  ctx.lineTo(720, 185);
-  ctx.lineTo(810, 260);
-  ctx.closePath();
-  ctx.fill();
+  // Bone inside doghouse initially (resting at 700, 440)
+  let boneInHouse = (t < 4.5);
+  let boneX = 700, boneY = 440;
+  
+  // Dog state calculation based on t (0-12s)
+  // Path: Start at x=100, y=400. Run to puddle (x=240 -> 400, jump over 320), reach house at x=670 by t=3.5.
+  // Enter house: 3.5 to 4.5. Grab bone: 4.5 to 6. Back out: 6 to 8 (reach x=580). Turn and face viewer: 8 to 10. Settle: 10-12.
+  
+  let dogX = 100;
+  let dogY = 400;
+  let bodyAngle = 0;
+  let inHouse = false;
+  let hasBone = false;
+  let facingFront = false;
+  let tailWag = Math.sin(t * 10) * 0.2;
 
-  // Doorway cutout (dark interior)
-  ctx.fillStyle = '#2d1810';
-  ctx.fillRect(685, 300, 70, 100);
+  if (t < 1.0) {
+    // 0-1s: Establish, notice goal
+    dogX = 100;
+    dogY = 400;
+  } else if (t < 3.2) {
+    // 1-3.2s: Run and jump puddle
+    let runProgress = (t - 1.0) / 2.2;
+    dogX = 100 + runProgress * 520; // moves to ~620
+    
+    // Jump over puddle (x: 240 to 400)
+    if (dogX > 230 && dogX < 410) {
+      let jumpT = (dogX - 230) / 180;
+      let arc = Math.sin(jumpT * Math.PI) * 70;
+      dogY = 400 - arc;
+      
+      // Reflection in puddle
+      let refAlpha = 0.4 * (1 - Math.abs(dogX - 320) / 90);
+      if (refAlpha > 0) {
+        ctx.save();
+        ctx.globalAlpha = refAlpha;
+        ctx.translate(dogX, 470 - (dogY - 330));
+        ctx.scale(1, -0.6);
+        drawPomeranian(ctx, 0, 0, 0, false, false, tailWag);
+        ctx.restore();
+      }
+    } else {
+      dogY = 400 + Math.sin(t * 25) * 4; // running bounce
+    }
+  } else if (t < 4.5) {
+    // 3.2-4.5s: Entering house
+    let enterProg = (t - 3.2) / 1.3;
+    dogX = 620 + enterProg * 50;
+    dogY = 400;
+    inHouse = true;
+  } else if (t < 6.0) {
+    // 4.5-6s: Grab bone inside
+    dogX = 670;
+    dogY = 400;
+    inHouse = true;
+    hasBone = true;
+    boneInHouse = false;
+  } else if (t < 8.0) {
+    // 6-8s: Backing out with bone
+    let backProg = (t - 6.0) / 2.0;
+    dogX = 670 - backProg * 90; // backs out to x=580
+    dogY = 400;
+    hasBone = true;
+  } else if (t < 10.0) {
+    // 8-10s: Turn to face viewer
+    dogX = 580;
+    dogY = 420;
+    hasBone = true;
+    facingFront = true;
+  } else {
+    // 10-12s: Settle front-facing pose
+    dogX = 580;
+    dogY = 420;
+    hasBone = true;
+    facingFront = true;
+  }
 
-  // Doorway arch
-  ctx.beginPath();
-  ctx.arc(720, 300, 35, Math.PI, 0, false);
-  ctx.fill();
+  // Draw bone if in house
+  if (boneInHouse) {
+    drawBone(ctx, 690, 430, 0);
+  }
+
+  // Draw Dog (if not fully occluded inside)
+  if (!inHouse || t < 3.5 || t > 7.5) {
+    ctx.save();
+    ctx.translate(dogX, dogY);
+    if (facingFront) {
+      drawPomeranianFront(ctx, 0, 0, hasBone, tailWag);
+    } else {
+      drawPomeranian(ctx, 0, 0, bodyAngle, hasBone, t >= 6.0 && t < 8.0, tailWag);
+    }
+    ctx.restore();
+  }
+
+  // If dog is partially in doorway during entry/exit, draw door frame overlay for occlusion
+  if (inHouse && t >= 3.2 && t <= 8.0) {
+    // Redraw doorway arch front edge to occlude rear if needed, or handle via layer order
+  }
 }
 
-// Draw single bone item
-function drawBone(x, y, angle, scale) {
+function drawBone(ctx, x, y, angle) {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(angle);
-  ctx.scale(scale, scale);
-
-  ctx.fillStyle = '#F5F5DC';
-  ctx.strokeStyle = '#D2B48C';
-  ctx.lineWidth = 2;
-
-  // Center shaft
+  ctx.fillStyle = '#fdfefe';
+  ctx.strokeStyle = '#d5dbdb';
+  ctx.lineWidth = 1;
+  // Simple bone shape
   ctx.beginPath();
-  ctx.roundRect(-15, -4, 30, 8, 4);
+  ctx.roundRect(-15, -4, 30, 8, 3);
   ctx.fill();
   ctx.stroke();
-
   // Knobs
-  [-15, 15].forEach(kx => {
-    [-6, 6].forEach(ky => {
-      ctx.beginPath();
-      ctx.arc(kx, ky, 5, 0, Math.PI * 2);
-      ctx.fillStyle = '#FFF8DC';
-      ctx.fill();
-      ctx.stroke();
-    });
-  });
+  ctx.beginPath();
+  ctx.arc(-15, -6, 4, 0, Math.PI*2);
+  ctx.arc(-15, 6, 4, 0, Math.PI*2);
+  ctx.arc(15, -6, 4, 0, Math.PI*2);
+  ctx.arc(15, 6, 4, 0, Math.PI*2);
+  ctx.fillStyle = '#fdfefe';
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawPomeranian(ctx, x, y, angle, hasBone, backingUp, tailWag) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  
+  // Fluffy orange/cream double coat (Side Profile)
+  
+  // Tail (Plumed, curled over back)
+  ctx.fillStyle = '#e67e22';
+  ctx.beginPath();
+  ctx.arc(-35, -25 + tailWag*5, 18, 0, Math.PI*2);
+  ctx.fill();
+  ctx.fillStyle = '#f39c12';
+  ctx.beginPath();
+  ctx.arc(-30, -20 + tailWag*5, 12, 0, Math.PI*2);
+  ctx.fill();
+
+  // Body ruff & torso
+  ctx.fillStyle = '#d35400';
+  ctx.beginPath();
+  ctx.ellipse(-10, -5, 30, 20, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.fillStyle = '#e67e22';
+  ctx.beginPath();
+  ctx.ellipse(0, -10, 25, 22, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Legs
+  ctx.fillStyle = '#ba4a00';
+  ctx.fillRect(-20, 10, 6, 20);
+  ctx.fillRect(-10, 12, 6, 18);
+  ctx.fillRect(10, 10, 6, 20);
+  ctx.fillRect(18, 12, 6, 18);
+
+  // Head
+  ctx.fillStyle = '#f39c12';
+  ctx.beginPath();
+  ctx.arc(20, -18, 16, 0, Math.PI*2);
+  ctx.fill();
+
+  // Chest ruff
+  ctx.fillStyle = '#f8c471';
+  ctx.beginPath();
+  ctx.ellipse(10, -2, 18, 14, 0.3, 0, Math.PI*2);
+  ctx.fill();
+
+  // Muzzle & Ears
+  ctx.fillStyle = '#e67e22';
+  // Snout
+  ctx.beginPath();
+  ctx.moveTo(32, -18);
+  ctx.lineTo(42, -14);
+  ctx.lineTo(32, -10);
+  ctx.closePath();
+  ctx.fill();
+
+  // Nose
+  ctx.fillStyle = '#111';
+  ctx.beginPath();
+  ctx.arc(42, -14, 3, 0, Math.PI*2);
+  ctx.fill();
+
+  // Eyes
+  ctx.beginPath();
+  ctx.arc(26, -22, 2.5, 0, Math.PI*2);
+  ctx.fill();
+
+  // Ears
+  ctx.fillStyle = '#ba4a00';
+  ctx.beginPath();
+  ctx.moveTo(16, -30);
+  ctx.lineTo(22, -38);
+  ctx.lineTo(26, -30);
+  ctx.closePath();
+  ctx.fill();
+
+  // Bone in mouth
+  if (hasBone) {
+    drawBone(ctx, 40, -10, backingUp ? 0.2 : -0.2);
+  }
 
   ctx.restore();
 }
 
-// Draw Pomeranian dog with procedural furry silhouette and articulation
-function drawPomeranian(state) {
-  const { x, y, bodyAngle, headAngle, legAnim, tailWag, inHouse, hasBone, facingFront } = state;
-
+function drawPomeranianFront(ctx, x, y, hasBone, tailWag) {
   ctx.save();
   ctx.translate(x, y);
 
-  // Contact shadow
-  if (!inHouse) {
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.beginPath();
-    ctx.ellipse(0, 45, 35, 12, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  // Tail behind body (curled top)
+  ctx.fillStyle = '#e67e22';
+  ctx.beginPath();
+  ctx.arc(0, -45 + tailWag*3, 22, 0, Math.PI*2);
+  ctx.fill();
 
-  // If fully inside house (t between 4.5 and 6), clip or don't draw fully
-  if (inHouse && !facingFront) {
-    // Only rear visible
-    ctx.restore();
-    return;
-  }
+  // Massive neck ruff (Pomeranian signature)
+  ctx.fillStyle = '#f8c471';
+  ctx.beginPath();
+  ctx.ellipse(0, -10, 35, 28, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.fillStyle = '#e67e22';
+  ctx.beginPath();
+  ctx.ellipse(0, -5, 28, 22, 0, 0, Math.PI*2);
+  ctx.fill();
 
-  // Fur base color (Orange/Cream double coat)
-  const furGradient = ctx.createRadialGradient(0, 0, 10, 0, 0, 50);
-  furGradient.addColorStop(0, '#FF8C00');
-  furGradient.addColorStop(0.7, '#FFA500');
-  furGradient.addColorStop(1, '#FFD700');
+  // Body torso
+  ctx.fillStyle = '#d35400';
+  ctx.beginPath();
+  ctx.ellipse(0, 10, 24, 20, 0, 0, Math.PI*2);
+  ctx.fill();
 
-  if (facingFront) {
-    // --- FRONT FACING PRESENTATION (10-12s) ---
-    // Body ruff (large fluffy collar)
-    ctx.fillStyle = '#FFA500';
-    ctx.beginPath();
-    ctx.arc(0, 10, 45, 0, Math.PI * 2);
-    ctx.fill();
+  // Front legs planted
+  ctx.fillStyle = '#ba4a00';
+  ctx.fillRect(-16, 20, 8, 20);
+  ctx.fillRect(8, 20, 8, 20);
 
-    // Chest fur details
-    for (let i = 0; i < 12; i++) {
-      let angle = (i / 12) * Math.PI * 2;
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(angle) * 35, 10 + Math.sin(angle) * 35);
-      ctx.lineTo(Math.cos(angle) * 52, 15 + Math.sin(angle) * 52);
-      ctx.strokeStyle = '#FF8C00';
-      ctx.lineWidth = 4;
-      ctx.stroke();
-    }
+  // Head (Front view)
+  ctx.fillStyle = '#f39c12';
+  ctx.beginPath();
+  ctx.arc(0, -22, 22, 0, Math.PI*2);
+  ctx.fill();
 
-    // Head
-    ctx.beginPath();
-    ctx.arc(0, -15, 25, 0, Math.PI * 2);
-    ctx.fillStyle = '#FFA500';
-    ctx.fill();
-    ctx.stroke();
+  // Ears (Upright triangular)
+  ctx.fillStyle = '#ba4a00';
+  ctx.beginPath();
+  ctx.moveTo(-16, -34);
+  ctx.lineTo(-24, -48);
+  ctx.lineTo(-8, -38);
+  ctx.closePath();
+  ctx.fill();
 
-    // Small upright triangular ears
-    [[ -18, -32, -0.2 ], [ 18, -32, 0.2 ]].forEach(([ex, ey, rot]) => {
-      ctx.save();
-      ctx.translate(ex, ey);
-      ctx.rotate(rot);
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(-8, -15);
-      ctx.lineTo(8, -15);
-      ctx.closePath();
-      ctx.fillStyle = '#FF8C00';
-      ctx.fill();
-      ctx.fillStyle = '#FFB6C1'; // inner ear
-      ctx.beginPath();
-      ctx.moveTo(0, -3);
-      ctx.lineTo(-4, -12);
-      ctx.lineTo(4, -12);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-    });
+  ctx.beginPath();
+  ctx.moveTo(16, -34);
+  ctx.lineTo(24, -48);
+  ctx.lineTo(8, -38);
+  ctx.closePath();
+  ctx.fill();
 
-    // Muzzle & nose
-    ctx.beginPath();
-    ctx.arc(0, -8, 10, 0, Math.PI * 2);
-    ctx.fillStyle = '#FFE4B5';
-    ctx.fill();
+  // Eyes (Dark, expressive)
+  ctx.fillStyle = '#111';
+  ctx.beginPath();
+  ctx.arc(-8, -24, 3, 0, Math.PI*2);
+  ctx.arc(8, -24, 3, 0, Math.PI*2);
+  ctx.fill();
+  // Eye highlights
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(-9, -26, 1.5, 1.5);
+  ctx.fillRect(7, -26, 1.5, 1.5);
 
-    ctx.beginPath();
-    ctx.arc(0, -10, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#222';
-    ctx.fill();
+  // Cute pointed muzzle
+  ctx.fillStyle = '#e67e22';
+  ctx.beginPath();
+  ctx.ellipse(0, -16, 8, 6, 0, 0, Math.PI*2);
+  ctx.fill();
+  
+  // Nose
+  ctx.fillStyle = '#000';
+  ctx.beginPath();
+  ctx.arc(0, -17, 3.5, 0, Math.PI*2);
+  ctx.fill();
 
-    // Dark expressive eyes
-    [-10, 10].forEach(ex => {
-      ctx.beginPath();
-      ctx.arc(ex, -20, 3.5, 0, Math.PI * 2);
-      ctx.fillStyle = '#111';
-      ctx.fill();
-      // highlight
-      ctx.beginPath();
-      ctx.arc(ex - 1, -21, 1, 0, Math.PI * 2);
-      ctx.fillStyle = '#FFF';
-      ctx.fill();
-    });
-
-    // Front paws planted
-    [-18, 18].forEach(px => {
-      ctx.beginPath();
-      ctx.arc(px, 40, 7, 0, Math.PI * 2);
-      ctx.fillStyle = '#FFA500';
-      ctx.fill();
-    });
-
-    // Holding bone in mouth proudly
-    if (hasBone) {
-      drawBone(0, -5, 0, 1.2);
-    }
-
-  } else {
-    // --- SIDE / PROFILE VIEW (Running, backing out) ---
-    ctx.rotate(bodyAngle);
-
-    // Plumed tail curled over back
-    ctx.save();
-    ctx.translate(-30, -15);
-    ctx.rotate(-0.5 + Math.sin(tailWag) * 0.1);
-    ctx.beginPath();
-    ctx.arc(0, 0, 20, 0, Math.PI * 2);
-    ctx.fillStyle = '#FF8C00';
-    ctx.fill();
-    ctx.restore();
-
-    // Body (compact oval with fur spikes)
-    ctx.beginPath();
-    ctx.ellipse(0, 10, 32, 22, 0, 0, Math.PI * 2);
-    ctx.fillStyle = furGradient;
-    ctx.fill();
-
-    // Neck ruff
-    ctx.beginPath();
-    ctx.arc(18, 0, 18, 0, Math.PI * 2);
-    ctx.fillStyle = '#FFA500';
-    ctx.fill();
-
-    // Legs (articulated)
-    const l1 = Math.sin(legAnim) * 12;
-    const l2 = Math.cos(legAnim) * 12;
-
-    // Back legs
-    ctx.strokeStyle = '#FF8C00';
-    ctx.lineWidth = 8;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(-15, 20);
-    ctx.lineTo(-15 + l1, 42);
-    ctx.stroke();
-
-    // Front legs
-    ctx.beginPath();
-    ctx.moveTo(15, 20);
-    ctx.lineTo(15 - l1, 42);
-    ctx.stroke();
-
-    // Head
-    ctx.save();
-    ctx.translate(25, -5);
-    ctx.rotate(headAngle);
-
-    // Head base
-    ctx.beginPath();
-    ctx.arc(0, 0, 16, 0, Math.PI * 2);
-    ctx.fillStyle = '#FFA500';
-    ctx.fill();
-
-    // Snout
-    ctx.beginPath();
-    ctx.moveTo(10, -2);
-    ctx.lineTo(20, 2);
-    ctx.lineTo(10, 6);
-    ctx.closePath();
-    ctx.fillStyle = '#FFA500';
-    ctx.fill();
-
-    // Nose
-    ctx.beginPath();
-    ctx.arc(19, 2, 3, 0, Math.PI * 2);
-    ctx.fillStyle = '#111';
-    ctx.fill();
-
-    // Ear
-    ctx.beginPath();
-    ctx.moveTo(-2, -12);
-    ctx.lineTo(6, -24);
-    ctx.lineTo(10, -12);
-    ctx.closePath();
-    ctx.fillStyle = '#FF8C00';
-    ctx.fill();
-
-    // Eye
-    ctx.beginPath();
-    ctx.arc(2, -3, 3, 0, Math.PI * 2);
-    ctx.fillStyle = '#111';
-    ctx.fill();
-
-    // Bone in mouth if carrying
-    if (hasBone) {
-      drawBone(18, 5, 0.2, 1.0);
-    }
-
-    ctx.restore();
+  // Proudly holding bone in mouth horizontally
+  if (hasBone) {
+    drawBone(ctx, 0, -10, 0);
   }
 
   ctx.restore();
 }
 
-// Main render frame function as per exact delivery contract
-window.renderFrame = function(timeSeconds) {
-  let t = Math.max(0, Math.min(12, timeSeconds));
-
-  ctx.clearRect(0, 0, 960, 540);
-
-  // Draw background and doghouse
-  drawEnvironment(t);
-
-  // Bone initial position inside the doghouse: x=720, y=360
-  let boneX = 720;
-  let boneY = 360;
-  let boneVisible = true;
-  let hasBone = false;
-
-  // Dog state variables
-  let dogX = 150;
-  let dogY = 370;
-  let bodyAngle = 0;
-  let headAngle = 0;
-  let legAnim = 0;
-  let tailWag = 0;
-  let inHouse = false;
-  let facingFront = false;
-
-  if (t < 1.0) {
-    // 0-1s: Establish backyard, dog notices goal
-    dogX = 150;
-    legAnim = 0;
-    headAngle = -0.1;
-  } else if (t >= 1.0 && t < 3.0) {
-    // 1-3s: Run toward doghouse (x: 150 -> 660)
-    let p = (t - 1.0) / 2.0;
-    dogX = 150 + p * 510;
-    legAnim = t * 15;
-    tailWag = t * 10;
-    headAngle = Math.sin(t * 8) * 0.05;
-  } else if (t >= 3.0 && t < 4.5) {
-    // 3-4.5s: Enters through doorway (x: 660 -> 710)
-    let p = (t - 3.0) / 1.5;
-    dogX = 660 + p * 50;
-    legAnim = t * 10;
-    inHouse = true;
-  } else if (t >= 4.5 && t < 6.0) {
-    // 4.5-6s: Lowers head, grips bone inside house
-    dogX = 715;
-    inHouse = true;
-    hasBone = true;
-    boneVisible = false; // gripped in mouth
-  } else if (t >= 6.0 && t < 8.0) {
-    // 6-8s: Backs out through doorway with bone (x: 715 -> 580)
-    let p = (t - 6.0) / 2.0;
-    dogX = 715 - p * 135;
-    legAnim = t * 15;
-    hasBone = true;
-    boneVisible = false;
-    bodyAngle = Math.PI; // facing backward while backing out
-  } else if (t >= 8.0 && t < 10.0) {
-    // 8-10s: Smooth turn to face viewer (pivot at x=580)
-    dogX = 580;
-    dogY = 370;
-    let p = (t - 8.0) / 2.0;
-    // interpolate bodyAngle from PI to 0 or switch to frontal view
-    if (p < 0.5) {
-      bodyAngle = Math.PI * (1 - p * 2);
-    } else {
-      facingFront = true;
-    }
-    hasBone = true;
-    boneVisible = false;
-  } else {
-    // 10-12s: Clear front-facing presentation
-    dogX = 580;
-    dogY = 370;
-    facingFront = true;
-    hasBone = true;
-    boneVisible = false;
-    // Subtle breathing / idle
-    tailWag = Math.sin(t * 3) * 0.2;
-  }
-
-  // Draw stationary bone inside house if not yet grabbed
-  if (boneVisible) {
-    drawBone(boneX, boneY, 0.1, 1.0);
-  }
-
-  // Draw dog
-  drawPomeranian({
-    x: dogX,
-    y: dogY,
-    bodyAngle: bodyAngle,
-    headAngle: headAngle,
-    legAnim: legAnim,
-    tailWag: tailWag,
-    inHouse: inHouse,
-    hasBone: hasBone,
-    facingFront: facingFront
-  });
-};
-
-// Initial frame render
-window.renderFrame(0);
+// Initial call
+renderFrame(0);
 </script>
 </body>
 </html>

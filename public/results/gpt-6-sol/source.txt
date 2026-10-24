@@ -2,331 +2,358 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=960, initial-scale=1">
-<title></title>
 <style>
-  html, body { margin: 0; width: 960px; height: 540px; overflow: hidden; }
-  canvas { display: block; width: 960px; height: 540px; }
+html,body{margin:0;width:960px;height:540px;overflow:hidden;background:#71856d}
+#stage{display:block;width:960px;height:540px}
 </style>
 </head>
 <body>
 <canvas id="stage" width="960" height="540"></canvas>
 <script>
-(() => {
-  "use strict";
-  const canvas = document.getElementById("stage");
-  const c = canvas.getContext("2d");
-  const W = 960, H = 540;
-  const clamp = (v,a=0,b=1) => Math.max(a,Math.min(b,v));
-  const smooth = v => { v=clamp(v); return v*v*(3-2*v); };
-  const mix = (a,b,p) => a+(b-a)*p;
-  const rand = n => {
-    let x = Math.sin(n*127.1+78.233)*43758.5453123;
-    return x-Math.floor(x);
-  };
-  function ellipse(x,y,rx,ry,fill,rot=0) {
-    c.beginPath(); c.ellipse(x,y,Math.max(.1,rx),Math.max(.1,ry),rot,0,Math.PI*2);
-    c.fillStyle=fill; c.fill();
+"use strict";
+const canvas=document.getElementById("stage"),ctx=canvas.getContext("2d");
+const W=960,H=540;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const smooth=(a,b,v)=>{let q=clamp((v-a)/(b-a),0,1);return q*q*(3-2*q)};
+const mix=(a,b,f)=>a+(b-a)*f;
+function hash(n){let x=Math.sin(n*127.17+31.41)*43758.5453;return x-Math.floor(x)}
+function ellipse(c,x,y,rx,ry,color,rotation=0){
+ c.beginPath();c.ellipse(x,y,rx,ry,rotation,0,Math.PI*2);c.fillStyle=color;c.fill();
+}
+function grad(c,x,y,r,stops){
+ let g=c.createRadialGradient(x-r*.25,y-r*.35,r*.08,x,y,r);
+ for(let s of stops)g.addColorStop(s[0],s[1]);return g;
+}
+function path(c,pts,color){
+ c.beginPath();c.moveTo(pts[0][0],pts[0][1]);
+ for(let i=1;i<pts.length;i++)c.lineTo(pts[i][0],pts[i][1]);
+ c.closePath();c.fillStyle=color;c.fill();
+}
+function ground(){
+ let g=ctx.createLinearGradient(0,0,0,540);
+ g.addColorStop(0,"#a9c4b7");g.addColorStop(.56,"#d9d4ac");g.addColorStop(.81,"#82966c");g.addColorStop(1,"#667d57");
+ ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ // distant trees and soft foliage
+ for(let i=0;i<40;i++){
+  let x=i*31-25,y=232+hash(i+81)*56,r=29+hash(i+102)*39;
+  ellipse(ctx,x,y,r,r*.78,`rgba(${65+Math.floor(hash(i)*30)},${98+Math.floor(hash(i+17)*30)},75,.25)`);
+ }
+ ctx.fillStyle="#8e9e78";ctx.fillRect(0,285,960,25);
+ ctx.fillStyle="#b9bba0";ctx.fillRect(0,306,960,5);
+ for(let i=0;i<19;i++){
+  let x=i*56+5;
+  ctx.fillStyle="#b2aa88";ctx.fillRect(x,242,6,68);
+  ctx.fillStyle="rgba(82,91,69,.24)";ctx.fillRect(x+5,242,2,68);
+ }
+ // soft irregular dry earth across the route
+ ctx.beginPath();ctx.moveTo(0,409);ctx.bezierCurveTo(210,379,345,407,495,394);
+ ctx.bezierCurveTo(660,384,770,401,960,385);ctx.lineTo(960,505);
+ ctx.bezierCurveTo(680,477,460,491,250,486);ctx.lineTo(0,505);ctx.closePath();
+ ctx.fillStyle="#ab9b79";ctx.fill();
+ for(let i=0;i<750;i++){
+  let x=hash(i*3+4)*960,y=360+hash(i*3+5)*180;
+  let a=.05+hash(i*3+6)*.13;
+  ellipse(ctx,x,y,hash(i+621)*2+.3,hash(i+742)*1.2+.2,
+   `rgba(${hash(i+91)>.5?"53,83,47":"239,222,166"},${a})`);
+ }
+ for(let i=0;i<120;i++){
+  let x=hash(i+212)*960,y=398+hash(i+454)*120;
+  if(hash(i+14)<.42){
+   ctx.strokeStyle="rgba(49,82,42,.31)";ctx.lineWidth=.65;
+   ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-2,y-5-hash(i)*5);
+   ctx.moveTo(x,y);ctx.lineTo(x+2,y-4);ctx.stroke();
   }
-  function path(points,fill) {
-    c.beginPath(); c.moveTo(points[0][0],points[0][1]);
-    for(let i=1;i<points.length;i++) c.lineTo(points[i][0],points[i][1]);
-    c.closePath(); c.fillStyle=fill; c.fill();
-  }
-  function stroke(points,color,width) {
-    c.beginPath(); c.moveTo(points[0][0],points[0][1]);
-    for(let i=1;i<points.length;i++) c.lineTo(points[i][0],points[i][1]);
-    c.strokeStyle=color; c.lineWidth=width; c.lineCap="round"; c.lineJoin="round"; c.stroke();
-  }
-  function grad(x,y,r,stops) {
-    const g=c.createRadialGradient(x-r*.3,y-r*.4,2,x,y,r);
-    stops.forEach(s=>g.addColorStop(s[0],s[1])); return g;
-  }
-  function bone(x,y,scale=1,angle=0) {
-    c.save(); c.translate(x,y); c.rotate(angle); c.scale(scale,scale);
-    c.shadowColor="rgba(64,43,23,.3)"; c.shadowBlur=5; c.shadowOffsetY=3;
-    c.fillStyle="#d7c5a2";
-    c.beginPath();
-    c.moveTo(-25,-5); c.bezierCurveTo(-37,-14,-44,-10,-43,-3);
-    c.bezierCurveTo(-43,1,-39,3,-35,3);
-    c.bezierCurveTo(-44,10,-38,16,-31,12);
-    c.bezierCurveTo(-27,10,-26,7,-22,6);
-    c.lineTo(22,6);
-    c.bezierCurveTo(27,7,29,14,36,13);
-    c.bezierCurveTo(43,12,45,5,38,2);
-    c.bezierCurveTo(46,-3,42,-11,35,-11);
-    c.bezierCurveTo(29,-11,27,-7,22,-6);
-    c.lineTo(-22,-6); c.closePath(); c.fill();
-    c.shadowColor="transparent";
-    stroke([[-19,-3],[19,-3]],"rgba(255,250,226,.62)",2);
-    stroke([[-17,7],[16,7]],"rgba(122,94,65,.22)",1.5);
-    c.restore();
-  }
-
-  function background() {
-    const sky=c.createLinearGradient(0,0,0,390);
-    sky.addColorStop(0,"#b9d3d0"); sky.addColorStop(.65,"#dce3cc"); sky.addColorStop(1,"#d8d2aa");
-    c.fillStyle=sky;c.fillRect(0,0,W,H);
-    c.fillStyle="#819b80";c.fillRect(0,219,W,105);
-    for(let i=0;i<105;i++){
-      let x=i*12-6, y=218+rand(i+9)*28, r=15+rand(i+82)*22;
-      ellipse(x,y,r,r*.72,["#78977b","#8aa381","#6f8d72"][i%3]);
-    }
-    c.fillStyle="#b7a987";c.fillRect(0,280,W,26);
-    for(let i=0;i<42;i++){
-      let x=i*24;
-      c.fillStyle=i%3===0?"#cabd96":"#bcb18e";
-      c.fillRect(x,225+rand(i+345)*5,20,78);
-      stroke([[x+19,229],[x+19,302]],"rgba(77,71,51,.15)",1);
-    }
-    const ground=c.createLinearGradient(0,295,0,540);
-    ground.addColorStop(0,"#839b68");ground.addColorStop(.53,"#87a26a");ground.addColorStop(1,"#647f50");
-    c.fillStyle=ground;c.fillRect(0,302,W,238);
-    for(let i=0;i<1700;i++){
-      let x=rand(i*3+12)*W, y=304+rand(i*3+13)*240;
-      let a=rand(i*3+14);
-      c.fillStyle=a<.5?"rgba(211,211,151,.19)":"rgba(48,83,43,.16)";
-      c.fillRect(x,y,1+a*2,2+a*4);
-    }
-    // Worn, softly sunlit approach to the kennel.
-    c.save();c.globalAlpha=.28;
-    ellipse(555,420,330,56,"#c0b48c",-.045);
-    c.restore();
-    for(let i=0;i<140;i++){
-      let x=rand(i*7+801)*W,y=345+rand(i*7+802)*185;
-      stroke([[x,y],[x-2+rand(i+9)*4,y-3-rand(i+10)*5]],
-        i%3?"rgba(40,83,44,.32)":"rgba(225,220,151,.38)",.7);
-    }
-    let light=c.createRadialGradient(335,170,20,450,270,590);
-    light.addColorStop(0,"rgba(255,248,207,.15)");
-    light.addColorStop(1,"rgba(255,248,207,0)");
-    c.fillStyle=light;c.fillRect(0,0,W,H);
-  }
-
-  function houseBack() {
-    ellipse(749,408,184,33,"rgba(27,41,28,.23)");
-    path([[609,259],[647,206],[856,207],[897,259],[897,410],[609,410]],"#796748");
-    path([[621,256],[648,221],[852,221],[881,257],[881,407],[621,407]],"#a77f53");
-    for(let i=0;i<10;i++){
-      let yy=265+i*15;
-      stroke([[624,yy],[880,yy]],"rgba(72,49,29,.16)",1.3);
-      stroke([[628,yy+2],[872,yy+2]],"rgba(244,207,150,.11)",1);
-    }
-    // The hollow interior is visible before and throughout the retrieval.
-    c.beginPath();c.moveTo(661,410);c.lineTo(661,312);
-    c.bezierCurveTo(661,264,690,246,742,246);
-    c.bezierCurveTo(791,246,815,267,815,312);
-    c.lineTo(815,410);c.closePath();
-    const inner=c.createLinearGradient(665,270,810,408);
-    inner.addColorStop(0,"#4b4031");inner.addColorStop(.6,"#24291f");
-    inner.addColorStop(1,"#171f1a");c.fillStyle=inner;c.fill();
-    ellipse(743,399,73,12,"rgba(0,0,0,.33)");
-    path([[660,405],[814,405],[825,420],[649,420]],"#81704e");
-    c.save();c.globalAlpha=.2;ellipse(777,370,60,27,"#a99a65");c.restore();
-    // Roof with substantial overhang and separate, shaded edge.
-    path([[584,260],[631,192],[852,192],[911,260],[896,272],[846,211],[645,211],[600,274]],"#453c32");
-    path([[584,258],[630,190],[852,190],[911,258],[889,255],[844,205],[642,205],[604,263]],"#685142");
-    for(let i=0;i<9;i++){
-      let x=639+i*25;
-      stroke([[x,202],[x-29,247]],"rgba(29,29,27,.15)",1);
-    }
-    stroke([[600,266],[644,208],[846,208],[897,264]],"rgba(241,199,141,.27)",2);
-  }
-  function houseFront() {
-    // Jambs sit in front of the animal, while the central opening remains open.
-    path([[631,261],[661,261],[661,405],[650,419],[631,415]],"#b28a58");
-    path([[815,260],[850,258],[850,415],[815,417]],"#966e48");
-    stroke([[661,403],[661,315]],"#d3a675",5);
-    c.beginPath();c.arc(738,315,77,Math.PI,Math.PI*2);
-    c.strokeStyle="#c69b67";c.lineWidth=8;c.stroke();
-    stroke([[814,315],[814,404]],"#765439",6);
-    path([[647,411],[824,411],[828,423],[646,423]],"#826b4c");
-    stroke([[652,412],[821,412]],"rgba(233,203,145,.55)",2);
-  }
-
-  function dog(t) {
-    let run=smooth((t-1)/.23)*(1-smooth((t-2.87)/.23));
-    let enter=smooth((t-2.85)/.55);
-    let back=smooth((t-6)/2);
-    let turn=smooth((t-8)/1.9);
-    let x;
-    if(t<1) x=258;
-    else if(t<3.2) x=mix(258,644,smooth((t-1)/2.2));
-    else if(t<4.65) x=mix(644,703,smooth((t-3.2)/1.45));
-    else if(t<6) x=703;
-    else if(t<8) x=mix(703,536,smooth((t-6)/2));
-    else x=mix(536,518,smooth((t-8)/1.65));
-    let grabbing=smooth((t-4.45)/.55)*(1-smooth((t-5.55)/.55));
-    let lowered=smooth((t-3.55)/.8)*(1-smooth((t-5.75)/.9));
-    let motion=run+(.48*enter*(1-smooth((t-4)/.5)))+.55*(back*(1-smooth((t-7.9)/.15)));
-    let phase=(t-1)*11.2;
-    let bob=motion*(2.1*Math.sin(phase*2)-1);
-    let breathe=(t>=10 ? .9*Math.sin((t-10)*3) : .35*Math.sin(t*3));
-    let ground=410, cy=348+bob+breathe*.4;
-    let faceX=mix(57,0,turn), headX=x+faceX;
-    let headY=cy-17+lowered*27;
-    let bodyW=mix(72,61,turn), bodyH=mix(49,55,turn);
-    let tailSway=Math.sin(t*5)*((t>=10)?2.3:4);
-    const cream="#f5dfae", gold="#d89345", amber="#bb702f";
-    c.save();
-    // A single clipping region combines the outside of the house with its opening.
-    if(x>590) {
-      c.beginPath();
-      c.rect(0,0,646,540);
-      c.moveTo(661,423);c.lineTo(661,315);
-      c.bezierCurveTo(661,270,687,249,738,249);
-      c.bezierCurveTo(787,249,814,270,814,315);
-      c.lineTo(814,423);c.closePath();
-      c.clip();
-    }
-    ellipse(x+5,410,bodyW+26,12,"rgba(24,43,26,.24)");
-    const legs=[
-      {side:-1,front:false},{side:1,front:false},
-      {side:-1,front:true},{side:1,front:true}
-    ];
-    function leg(L,far) {
-      let baseSide=L.front?mix(32,24,turn):mix(-39,-24,turn);
-      let depth=L.side*mix(7,19,turn);
-      let swing=motion*Math.sin(phase+(L.front?0:Math.PI)+((L.side===1)?Math.PI:0));
-      if(t>6&&t<8) swing=-swing*.73;
-      let sx=x+baseSide+turn*depth*.7;
-      let hipY=cy+(L.front?27:23);
-      let footX=sx+swing*12;
-      let footY=ground+(L.side===-1?-2:2);
-      let kneeX=mix(sx,footX,.56)+(L.front?3:-7)+(swing>0?2:-2);
-      let kneeY=hipY+22-Math.max(0,swing)*5;
-      c.beginPath();c.moveTo(sx,hipY-8);
-      c.quadraticCurveTo(sx+(L.front?7:-9),hipY+12,kneeX,kneeY);
-      c.quadraticCurveTo(footX-4,footY-12,footX,footY-5);
-      c.strokeStyle=far?"#a96632":"#d69a54";
-      c.lineWidth=far?15:17;c.lineCap="round";c.stroke();
-      ellipse(footX+mix(4,0,turn),footY-4,mix(13,10,turn),7,
-        far?"#b47a42":"#e6b772");
-      for(let j=-1;j<=1;j++)
-        stroke([[footX+4+j*3,footY-1],[footX+4+j*3,footY+1]],
-          "rgba(94,63,43,.35)",.7);
-    }
-    leg(legs[0],true);leg(legs[2],true);
-    // Tail, rooted at the rump and curling up and over the back.
-    let tx=x+mix(-65,36,turn);
-    c.beginPath();c.moveTo(tx,cy-15);
-    c.bezierCurveTo(tx-31,cy-40,tx-33,cy-83+tailSway,tx-6,cy-83+tailSway);
-    c.bezierCurveTo(tx+19,cy-85+tailSway,tx+24,cy-58,tx+7,cy-48);
-    c.strokeStyle="#ae692f";c.lineWidth=31;c.lineCap="round";c.stroke();
-    c.beginPath();c.moveTo(tx-4,cy-25);
-    c.bezierCurveTo(tx-28,cy-56,tx-24,cy-83+tailSway,tx-4,cy-79+tailSway);
-    c.bezierCurveTo(tx+17,cy-77,tx+14,cy-61,tx+4,cy-58);
-    c.strokeStyle="#edb96c";c.lineWidth=22;c.stroke();
-    for(let i=0;i<30;i++){
-      let a=i/29*Math.PI*1.5+.5;
-      let px=tx-7+23*Math.cos(a),py=cy-66+21*Math.sin(a)+tailSway*.7;
-      stroke([[px,py],[px+5*Math.cos(a),py+7*Math.sin(a)]],
-        i%3?"rgba(245,202,131,.63)":"rgba(127,72,34,.35)",1.2);
-    }
-    // Compact ribcage and rounded, richly shaded double coat.
-    ellipse(x,cy,bodyW,bodyH,grad(x-8,cy-7,94,[
-      [0,"#f4bc73"],[.42,"#d89349"],[.8,"#b97035"],[1,"#86532f"]]));
-    ellipse(x-8,cy-17,bodyW*.81,bodyH*.56,"rgba(249,204,132,.29)",-.08);
-    for(let i=0;i<230;i++){
-      let u=rand(i*4+40)*2-1,v=rand(i*4+41)*2-1;
-      if(u*u+v*v>.94) continue;
-      let px=x+u*bodyW,py=cy+v*bodyH;
-      let len=3+rand(i*4+42)*8;
-      stroke([[px,py],[px-1.5+u*len*.32,py+len*.67]],
-        i%5===0?"rgba(106,62,31,.16)":i%3===0?
-        "rgba(255,229,167,.29)":"rgba(255,206,128,.21)",.7);
-    }
-    // Layered neck ruff follows the shoulders, not the screen.
-    let rx=mix(x+32,x,turn);
-    ellipse(rx,cy-12,mix(48,64,turn),mix(60,62,turn),
-      grad(rx,cy-12,77,[[0,"#ffdf9e"],[.52,"#edb977"],[.83,"#ca8545"],[1,"#985c32"]]));
-    for(let i=0;i<75;i++){
-      let a=i*2.399+rand(i+709)*.2;
-      let u=Math.cos(a),v=Math.sin(a);
-      let px=rx+u*mix(44,59,turn),py=cy-12+v*57;
-      stroke([[px-u*7,py-v*8],[px+u*(5+rand(i+735)*7),py+v*(5+rand(i+799)*8)]],
-        i%4===0?"rgba(151,85,39,.33)":"rgba(255,222,159,.53)",1+rand(i+801));
-    }
-    leg(legs[1],false);leg(legs[3],false);
-    // Upright ears, partially embedded in the dense head coat.
-    let hw=mix(39,43,turn);
-    let earSpread=mix(23,32,turn);
-    for(let s of [-1,1]){
-      if(turn<.12 && s===-1) continue;
-      let ex=headX+s*earSpread;
-      path([[ex-10,headY-23],[ex+s*3,headY-65],[ex+13,headY-25]],
-        "#ab672f");
-      path([[ex-5,headY-30],[ex+s*3,headY-55],[ex+7,headY-29]],
-        "#c48a62");
-    }
-    ellipse(headX,headY,hw,mix(37,40,turn),
-      grad(headX,headY,60,[[0,"#f7cd8c"],[.5,"#e8a658"],[.85,"#c27a39"],[1,"#9d602f"]]));
-    // Small, fine guard hairs at the silhouette of the cheeks.
-    for(let i=0;i<43;i++){
-      let a=i*2.399;
-      let px=headX+hw*Math.cos(a),py=headY+38*Math.sin(a);
-      if(Math.sin(a)<-.66) continue;
-      stroke([[px-3*Math.cos(a),py-3*Math.sin(a)],
-              [px+Math.cos(a)*(3+rand(i+413)*6),py+Math.sin(a)*(4+rand(i+333)*6)]],
-        i%3?"rgba(248,208,142,.65)":"rgba(129,74,34,.30)",.85);
-    }
-    // Eyes move into a symmetric arrangement as the head turns to camera.
-    let eyeY=headY-7;
-    let eye1=headX+mix(17,-17,turn),eye2=headX+18;
-    function eye(xx,visibility) {
-      c.save();c.globalAlpha=visibility;
-      ellipse(xx,eyeY,5.4,5.7,"#533b2a");
-      ellipse(xx+.6,eyeY+.3,4,4.7,"#1d211c");
-      ellipse(xx-1.2,eyeY-1.9,1.5,1.5,"rgba(255,250,223,.92)");
-      c.restore();
-    }
-    eye(eye1,1);eye(eye2,smooth(turn*2));
-    let muzzleX=headX+mix(23,0,turn);
-    let muzzleY=headY+19;
-    ellipse(muzzleX,muzzleY,mix(24,27,turn),mix(17,16,turn),
-      grad(muzzleX,muzzleY,37,[[0,"#fff0ca"],[.7,"#ebd2a3"],[1,"#c9a576"]]));
-    if(turn>.08) {
-      ellipse(muzzleX-12,muzzleY+2,14,10,"rgba(255,234,193,.75)");
-      ellipse(muzzleX+12,muzzleY+2,14,10,"rgba(255,234,193,.75)");
-    }
-    let noseX=muzzleX+mix(16,0,turn),noseY=muzzleY-4;
-    ellipse(noseX,noseY,mix(7.3,8,turn),5.5,"#24231e");
-    ellipse(noseX-2,noseY-1.6,2,.9,"rgba(210,206,185,.45)");
-    let hasBone=t>=5.33;
-    if(hasBone) {
-      let bx=mix(noseX+12,muzzleX,turn);
-      let by=muzzleY+13;
-      bone(bx,by,.72,mix(-.11,0,turn));
-      stroke([[noseX-3,muzzleY+9],[noseX+mix(13,3,turn),muzzleY+12]],
-        "#64462e",2.7);
-    } else {
-      if(grabbing>.18) {
-        ellipse(noseX+mix(7,0,turn),muzzleY+12,8,3+grabbing*3,"#654633");
-      } else {
-        stroke([[noseX-1,muzzleY+7],[noseX+mix(8,0,turn),muzzleY+10]],
-          "rgba(95,62,39,.63)",1.4);
-      }
-    }
-    c.restore();
-  }
-
-  window.renderFrame=function(timeSeconds) {
-    const t=clamp(Number.isFinite(timeSeconds)?timeSeconds:0,0,12);
-    c.clearRect(0,0,W,H);
-    background();
-    houseBack();
-    if(t<5.33) bone(769,386,.72,-.09);
-    dog(t);
-    houseFront();
-    // Foreground grass is sparse enough to leave paws and threshold legible.
-    for(let i=0;i<80;i++){
-      let xx=rand(i*9+2200)*W, yy=430+rand(i*9+2201)*110;
-      stroke([[xx,yy],[xx+(rand(i+2)-.5)*5,yy-3-rand(i+3)*7]],
-        i%3?"rgba(45,85,41,.4)":"rgba(212,214,141,.35)",.8);
-    }
-  };
-  window.renderFrame(0);
-})();
+ }
+}
+function puddleShape(c){
+ c.beginPath();c.moveTo(357,447);
+ c.bezierCurveTo(359,433,385,426,411,429);
+ c.bezierCurveTo(443,425,466,430,485,441);
+ c.bezierCurveTo(493,450,481,466,457,470);
+ c.bezierCurveTo(419,477,373,469,359,459);
+ c.bezierCurveTo(354,456,353,451,357,447);c.closePath();
+}
+function waterBase(){
+ ctx.save();puddleShape(ctx);ctx.fillStyle="#777e73";ctx.fill();
+ ctx.clip();
+ let g=ctx.createLinearGradient(0,428,0,477);
+ g.addColorStop(0,"#93aa9d");g.addColorStop(.48,"#6b817d");g.addColorStop(1,"#859a90");
+ ctx.fillStyle=g;ctx.fillRect(350,425,150,55);
+ for(let i=0;i<19;i++){
+  let x=365+hash(i+939)*114,y=433+hash(i+938)*37;
+  ctx.strokeStyle="rgba(215,221,204,.12)";ctx.lineWidth=.6;
+  ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+8+hash(i)*16,y-.6);ctx.stroke();
+ }
+ ctx.restore();
+ ctx.strokeStyle="rgba(210,197,156,.6)";ctx.lineWidth=2;puddleShape(ctx);ctx.stroke();
+}
+function houseBack(){
+ // cast shadow
+ ellipse(ctx,724,469,159,23,"rgba(39,49,35,.25)");
+ path(ctx,[[585,306],[711,233],[861,305],[861,457],[585,457]],"#695944");
+ path(ctx,[[609,314],[715,252],[837,316],[837,457],[609,457]],"#594937");
+ // doorway depth, lit floor
+ ctx.beginPath();ctx.moveTo(626,462);ctx.lineTo(626,357);
+ ctx.bezierCurveTo(626,314,651,294,702,293);
+ ctx.bezierCurveTo(755,291,789,320,789,358);
+ ctx.lineTo(789,462);ctx.closePath();
+ let g=ctx.createLinearGradient(690,302,715,465);
+ g.addColorStop(0,"#292923");g.addColorStop(.65,"#373229");g.addColorStop(1,"#78674e");
+ ctx.fillStyle=g;ctx.fill();
+ path(ctx,[[628,460],[787,460],[755,435],[666,435]],"#8b7758");
+ for(let i=0;i<14;i++){
+  let x=629+i*11;
+  ctx.strokeStyle="rgba(211,180,127,.07)";
+  ctx.beginPath();ctx.moveTo(x,452);ctx.lineTo(701+(x-701)*.62,435);ctx.stroke();
+ }
+}
+function houseFront(){
+ // foreground facade, aperture punched out
+ ctx.save();ctx.beginPath();
+ ctx.moveTo(581,301);ctx.lineTo(708,227);ctx.lineTo(865,302);ctx.lineTo(865,463);
+ ctx.lineTo(581,463);ctx.closePath();
+ ctx.moveTo(626,464);ctx.lineTo(789,464);ctx.lineTo(789,358);
+ ctx.bezierCurveTo(789,318,756,292,706,292);
+ ctx.bezierCurveTo(654,292,626,316,626,359);ctx.closePath();
+ let g=ctx.createLinearGradient(585,270,850,450);
+ g.addColorStop(0,"#ac8060");g.addColorStop(.5,"#92694b");g.addColorStop(1,"#76563e");
+ ctx.fillStyle=g;ctx.fill("evenodd");
+ ctx.beginPath();ctx.moveTo(626,463);ctx.lineTo(626,358);
+ ctx.bezierCurveTo(626,316,654,292,706,292);
+ ctx.bezierCurveTo(756,292,789,318,789,358);ctx.lineTo(789,463);
+ ctx.strokeStyle="#4c3528";ctx.lineWidth=12;ctx.stroke();
+ ctx.strokeStyle="rgba(225,171,115,.58)";ctx.lineWidth=3;
+ ctx.beginPath();ctx.moveTo(619,463);ctx.lineTo(619,358);
+ ctx.bezierCurveTo(619,308,657,284,706,284);
+ ctx.bezierCurveTo(764,284,797,316,797,358);ctx.lineTo(797,463);ctx.stroke();
+ ctx.save();ctx.beginPath();ctx.rect(581,304,45,159);ctx.rect(790,307,75,156);ctx.clip();
+ for(let i=0;i<12;i++){
+  let y=318+i*13;
+  ctx.strokeStyle=i%2?"rgba(59,39,28,.24)":"rgba(231,174,118,.2)";
+  ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(581,y);ctx.lineTo(865,y+2);ctx.stroke();
+ }
+ ctx.restore();
+ // substantial roof and eaves
+ path(ctx,[[565,308],[704,207],[874,302],[858,320],[705,235],[583,324]],"#594939");
+ path(ctx,[[565,307],[704,202],[873,301],[858,306],[704,219],[579,318]],"#776750");
+ ctx.strokeStyle="rgba(218,183,137,.45)";ctx.lineWidth=3;
+ ctx.beginPath();ctx.moveTo(575,308);ctx.lineTo(704,210);ctx.lineTo(861,304);ctx.stroke();
+ for(let i=0;i<8;i++){
+  let y=222+i*10;
+  ctx.strokeStyle="rgba(40,42,36,.13)";ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(690-(y-202)*1.27,y);ctx.lineTo(709+(y-202)*1.56,y+4);ctx.stroke();
+ }
+ ctx.restore();
+}
+function bone(c,x,y,angle=0,scale=1){
+ c.save();c.translate(x,y);c.rotate(angle);c.scale(scale,scale);
+ c.shadowColor="rgba(20,15,9,.28)";c.shadowBlur=4;c.shadowOffsetY=2;
+ let g=c.createLinearGradient(0,-7,0,8);
+ g.addColorStop(0,"#f7e9c8");g.addColorStop(.55,"#e5d1a9");g.addColorStop(1,"#ba9b73");
+ c.fillStyle=g;
+ c.beginPath();c.moveTo(-22,-4);c.bezierCurveTo(-29,-13,-35,-13,-37,-7);
+ c.bezierCurveTo(-39,-3,-35,0,-33,1);c.bezierCurveTo(-40,9,-34,14,-28,10);
+ c.lineTo(-22,5);c.lineTo(22,5);
+ c.bezierCurveTo(29,14,38,10,34,3);
+ c.bezierCurveTo(41,-4,35,-13,28,-10);
+ c.lineTo(22,-5);c.closePath();c.fill();
+ c.shadowColor="transparent";
+ c.strokeStyle="rgba(135,104,67,.35)";c.lineWidth=1;c.stroke();
+ c.restore();
+}
+function dogState(t){
+ let keys=[[0,181],[.8,187],[1,198],[1.5,263],[1.84,313],[2,334],[2.12,350],[2.55,485],[2.72,511],[3,555],[3.55,637],[4.3,685],[5.9,686],[6.35,670],[7,627],[7.9,568],[8.2,557],[9.6,542],[12,542]];
+ let x=keys[keys.length-1][1];
+ for(let i=0;i<keys.length-1;i++)if(t<=keys[i+1][0]){
+  let u=(t-keys[i][0])/(keys[i+1][0]-keys[i][0]);
+  x=mix(keys[i][1],keys[i+1][1],u);break;
+ }
+ let flight=smooth(2.03,2.14,t)*(1-smooth(2.49,2.64,t));
+ let j=clamp((t-2.07)/.51,0,1);
+ let lift=flight*55*Math.sin(Math.PI*j);
+ let run=(t>=1&&t<2.04)||(t>=2.72&&t<4.3);
+ let reverse=t>=6&&t<8;
+ let turn=smooth(8.1,9.7,t);
+ let crouch=(smooth(1.85,2.04,t)*(1-smooth(2.07,2.25,t))+
+ smooth(2.57,2.66,t)*(1-smooth(2.67,2.88,t)))*7;
+ let gait=(run||reverse)?Math.sin(t*19):0;
+ return {x,y:443-lift+crouch,t,flight,lift,run,reverse,turn,gait,carried:t>=5.27};
+}
+function furryEllipse(c,x,y,rx,ry,light,dark,seed,amount=85){
+ let g=c.createRadialGradient(x-rx*.25,y-ry*.34,2,x+rx*.1,y+ry*.1,Math.max(rx,ry)*1.18);
+ g.addColorStop(0,light);g.addColorStop(.68,light);g.addColorStop(1,dark);
+ ellipse(c,x,y,rx,ry,g);
+ c.save();c.beginPath();c.ellipse(x,y,rx,ry,0,0,Math.PI*2);c.clip();
+ for(let i=0;i<amount;i++){
+  let a=hash(i*13+seed)*Math.PI*2,r=Math.sqrt(hash(i*7+seed+1))*.98;
+  let px=x+Math.cos(a)*rx*r,py=y+Math.sin(a)*ry*r;
+  let len=2+hash(i*11+seed)*9;
+  c.strokeStyle=hash(i*3+seed)>.52?"rgba(255,234,185,.18)":"rgba(104,57,31,.12)";
+  c.lineWidth=.5+hash(i+seed)*.6;
+  c.beginPath();c.moveTo(px,py);c.quadraticCurveTo(px+1,py+len*.4,px+Math.cos(a)*len*.6,py+Math.sin(a)*len);c.stroke();
+ }
+ c.restore();
+ // fine silhouette guard hairs
+ for(let i=0;i<Math.floor(amount*.65);i++){
+  let a=i/Math.floor(amount*.65)*Math.PI*2;
+  let len=2+hash(i*9+seed)*5;
+  c.strokeStyle=i%3?"rgba(229,174,104,.47)":"rgba(255,224,165,.43)";
+  c.lineWidth=.65;
+  c.beginPath();c.moveTo(x+Math.cos(a)*rx*.93,y+Math.sin(a)*ry*.93);
+  c.lineTo(x+Math.cos(a)*(rx+len),y+Math.sin(a)*(ry+len));c.stroke();
+ }
+}
+function leg(c,x,ground,phase,fore,flight,reverse,turn){
+ let hipY=fore?-40:-35;
+ let stride=flight? (fore?19:-18):Math.sin(phase)*(reverse?-9:12);
+ let lift=flight?(fore?18:23):Math.max(0,Math.cos(phase))*9;
+ let pawX=x+stride, pawY=-lift;
+ let kneeX=mix(x,pawX,.48)+(fore?-5:8),kneeY=fore?-22:-18;
+ if(flight){kneeY-=9;kneeX+=fore?5:-7}
+ c.strokeStyle="#9b5d30";c.lineWidth=10;c.lineCap="round";c.lineJoin="round";
+ c.beginPath();c.moveTo(x,hipY);c.lineTo(kneeX,kneeY);c.lineTo(pawX,pawY-3);c.stroke();
+ c.strokeStyle="rgba(238,180,102,.55)";c.lineWidth=5;
+ c.beginPath();c.moveTo(x-2,hipY+2);c.lineTo(kneeX-2,kneeY);c.stroke();
+ furryEllipse(c,pawX,pawY-3,10,6,"#d99752","#98582f",x+phase,9);
+ c.strokeStyle="rgba(77,51,36,.34)";c.lineWidth=.8;
+ for(let k=-1;k<=1;k++){
+  c.beginPath();c.moveTo(pawX+k*3,pawY+1);c.lineTo(pawX+k*3+1,pawY+3);c.stroke();
+ }
+}
+function drawSide(c,s,alpha){
+ c.save();c.globalAlpha*=alpha;c.translate(s.x,s.y);
+ let t=s.t, bounce=s.run?Math.abs(Math.sin(t*19))*.95:Math.sin(t*3)*.5;
+ c.translate(0,-bounce);
+ let flight=s.flight, rev=s.reverse;
+ let ph=t*19+(rev?2:0);
+ leg(c,-35,0,ph+Math.PI,false,flight,rev);
+ leg(c,20,0,ph,true,flight,rev);
+ // tail curling over back, continuous thick curved plume
+ c.strokeStyle="#9f5e32";c.lineCap="round";c.lineWidth=16;
+ c.beginPath();c.moveTo(-45,-52);c.bezierCurveTo(-72,-62,-82,-94,-63,-105);
+ c.bezierCurveTo(-42,-117,-29,-94,-41,-82);c.stroke();
+ for(let i=0;i<24;i++){
+  let a=i/23*Math.PI*1.47+.4;
+  let px=-58+Math.cos(a)*19,py=-91+Math.sin(a)*17;
+  ellipse(c,px,py,6+hash(i+67)*5,5+hash(i+98)*5,
+   i%3?"rgba(202,122,63,.79)":"rgba(249,199,128,.75)",a);
+ }
+ furryEllipse(c,-13,-51,48,31,"#df9a50","#9a572e",15,105);
+ furryEllipse(c,20,-53,30,36,"#f0bc77","#ae6534",71,115);
+ furryEllipse(c,-10,-32,25,10,"#e9bc82","#b98857",33,20);
+ leg(c,-27,0,ph,false,flight,rev);
+ leg(c,25,0,ph+Math.PI,true,flight,rev);
+ // ears behind crown
+ path(c,[[25,-91],[30,-117],[43,-95]],"#aa6334");
+ path(c,[[26,-97],[31,-111],[38,-96]],"#d99761");
+ path(c,[[47,-93],[57,-111],[61,-80]],"#a65c33");
+ path(c,[[50,-94],[56,-105],[57,-91]],"#de9d65");
+ furryEllipse(c,42,-78,25,24,"#edb575","#ae683b",84,67);
+ // cream cheek and pointed, short muzzle
+ furryEllipse(c,53,-66,16,13,"#f5d5a0","#bb834e",86,28);
+ furryEllipse(c,64,-71,14,8,"#f2d1a0","#ad7045",88,24);
+ if(s.carried)bone(c,75,-65,-.07, .8);
+ ellipse(c,74,-72,4.6,3.5,"#302923");
+ ellipse(c,49,-82,3.3,3.7,"#261f1c");
+ ellipse(c,48,-83.2,1,1,"rgba(255,255,245,.9)");
+ c.strokeStyle="#5c3529";c.lineWidth=1.2;c.beginPath();
+ c.moveTo(74,-68);c.quadraticCurveTo(68,-63,61,-66);c.stroke();
+ // directional highlights
+ c.restore();
+}
+function drawFront(c,s,alpha){
+ c.save();c.globalAlpha*=alpha;c.translate(s.x,s.y);
+ let breath=Math.sin(s.t*3)*.65;
+ c.translate(0,breath);
+ let step=s.t<9.6?Math.sin(s.t*12)*6*(1-smooth(9.1,9.7,s.t)):0;
+ // curled tail visible behind right shoulder
+ c.strokeStyle="#a86637";c.lineWidth=14;c.lineCap="round";
+ c.beginPath();c.moveTo(29,-55);c.bezierCurveTo(59,-78,55,-109,36,-103);
+ c.bezierCurveTo(24,-99,31,-88,37,-89);c.stroke();
+ for(let i=0;i<22;i++){
+  let a=i/22*Math.PI*1.5;
+  ellipse(c,44+Math.cos(a)*12,-95+Math.sin(a)*13,5,6,
+   i%3?"#e9ad68":"#bd773d");
+ }
+ leg(c,-23,0,step/6,false,0,false);
+ leg(c,23,0,Math.PI+step/6,false,0,false);
+ furryEllipse(c,0,-51,38,33,"#e4a45c","#a96839",102,96);
+ // outer ruff and individual downward hanging locks
+ furryEllipse(c,0,-66,39,36,"#efc38a","#b7763e",105,126);
+ for(let i=0;i<17;i++){
+  let a=Math.PI*.12+i/16*Math.PI*.78;
+  let xx=Math.cos(a)*33,yy=-63+Math.sin(a)*29;
+  ellipse(c,xx,yy,5,10,i%3?"rgba(232,175,103,.8)":"rgba(247,212,155,.82)",-a*.28);
+ }
+ leg(c,-21,0,step/6,true,0,false);
+ leg(c,21,0,Math.PI+step/6,true,0,false);
+ path(c,[[-24,-91],[-23,-115],[-5,-94]],"#a96538");
+ path(c,[[24,-91],[23,-115],[5,-94]],"#a96538");
+ path(c,[[-20,-97],[-20,-108],[-10,-96]],"#dfaa75");
+ path(c,[[20,-97],[20,-108],[10,-96]],"#dfaa75");
+ furryEllipse(c,0,-82,27,25,"#ecb879","#a7653b",182,93);
+ furryEllipse(c,-12,-66,15,12,"#f4d7a6","#b98350",17,35);
+ furryEllipse(c,12,-66,15,12,"#f4d7a6","#b98350",19,35);
+ ellipse(c,-13,-85,3.5,4.1,"#221d1b");
+ ellipse(c,13,-85,3.5,4.1,"#221d1b");
+ ellipse(c,-14,-86.2,1,1,"#fff2dc");
+ ellipse(c,12,-86.2,1,1,"#fff2dc");
+ // bone passes across jaws, in front of the cream cheeks but under the nose
+ if(s.carried)bone(c,0,-64,-.035,.88);
+ furryEllipse(c,0,-72,12,8,"#f1d2a3","#bd8757",20,19);
+ ellipse(c,0,-74,5.5,3.8,"#282320");
+ c.strokeStyle="#644333";c.lineWidth=1.1;
+ c.beginPath();c.moveTo(0,-71);c.lineTo(0,-67);c.stroke();
+ c.restore();
+}
+function drawDog(c,s){
+ let u=s.turn;
+ drawSide(c,s,1-smooth(0,.83,u));
+ if(u>0)drawFront(c,s,smooth(.04,.89,u));
+}
+function frame(time){
+ let t=clamp(Number.isFinite(time)?time:0,0,12),s=dogState(t);
+ ctx.clearRect(0,0,W,H);
+ ground();houseBack();waterBase();
+ // one resting bone; it disappears only when it is gripped
+ if(t<5.27)bone(ctx,748,447,.08,.73);
+ // same rendered animal, vertically reflected and confined strictly to water
+ ctx.save();puddleShape(ctx);ctx.clip();
+ ctx.globalAlpha=.26;
+ ctx.translate(0,443+443*.50);
+ ctx.scale(1,-.50);
+ drawDog(ctx,s);
+ ctx.restore();
+ ctx.save();puddleShape(ctx);ctx.clip();
+ let sheen=ctx.createLinearGradient(0,431,0,473);
+ sheen.addColorStop(0,"rgba(227,239,211,.19)");
+ sheen.addColorStop(.5,"rgba(211,228,216,0)");
+ sheen.addColorStop(1,"rgba(53,79,78,.18)");
+ ctx.fillStyle=sheen;ctx.fillRect(350,427,150,52);
+ ctx.restore();
+ // shadow remains on ground while its owner jumps
+ let sh=1-s.lift/100;
+ ellipse(ctx,s.x,447,52+7*s.lift/55,8+3*s.lift/55,
+  `rgba(47,47,32,${.23*sh})`);
+ ellipse(ctx,s.x,445,30,4,`rgba(38,39,30,${.15*sh})`);
+ drawDog(ctx,s);
+ houseFront();
+ // foreground grass only, never concealing the performance
+ for(let i=0;i<37;i++){
+  let x=hash(i+1841)*960,y=493+hash(i+1793)*47;
+  ctx.strokeStyle=i%3?"rgba(64,94,47,.36)":"rgba(185,168,108,.38)";
+  ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(x,y);ctx.quadraticCurveTo(x-3,y-8,x-4,y-11-hash(i)*6);
+  ctx.moveTo(x,y);ctx.quadraticCurveTo(x+3,y-8,x+6,y-10);ctx.stroke();
+ }
+ // gentle optical vignette
+ let v=ctx.createRadialGradient(475,282,180,475,275,630);
+ v.addColorStop(0,"rgba(28,38,29,0)");
+ v.addColorStop(1,"rgba(29,37,30,.23)");
+ ctx.fillStyle=v;ctx.fillRect(0,0,W,H);
+}
+window.renderFrame=frame;
+renderFrame(0);
 </script>
 </body>
 </html>

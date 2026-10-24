@@ -1,14 +1,29 @@
 {
   "modelId": "Codestral-2501",
-  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
-  "sourceHash": "0dce3a5800f42099ea058075b85471b2582db029e3b5d1afd0844a5d5d115d62",
-  "responseHash": "6290bab49eee9b0ba3526c3f15b1908b570ffc909b7df78be60780826b04a529",
-  "requestHash": "13d187687bcea92aa8bb2784d4c701490818d0b61507c2e587cd9608dd1fe7ab",
+  "modelVersion": "2",
+  "source": "Actual Foundry API usage",
+  "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+  "sourceHash": "f95d3f785fd4b6ba9357daf0c1237ab13af19e9129c6fb2645f4db03696875f4",
+  "requestHash": "97339c2594829255e34015565c3ce3e5e834d80faa8c9f6c1ac7d3b152a8bcad",
+  "responseHash": "42365859741975a3f2fdacdfe7855c76953a1e901ba116fd20fdc9a687d0ffa7",
   "streamHash": null,
   "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
-  "submission": 1,
   "tools": [],
   "usageComplete": true,
+  "submission": 1,
+  "rawUsage": {
+    "prompt_tokens": 2095,
+    "completion_tokens": 1440,
+    "total_tokens": 3535,
+    "audio_prompt_tokens": 0
+  },
+  "usage": {
+    "input_tokens": 2095,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 1440,
+    "total_tokens": 3535
+  },
   "visualScore": null,
-  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+  "visualReview": "Inspect the recorded film against all seven visual criteria. Technical execution does not prove puddle clearance, realism or narrative success."
 }

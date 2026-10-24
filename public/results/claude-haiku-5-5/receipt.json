@@ -1,14 +1,40 @@
 {
   "modelId": "claude-haiku-5-5",
-  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
-  "sourceHash": "2ac6427056498983690a855bd588d60078befdccd2d2c24c27ea9a29c4293111",
-  "responseHash": "318079ef9a271f1e75be90c2087872d4d985b41beb4af0df9e78a25ce5b7e0f1",
-  "requestHash": "301bbe70b3e47d84a9f23cef184895ae01f5dd17b93d40775495a136d49e4b02",
-  "streamHash": "df7e4eeb73f3ec20a6f9306e3695cc47fcea2bd5a8e22595934473189b1addf4",
+  "modelVersion": "2",
+  "source": "Actual Foundry API usage",
+  "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+  "sourceHash": "cdb4e7d8ef7950329e0ee9069023d2555b914ff33014d4a4324f1e25c8878bdc",
+  "requestHash": "a2e4f0c9236b654135408e6b66b27064929fd06f51cff1f84fffa0a68a308bfe",
+  "responseHash": "ffa1e47c1c74b01fc3883bbe922b42200475d5bb435db667ec393a636cd3e0a1",
+  "streamHash": "6dc68512ad0dadbb197950249031d11a80cd01800383ea6c23e1850433bdfcf1",
   "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
-  "submission": 1,
   "tools": [],
   "usageComplete": true,
+  "submission": 1,
+  "rawUsage": {
+    "input_tokens": 3311,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 0,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 8664,
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "speed": "standard",
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    }
+  },
+  "usage": {
+    "input_tokens": 3311,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 8664,
+    "total_tokens": 11975,
+    "reasoning_output_tokens": 0
+  },
   "visualScore": null,
-  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+  "visualReview": "Inspect the recorded film against all seven visual criteria. Technical execution does not prove puddle clearance, realism or narrative success."
 }

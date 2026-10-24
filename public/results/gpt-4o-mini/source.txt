@@ -1,154 +1,150 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pomeranian Animation</title>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-        }
-    </style>
+<meta charset="UTF-8">
+<title>Pomeranian Animation</title>
+<style>
+    body { margin: 0; }
+</style>
 </head>
 <body>
 <canvas id="stage" width="960" height="540"></canvas>
 <script>
-    const canvas = document.getElementById('stage');
-    const ctx = canvas.getContext('2d');
+const canvas = document.getElementById("stage");
+const ctx = canvas.getContext("2d");
+
+// Scene and dog parameters
+const dog = { 
+    x: 100, 
+    y: 400, 
+    width: 60, 
+    height: 60, 
+    tailAngle: 0, 
+    speed: 0, 
+    jumping: false, 
+    carryingBone: false 
+};
+const puddle = { x: 300, y: 440, width: 80, height: 40 };
+const bone = { x: 0, y: 0, width: 20, height: 10, insideHouse: true };
+const doghouse = { x: 460, y: 370, width: 100, height: 80 };
+
+// Animation variables
+let startTime;
+
+function drawDog() {
+    ctx.fillStyle = "#D19A6A"; // Pomeranian color
+    ctx.beginPath();
+    ctx.arc(dog.x + dog.width / 2, dog.y + dog.height / 2, dog.width / 2, 0, Math.PI * 2);
+    ctx.fill();
     
-    const pomeranian = {
-        x: 100,
-        y: 300,
-        width: 50,
-        height: 30,
-        tailAngle: 0,
-        running: false,
-        direction: 1,
-        boneHeld: false,
-        boneX: 0,
-        boneY: 0,
-        boneWidth: 20,
-        boneHeight: 10,
-        angle: 0
-    };
+    // Draw Tail
+    ctx.save();
+    ctx.translate(dog.x + dog.width / 2, dog.y);
+    ctx.rotate(dog.tailAngle);
+    ctx.fillStyle = "#D19A6A";
+    ctx.fillRect(0, -10, 30, 10);
+    ctx.restore();
+    
+    // Draw Bone if carrying
+    if (dog.carryingBone) {
+        ctx.fillStyle = "#FFF";
+        ctx.fillRect(dog.x + (dog.width - bone.width) / 2, dog.y + dog.height / 2, bone.width, bone.height);
+    }
+}
 
-    function drawBackyard() {
-        // Grass
-        ctx.fillStyle = "#77B300";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+function drawPuddle() {
+    ctx.fillStyle = "rgba(0, 162, 255, 0.5)";
+    ctx.fillRect(puddle.x, puddle.y, puddle.width, puddle.height);
+    
+    // Reflection Logic
+    ctx.save();
+    ctx.scale(1, -1);
+    ctx.translate(0, -puddle.y * 2);
+    ctx.fillStyle = "#D19A6A"; // Dog Color for Reflection
+    ctx.beginPath();
+    ctx.arc(dog.x + dog.width / 2, -dog.y + puddle.y + dog.height / 2, dog.width / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+}
+
+function drawDoghouse() {
+    ctx.fillStyle = "#8B4513"; // Brown color for doghouse
+    ctx.fillRect(doghouse.x, doghouse.y, doghouse.width, doghouse.height);
+    ctx.fillStyle = "#000";
+    ctx.fillRect(doghouse.x + 30, doghouse.y + 40, 40, 40); // Doorway
+}
+
+function renderFrame(time) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (time < 1) {
+        // Initial Setup
+        drawDoghouse();
+        drawDog();
+        drawPuddle();
+    } else if (time < 3) {
+        // Running towards the house
+        dog.speed = 2;
+        dog.x += dog.speed;
+        dog.tailAngle = Math.sin(time * 5) * 0.2; // Tail wagging motion
         
-        // Doghouse
-        ctx.fillStyle = "#8B4513";
-        ctx.fillRect(600, 350, 100, 50);
-        ctx.fillStyle = "#5C3D25";
-        ctx.beginPath();
-        ctx.moveTo(600, 350);
-        ctx.lineTo(650, 300);
-        ctx.lineTo(700, 350);
-        ctx.closePath();
-        ctx.fill();
-        
-        // Bone
-        if (!pomeranian.boneHeld) {
-            ctx.fillStyle = "#FFFFFF";
-            ctx.fillRect(630, 370, pomeranian.boneWidth, pomeranian.boneHeight);
+        // Jump over puddle
+        if (dog.x + dog.width/2 > puddle.x && !dog.jumping) {
+            dog.jumping = true;
+            dog.speed = 0; // pause for jump
         }
-    }
-
-    function drawPomeranian() {
-        ctx.save();
-        ctx.translate(pomeranian.x, pomeranian.y);
-        ctx.rotate(pomeranian.angle);
         
-        // Body
-        ctx.fillStyle = "#D2691E"; // Pomeranian color
-        ctx.fillRect(-pomeranian.width / 2, -pomeranian.height / 2, pomeranian.width, pomeranian.height);
-        
-        // Tail
-        ctx.save();
-        ctx.rotate(pomeranian.tailAngle);
-        ctx.fillRect(-pomeranian.width / 2, -pomeranian.height / 3, 15, 5);
-        ctx.restore();
-        
-        // Head
-        ctx.fillStyle = "#D2691E";
-        ctx.beginPath();
-        ctx.arc(0, -pomeranian.height / 2, 15, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Ear
-        ctx.fillStyle = "#D2691E";
-        ctx.beginPath();
-        ctx.moveTo(-10, -18);
-        ctx.lineTo(-5, -25);
-        ctx.lineTo(0, -18);
-        ctx.fill();
-        
-        ctx.beginPath();
-        ctx.moveTo(10, -18);
-        ctx.lineTo(5, -25);
-        ctx.lineTo(0, -18);
-        ctx.fill();
-        
-        // Eyes
-        ctx.fillStyle = "black";
-        ctx.beginPath();
-        ctx.arc(-5, -10, 3, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(5, -10, 3, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.restore();
-    }
-
-    function renderFrame(timeSeconds) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        drawBackyard();
-        
-        if (timeSeconds < 1) {
-            // Initial position in yard
-        } else if (timeSeconds < 3) {
-            // Run to doghouse
-            pomeranian.x += 4; // Speed
-            pomeranian.running = true;
-            pomeranian.tailAngle += 0.1;
-        } else if (timeSeconds < 4.5) {
-            // Enter doghouse
-            pomeranian.x = 630; // Snap to entrance
-        } else if (timeSeconds < 6) {
-            // Retrieve bone
-            if (!pomeranian.boneHeld) {
-                pomeranian.boneHeld = true;
-                pomeranian.boneX = pomeranian.x; // Follow position
-                pomeranian.boneY = pomeranian.y;
+        if (dog.jumping) {
+            dog.y -= 20; // Ascend
+            if (dog.y <= 360) { // Peak of jump
+                dog.jumping = false;
             }
-        } else if (timeSeconds < 8) {
-            // Back out with bone
-            pomeranian.x -= 4; // Back out speed
-        } else if (timeSeconds < 10) {
-            // Turn to face viewer
-            pomeranian.angle += 0.1;
-            if (pomeranian.angle > Math.PI / 2) {
-                pomeranian.angle = Math.PI / 2; // Limit turn
-            }
-        } else if (timeSeconds < 12) {
-            // Final position
-            pomeranian.angle = 0; // Reset angle for frontal view
+        } else if (dog.y < 400) {
+            dog.y += 20; // Descend
         }
-
-        drawPomeranian();
         
-        // Draw bone if held
-        if (pomeranian.boneHeld) {
-            ctx.fillStyle = "#FFFFFF";
-            ctx.fillRect(pomeranian.x - pomeranian.boneWidth / 2, pomeranian.y, pomeranian.boneWidth, pomeranian.boneHeight);
+        drawDoghouse();
+        drawDog();
+        drawPuddle();
+    } else if (time < 4.5) {
+        // Entering the doghouse
+        dog.x = 460; // Reset to doghouse entrance after jump
+        dog.y = 380; // Inside doghouse
+        // Retrieve bone
+        if (time > 3.5) dog.carryingBone = true; // Pickup bone
+        drawDoghouse();
+        drawDog();
+        drawPuddle();
+    } else if (time < 6) {
+        // Backing out of the doghouse
+        if (dog.x < 520) dog.x += 2; // Backing out
+        drawDoghouse();
+        drawDog();
+        drawPuddle();
+    } else if (time < 8) {
+        // Turn toward viewer
+        if (dog.x < 520) {
+            dog.x = 520; // Finalize x position
+            dog.tailAngle = 0; // Set tail straight
         }
+        drawDoghouse();
+        drawDog();
+        drawPuddle();
+    } else {
+        // Final pose
+        dog.tailAngle = Math.sin(time * 5) * 0.1; // Slight tail wag
+        drawDoghouse();
+        drawDog();
+        drawPuddle();
     }
+}
 
-    renderFrame(0);
+window.renderFrame = renderFrame;
+requestAnimationFrame(function render(timestamp) {
+    if (!startTime) startTime = timestamp / 1000;
+    renderFrame((timestamp / 1000) - startTime);
+    if ((timestamp / 1000) < 12) requestAnimationFrame(render);
+});
 </script>
 </body>
 </html>

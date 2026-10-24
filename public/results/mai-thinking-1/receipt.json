@@ -1,14 +1,35 @@
 {
   "modelId": "MAI-Thinking-1",
-  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
-  "sourceHash": "a976289ada37696b1645347bdf35585d29235edec9fe17800082daf869f45abb",
-  "responseHash": "ef191e5fc232c1061e79656d040aaf4b3c09f7505efbd19d2edfd86fe9540cf5",
-  "requestHash": "d1a6e0eac343de687972d9926971054aba2334b645f233ad8d0170b433b88d1c",
-  "streamHash": null,
+  "modelVersion": "2026-06-01",
+  "source": "Actual Foundry API usage",
+  "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+  "sourceHash": "a7fcdde816ce968dba50d41cb46105bc6e633d4ee6c41d276e515f21c44f2c79",
+  "requestHash": "74fe51e724300e8b81a731c9beb4c472459895addf68e529468b97763ba7043c",
+  "responseHash": "9d49238a53056eb8b3e31a85ea22947d23e096bf081db6d067cdfc0d6f3fd0ff",
+  "streamHash": "50a04a3e2bf12b8cdfd7cc771bf6cab1d2849d599fec10f38f109e9c0bbab680",
   "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
-  "submission": 1,
   "tools": [],
   "usageComplete": true,
+  "submission": 1,
+  "rawUsage": {
+    "prompt_tokens": 2031,
+    "completion_tokens": 11089,
+    "total_tokens": 13120,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 1497
+    }
+  },
+  "usage": {
+    "input_tokens": 2031,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 11089,
+    "total_tokens": 13120,
+    "reasoning_output_tokens": 1497
+  },
   "visualScore": null,
-  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+  "visualReview": "Inspect the recorded film against all seven visual criteria. Technical execution does not prove puddle clearance, realism or narrative success."
 }

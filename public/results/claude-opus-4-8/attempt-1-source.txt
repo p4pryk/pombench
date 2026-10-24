@@ -9,273 +9,355 @@
 <script>
 const cv=document.getElementById('stage');
 const ctx=cv.getContext('2d');
-const PI=Math.PI;
-function clamp(v,a,b){return v<a?a:(v>b?b:v);}
-function S(t,a,b){let x=clamp((t-a)/(b-a),0,1);return x*x*(3-2*x);}
+const W=960,H=540,groundY=430;
+
 function lerp(a,b,u){return a+(b-a)*u;}
+function clamp(v,a,b){return v<a?a:v>b?b:v;}
+function smooth(x,a,b){let u=clamp((x-a)/(b-a),0,1);return u*u*(3-2*u);}
+function rnd(seed){let x=Math.sin(seed*12.9898)*43758.5453;return x-Math.floor(x);}
 
-// ---- dog state ----
-function dogState(t){
-  let x;
-  if(t<1)x=170;
-  else if(t<3)x=lerp(170,560,S(t,1,3));
-  else if(t<4.5)x=lerp(560,615,S(t,3,4.5));
-  else if(t<6)x=615;
-  else if(t<8)x=lerp(615,545,S(t,6,8));
-  else if(t<10)x=lerp(545,460,S(t,8,10));
-  else x=460;
-  let ori=0;
-  if(t>=8&&t<10)ori=lerp(0,-PI/2,S(t,8,10));
-  else if(t>=10)ori=-PI/2;
-  let pitch=0;
-  if(t<4.3)pitch=0;
-  else if(t<5.2)pitch=lerp(0,1.1,S(t,4.3,5.2));
-  else if(t<6)pitch=lerp(1.1,0.2,S(t,5.2,6));
-  else pitch=0.2;
-  return {x:x,ori:ori,pitch:pitch,t:t};
+// ---------- TIMELINE ----------
+function getState(t){
+  let s={cx:130,lift:0,crouch:0,tilt:0,legPhase:(t*2.2)%1,mode:'idle',
+         headYaw:0,headPitch:0,mouth:0,bone:false,frontal:0,facing:1,breathe:0};
+  if(t<0)t=0;
+  if(t<1){
+    s.cx=130;s.mode='idle';s.headYaw=smooth(t,0.3,0.9)*0.35;s.breathe=Math.sin(t*2)*0.5;
+  } else if(t<1.6){
+    let u=(t-1)/0.6;s.cx=lerp(130,382,u);s.mode='run';s.legPhase=(t*3.1)%1;s.headYaw=0.1;
+  } else if(t<1.85){
+    let u=(t-1.6)/0.25;s.cx=lerp(382,432,u);s.mode='load';s.crouch=smooth(u,0,1);s.tilt=-0.06;
+  } else if(t<2.45){
+    let u=(t-1.85)/0.6;s.cx=lerp(432,596,u);s.mode='air';
+    s.lift=Math.sin(u*Math.PI)*98;s.tilt=lerp(-0.14,0.14,u);
+  } else if(t<2.72){
+    let u=(t-2.45)/0.27;s.cx=lerp(596,626,u);s.mode='land';s.crouch=Math.sin(u*Math.PI)*0.85;s.tilt=0.06*(1-u);
+  } else if(t<3.1){
+    let u=(t-2.72)/0.38;s.cx=lerp(626,702,u);s.mode='run';s.legPhase=(t*3)%1;
+  } else if(t<4.5){
+    let u=(t-3.1)/1.4;s.cx=lerp(702,770,u);s.mode='walk';s.legPhase=(t*1.8)%1;
+  } else if(t<6){
+    let u=(t-4.5)/1.5;s.cx=770;s.mode='stand';
+    let down=smooth(u,0,0.4),up=smooth(u,0.62,1);
+    s.headPitch=0.95*down-0.95*up;
+    s.mouth=(u>0.25&&u<0.7)?1:0;
+    s.bone=u>0.56;
+  } else if(t<8){
+    let u=(t-6)/2;s.cx=lerp(770,688,u);s.mode='back';s.bone=true;s.legPhase=(t*1.8)%1;s.headPitch=0.05;
+  } else if(t<10){
+    let u=(t-8)/2;s.cx=lerp(688,662,u);s.frontal=smooth(u,0,1);s.bone=true;s.mode='turn';
+    s.headYaw=lerp(0.1,0,u);
+  } else {
+    let u=(t-10);s.cx=662;s.frontal=1;s.bone=true;s.mode='front';
+    s.breathe=Math.sin(u*1.8)*0.5;s.headYaw=Math.sin(u*0.7)*0.04;
+  }
+  return s;
 }
-const stride=36;
-const scale=1.5;
-const groundY=430;
 
-function projS(st,X,Y,Z){
-  const ca=Math.cos(st.ori),sa=Math.sin(st.ori);
-  const hx=X*ca-Z*sa;
-  const depth=X*sa+Z*ca;
-  return {sx:st.x+hx*scale, sy:groundY-Y*scale, depth:depth};
-}
-// pivot head
-function headPoint(st,ox,oy,z){
-  const p=st.pitch,cp=Math.cos(p),sp=Math.sin(p);
-  const rx=ox*cp+oy*sp;
-  const ry=-ox*sp+oy*cp;
-  return projS(st,30+rx,42+ry,z);
-}
-function mouthWorld(st){return headPoint(st,24,-4,0);}
-function mouthFront(st){return headPoint(st,40,-4,0);}
-
-const tc=5.2;
-const restBone=(function(){return mouthWorld(dogState(tc));})();
-
-// ---- leg IK ----
-function legPoints(st,hipX,hipY,Z,offset,speedSign){
-  const phase=st.x/stride + offset;
-  let p=phase-Math.floor(phase);
-  const stanceFrac=0.6, Samp=12, liftH=7;
-  let sx,fy;
-  if(p<stanceFrac){let u=p/stanceFrac;sx=(0.5-u)*Samp;fy=0;}
-  else{let u=(p-stanceFrac)/(1-stanceFrac);sx=(-0.5+u)*Samp;fy=Math.sin(PI*u)*liftH;}
-  // if essentially not moving, keep neutral-ish (phase const anyway)
-  const fx=hipX+sx;
-  const L1=14,L2=14;
-  let dx=fx-hipX, dy=(fy)-hipY;
-  let d=Math.hypot(dx,dy); d=clamp(d,0.1,L1+L2-0.2);
-  let aa=Math.acos(clamp((L1*L1+d*d-L2*L2)/(2*L1*d),-1,1));
+// ---------- LEG IK ----------
+function ikKnee(hx,hy,fx,fy,a,b,bend){
+  let dx=fx-hx,dy=fy-hy,d=Math.hypot(dx,dy);
+  d=clamp(d,0.01,a+b-0.01);
   let base=Math.atan2(dy,dx);
-  let bend=(hipX>0)?-1:1;
-  let ka=base+bend*aa;
-  let kx=hipX+L1*Math.cos(ka), ky=hipY+L1*Math.sin(ka);
-  return {hip:projS(st,hipX,hipY,Z),knee:projS(st,kx,ky,Z),foot:projS(st,fx,fy,Z)};
+  let ca=clamp((a*a+d*d-b*b)/(2*a*d),-1,1);
+  let A=Math.acos(ca);
+  let ka=base+bend*A;
+  return[hx+a*Math.cos(ka),hy+a*Math.sin(ka)];
+}
+function drawLeg(hx,hy,fx,fy,bend,wTop,wBot,col,colD){
+  let[kx,ky]=ikKnee(hx,hy,fx,fy,27,29,bend);
+  ctx.lineCap='round';
+  ctx.strokeStyle=col;
+  ctx.lineWidth=wTop;ctx.beginPath();ctx.moveTo(hx,hy);ctx.lineTo(kx,ky);ctx.stroke();
+  ctx.lineWidth=wBot;ctx.beginPath();ctx.moveTo(kx,ky);ctx.lineTo(fx,fy);ctx.stroke();
+  // paw
+  ctx.fillStyle=colD;ctx.beginPath();ctx.ellipse(fx,fy,wBot*0.65,wBot*0.5,0,0,7);ctx.fill();
 }
 
-function blobFn(ctx,px,py,r,c1,c2){
-  let g=ctx.createRadialGradient(px-r*0.3,py-r*0.35,r*0.1,px,py,r);
-  g.addColorStop(0,c1);g.addColorStop(1,c2);
-  ctx.fillStyle=g;ctx.beginPath();ctx.arc(px,py,r,0,2*PI);ctx.fill();
-}
-
-function drawBone(ctx,c,angle,len,r){
-  ctx.save();ctx.translate(c.sx,c.sy);ctx.rotate(angle);
-  ctx.fillStyle='#efe7d2';ctx.strokeStyle='#cbbfa3';ctx.lineWidth=1;
-  const h=len/2;
-  ctx.beginPath();ctx.moveTo(-h,-r*0.5);ctx.lineTo(h,-r*0.5);ctx.lineTo(h,r*0.5);ctx.lineTo(-h,r*0.5);ctx.closePath();ctx.fill();
-  for(let s=-1;s<=1;s+=2){
-    ctx.beginPath();ctx.arc(h*s,-r,r,0,2*PI);ctx.fill();ctx.stroke();
-    ctx.beginPath();ctx.arc(h*s,r,r,0,2*PI);ctx.fill();ctx.stroke();
+// ---------- FUR BLOB ----------
+function furBlob(cx,cy,rx,ry,base,light,seed){
+  let g=ctx.createRadialGradient(cx-rx*0.3,cy-ry*0.4,ry*0.2,cx,cy,Math.max(rx,ry));
+  g.addColorStop(0,light);g.addColorStop(0.6,base);g.addColorStop(1,base);
+  ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,7);ctx.fill();
+  // tufts
+  let n=42;
+  for(let i=0;i<n;i++){
+    let a=i/n*6.283;
+    let r1=rnd(seed+i)*0.5+0.6;
+    let ex=cx+Math.cos(a)*rx*r1, ey=cy+Math.sin(a)*ry*r1;
+    let len=4+rnd(seed+i*1.7)*6;
+    let ox=ex+Math.cos(a)*len, oy=ey+Math.sin(a)*len;
+    ctx.strokeStyle=(i%3==0)?light:base;
+    ctx.lineWidth=1.6;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(ex,ey);ctx.lineTo(ox,oy);ctx.stroke();
   }
-  ctx.restore();
 }
 
-function drawDog(ctx,t){
-  const st=dogState(t);
-  // shadow
+// ---------- DOG SIDE ----------
+function drawDogSide(cx,s,alpha,sx){
+  const base='#d4873a',light='#f1c988',dark='#a05d1f',cream='#f5e3c0';
   ctx.save();
-  ctx.globalAlpha=0.28;ctx.fillStyle='#2a2410';
-  ctx.beginPath();ctx.ellipse(st.x,groundY+6,42*scale*0.55,10,0,0,2*PI);ctx.fill();
+  ctx.globalAlpha=alpha;
+  ctx.translate(cx,0);
+  ctx.scale(sx,1);
+  ctx.rotate(s.tilt*0.0);
+  let bob=s.mode==='run'?Math.sin(s.legPhase*12.566)*2:0;
+  let bodyY=groundY-48-s.lift-s.crouch*9+bob+s.breathe;
+  ctx.translate(0,0);
+  ctx.rotate(s.tilt);
+
+  // feet targets
+  let fnH=[22,bodyY-6],frH=[-24,bodyY-2];
+  let feet={};
+  function gaitFoot(hip,ph,stride,lift){
+    let p=(s.legPhase+ph)%1;
+    let fx=hip[0]+Math.cos(p*6.283)*stride;
+    let lf=Math.max(0,Math.sin(p*6.283));
+    let fy=groundY-s.crouch*9-lf*lift;
+    return[fx,fy];
+  }
+  if(s.mode==='run'){
+    feet.fn=gaitFoot(fnH,0,16,18);feet.ff=gaitFoot(fnH,0.12,16,15);
+    feet.rn=gaitFoot(frH,0.5,17,18);feet.rf=gaitFoot(frH,0.62,17,15);
+  } else if(s.mode==='air'){
+    let u=clamp((s.tilt+0.14)/0.28,0,1);
+    feet.fn=[28,bodyY+6];feet.ff=[33,bodyY+2];
+    feet.rn=[-30,bodyY+8];feet.rf=[-35,bodyY+4];
+  } else if(s.mode==='load'){
+    feet.fn=[20,groundY];feet.ff=[26,groundY];feet.rn=[-28,groundY+ -2];feet.rf=[-34,groundY];
+  } else if(s.mode==='land'){
+    feet.fn=[24,groundY];feet.ff=[30,groundY];feet.rn=[-26,groundY];feet.rf=[-32,groundY];
+  } else if(s.mode==='back'||s.mode==='walk'){
+    let dir=s.mode==='back'?-1:1;
+    feet.fn=gaitFoot(fnH,0,10*1,10);feet.ff=gaitFoot(fnH,0.3,10,8);
+    feet.rn=gaitFoot(frH,0.5,10,10);feet.rf=gaitFoot(frH,0.8,10,8);
+  } else {
+    feet.fn=[20,groundY];feet.ff=[26,groundY];feet.rn=[-26,groundY];feet.rf=[-32,groundY];
+  }
+
+  // far legs (behind body)
+  drawLeg(fnH[0],fnH[1],feet.ff[0],feet.ff[1],1,9,7,dark,'#8a4f18');
+  drawLeg(frH[0],frH[1],feet.rf[0],feet.rf[1],-1,10,7,dark,'#8a4f18');
+
+  // tail plume (behind, curled over back)
+  ctx.save();
+  let tw=Math.sin(s.legPhase*6.283)* (s.mode==='run'?6:2) + s.breathe*2;
+  furBlob(-38,bodyY-30+tw*0.3, 24,20, base,light, 71);
+  furBlob(-30,bodyY-40+tw*0.4, 20,16, light,cream, 73);
   ctx.restore();
 
-  const items=[];
-  function add(depth,fn){items.push({d:depth,f:fn});}
+  // body
+  furBlob(-2,bodyY-2, 38,30, base,light, 11);
+  // chest/ruff
+  furBlob(24,bodyY+2, 24,26, base,light, 23);
 
-  // legs
-  const legs=[
-    {hx:22,hy:28,z:-7,off:0.0},
-    {hx:22,hy:28,z:7,off:0.5},
-    {hx:-22,hy:26,z:-7,off:0.5},
-    {hx:-22,hy:26,z:7,off:0.0}
-  ];
-  for(const lg of legs){
-    const lp=legPoints(st,lg.hx,lg.hy,lg.z,lg.off,1);
-    add(lp.hip.depth+0.2,function(){
-      ctx.lineCap='round';ctx.lineJoin='round';
-      ctx.strokeStyle='#9c5f2b';ctx.lineWidth=8;
-      ctx.beginPath();ctx.moveTo(lp.hip.sx,lp.hip.sy);ctx.lineTo(lp.knee.sx,lp.knee.sy);ctx.lineTo(lp.foot.sx,lp.foot.sy);ctx.stroke();
-      ctx.strokeStyle='#b67b3d';ctx.lineWidth=5;
-      ctx.beginPath();ctx.moveTo(lp.hip.sx,lp.hip.sy);ctx.lineTo(lp.knee.sx,lp.knee.sy);ctx.lineTo(lp.foot.sx,lp.foot.sy);ctx.stroke();
-      // paw
-      ctx.fillStyle='#e6d2ac';ctx.beginPath();ctx.arc(lp.foot.sx,lp.foot.sy,4.5,0,2*PI);ctx.fill();
-    });
+  // near legs (front of body)
+  drawLeg(frH[0],frH[1],feet.rn[0],feet.rn[1],-1,11,8,base,dark);
+  drawLeg(fnH[0],fnH[1],feet.fn[0],feet.fn[1],1,10,8,base,dark);
+
+  // neck ruff
+  furBlob(30,bodyY-14, 20,20, light,cream, 31);
+
+  // head
+  ctx.save();
+  let hx=46,hy=bodyY-24+s.headPitch*34;
+  ctx.translate(hx,hy);
+  ctx.rotate(s.headPitch*0.5 - s.headYaw*0.2);
+  // ears
+  ctx.fillStyle=dark;
+  ctx.beginPath();ctx.moveTo(-4,-14);ctx.lineTo(2,-30);ctx.lineTo(10,-14);ctx.closePath();ctx.fill();
+  ctx.fillStyle=base;
+  ctx.beginPath();ctx.moveTo(6,-13);ctx.lineTo(13,-28);ctx.lineTo(20,-11);ctx.closePath();ctx.fill();
+  // head fluff
+  furBlob(4,-2, 20,18, base,light, 51);
+  // muzzle
+  ctx.fillStyle=cream;
+  ctx.beginPath();ctx.ellipse(18,2,12,9,0.1,0,7);ctx.fill();
+  // mouth open
+  if(s.mouth>0){ctx.fillStyle='#5a2a1a';ctx.beginPath();ctx.ellipse(24,6,6,4*s.mouth,0,0,7);ctx.fill();}
+  // nose
+  ctx.fillStyle='#241712';ctx.beginPath();ctx.ellipse(28,0,3.2,3,0,0,7);ctx.fill();
+  // eye
+  ctx.fillStyle='#1a120c';ctx.beginPath();ctx.ellipse(8,-3,2.8,3.2,0,0,7);ctx.fill();
+  ctx.fillStyle='#fff';ctx.beginPath();ctx.ellipse(9,-4,0.9,0.9,0,0,7);ctx.fill();
+  // bone in mouth
+  if(s.bone){drawBone(30,4,0.1,0.8);}
+  ctx.restore();
+
+  ctx.restore();
+}
+
+// ---------- DOG FRONT ----------
+function drawDogFront(cx,s,alpha){
+  const base='#d4873a',light='#f1c988',dark='#a05d1f',cream='#f5e3c0';
+  ctx.save();ctx.globalAlpha=alpha;ctx.translate(cx,0);
+  let bodyY=groundY-44+s.breathe;
+  let br=1+s.breathe*0.01;
+  // tail peek
+  furBlob(26,bodyY-18,16,14,light,cream,77);
+  // front legs
+  ctx.strokeStyle=base;ctx.lineCap='round';
+  ctx.lineWidth=12;
+  ctx.beginPath();ctx.moveTo(-12,bodyY+6);ctx.lineTo(-13,groundY);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(12,bodyY+6);ctx.lineTo(13,groundY);ctx.stroke();
+  ctx.fillStyle=dark;
+  ctx.beginPath();ctx.ellipse(-13,groundY,7,5,0,0,7);ctx.fill();
+  ctx.beginPath();ctx.ellipse(13,groundY,7,5,0,0,7);ctx.fill();
+  // body fluffy
+  furBlob(0,bodyY,40*br,34,base,light,91);
+  // chest ruff
+  furBlob(0,bodyY+6,30,24,light,cream,93);
+  // head
+  let hx=0,hy=bodyY-28;
+  // ears
+  ctx.fillStyle=dark;
+  ctx.beginPath();ctx.moveTo(hx-18,hy-6);ctx.lineTo(hx-24,hy-26);ctx.lineTo(hx-6,hy-12);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(hx+18,hy-6);ctx.lineTo(hx+24,hy-26);ctx.lineTo(hx+6,hy-12);ctx.closePath();ctx.fill();
+  ctx.fillStyle=base;
+  ctx.beginPath();ctx.moveTo(hx-14,hy-6);ctx.lineTo(hx-19,hy-22);ctx.lineTo(hx-5,hy-11);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(hx+14,hy-6);ctx.lineTo(hx+19,hy-22);ctx.lineTo(hx+5,hy-11);ctx.closePath();ctx.fill();
+  // head fluff
+  furBlob(hx,hy,22,20,base,light,95);
+  // muzzle
+  ctx.fillStyle=cream;ctx.beginPath();ctx.ellipse(hx,hy+8,11,9,0,0,7);ctx.fill();
+  // nose
+  ctx.fillStyle='#241712';ctx.beginPath();ctx.ellipse(hx,hy+6,3.4,2.8,0,0,7);ctx.fill();
+  // eyes
+  ctx.fillStyle='#1a120c';
+  ctx.beginPath();ctx.ellipse(hx-8,hy-1,3,3.6,0,0,7);ctx.fill();
+  ctx.beginPath();ctx.ellipse(hx+8,hy-1,3,3.6,0,0,7);ctx.fill();
+  ctx.fillStyle='#fff';
+  ctx.beginPath();ctx.ellipse(hx-7,hy-2.5,1,1,0,0,7);ctx.fill();
+  ctx.beginPath();ctx.ellipse(hx+9,hy-2.5,1,1,0,0,7);ctx.fill();
+  // bone horizontal across muzzle
+  if(s.bone){drawBone(hx,hy+11,0,1.0);}
+  ctx.restore();
+}
+
+function drawBone(x,y,rot,sc){
+  ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.scale(sc,sc);
+  ctx.fillStyle='#efe6cf';ctx.strokeStyle='#cbbd9a';ctx.lineWidth=1.2;
+  ctx.beginPath();ctx.roundRect(-13,-3,26,6,3);ctx.fill();ctx.stroke();
+  for(let s1=-1;s1<=1;s1+=2){
+    ctx.beginPath();ctx.ellipse(13*s1,-4,4,4,0,0,7);ctx.fill();ctx.stroke();
+    ctx.beginPath();ctx.ellipse(13*s1,4,4,4,0,0,7);ctx.fill();ctx.stroke();
   }
-
-  // tail plume
-  const tailPts=[[-26,33,0],[-28,40,0],[-26,47,0],[-20,52,0],[-13,52,0]];
-  const tbase=projS(st,-26,33,0);
-  add(tbase.depth-1,function(){
-    for(let i=0;i<tailPts.length;i++){
-      const sw=Math.sin(t*2+i)*0.8;
-      const pp=projS(st,tailPts[i][0]+sw,tailPts[i][1],tailPts[i][2]);
-      const r=(i<2?11:9);
-      blobFn(ctx,pp.sx,pp.sy,r,'#f2dcb4','#c97f36');
-    }
-  });
-
-  // body blobs
-  const breath=1+0.02*Math.sin(t*2)*(t>=10?1:0.3);
-  const bodyBlobs=[
-    [-24,30,0,15,'#e6a357','#b76e30'],
-    [-8,31,0,17,'#e6a357','#b76e30'],
-    [8,31,0,18*breath,'#eaab60','#bc7333'],
-    [20,32,0,17,'#eeb468','#c27a38']
-  ];
-  for(const b of bodyBlobs){const pp=projS(st,b[0],b[1],b[2]);add(pp.depth,function(){blobFn(ctx,pp.sx,pp.sy,b[3]*scale,b[4],b[5]);});}
-  // ruff
-  const ruff=projS(st,27,35,0);
-  add(ruff.depth-0.3,function(){blobFn(ctx,ruff.sx,ruff.sy,21*scale,'#f7e4c1','#d7a660');});
-
-  // head + face
-  const headC=headPoint(st,8,5,0);
-  add(headC.depth+0.1,function(){
-    // ears
-    for(const z of [-6,6]){
-      const b1=headPoint(st,2,14,z),b2=headPoint(st,9,13,z),tp=headPoint(st,5,24,z);
-      ctx.fillStyle='#c77f3a';ctx.beginPath();ctx.moveTo(b1.sx,b1.sy);ctx.lineTo(b2.sx,b2.sy);ctx.lineTo(tp.sx,tp.sy);ctx.closePath();ctx.fill();
-      const ti=headPoint(st,5,20,z);
-      ctx.fillStyle='#7d4a22';ctx.beginPath();ctx.moveTo((b1.sx+b2.sx)/2,(b1.sy+b2.sy)/2);ctx.lineTo(ti.sx,ti.sy);ctx.lineTo(b2.sx,b2.sy);ctx.closePath();ctx.fill();
-    }
-    // head mass
-    blobFn(ctx,headC.sx,headC.sy,13*scale,'#edb165','#c17c38');
-    // muzzle
-    const mz=headPoint(st,19,-1,0);
-    blobFn(ctx,mz.sx,mz.sy,8*scale,'#f0c27f','#c88a46');
-    // eyes
-    for(const z of [-4.5,4.5]){
-      const e=headPoint(st,11,6,z);
-      ctx.fillStyle='#241a10';ctx.beginPath();ctx.arc(e.sx,e.sy,3,0,2*PI);ctx.fill();
-      ctx.fillStyle='rgba(255,255,255,0.8)';ctx.beginPath();ctx.arc(e.sx-1,e.sy-1,1,0,2*PI);ctx.fill();
-    }
-    // nose
-    const nz=headPoint(st,24,-1,0);
-    ctx.fillStyle='#1c140d';ctx.beginPath();ctx.arc(nz.sx,nz.sy,3.2,0,2*PI);ctx.fill();
-  });
-
-  // sort far->near
-  items.sort((a,b)=>b.d-a.d);
-  for(const it of items)it.f();
-
-  return st;
+  ctx.restore();
 }
 
-function drawHouseBack(ctx){
-  // interior dark (seen through door)
-  ctx.fillStyle='#241c13';
-  ctx.beginPath();ctx.moveTo(620,300);ctx.lineTo(720,300);ctx.lineTo(720,440);ctx.lineTo(620,440);ctx.closePath();ctx.fill();
-  // interior floor platform
-  ctx.fillStyle='#3a2c1a';
-  ctx.beginPath();ctx.moveTo(620,405);ctx.lineTo(720,405);ctx.lineTo(720,440);ctx.lineTo(620,440);ctx.closePath();ctx.fill();
-}
-function drawHouseFront(ctx){
-  // front wall with door hole (even-odd)
-  ctx.fillStyle='#9d5a3a';
-  ctx.beginPath();
-  ctx.rect(590,300,240,140);
-  // door hole (arch approx)
-  ctx.moveTo(720,440);
-  ctx.lineTo(720,350);
-  ctx.arc(670,350,50,0,PI,false);
-  ctx.lineTo(620,440);
-  ctx.closePath();
-  ctx.fill('evenodd');
-  // wall planks shading
-  ctx.strokeStyle='rgba(60,30,15,0.3)';ctx.lineWidth=2;
-  for(let yy=312;yy<440;yy+=16){ctx.beginPath();ctx.moveTo(590,yy);ctx.lineTo(830,yy);ctx.stroke();}
-  // door frame
-  ctx.strokeStyle='#6d3c25';ctx.lineWidth=5;
-  ctx.beginPath();ctx.moveTo(620,440);ctx.lineTo(620,350);ctx.arc(670,350,50,PI,0,false);ctx.lineTo(720,440);ctx.stroke();
-  // roof
-  ctx.fillStyle='#7a3f28';
-  ctx.beginPath();ctx.moveTo(575,305);ctx.lineTo(710,200);ctx.lineTo(845,305);ctx.closePath();ctx.fill();
-  ctx.fillStyle='#8c4a30';
-  ctx.beginPath();ctx.moveTo(575,305);ctx.lineTo(710,205);ctx.lineTo(710,200);ctx.lineTo(575,300);ctx.closePath();ctx.fill();
-  ctx.strokeStyle='rgba(50,25,12,0.4)';ctx.lineWidth=2;
-  for(let i=1;i<7;i++){ctx.beginPath();ctx.moveTo(575+ (710-575)*i/7,305-(305-200)*i/7*0);ctx.stroke();}
-}
-
-function drawBackground(ctx){
+// ---------- SCENE ----------
+function drawBackground(){
   // sky
-  let g=ctx.createLinearGradient(0,0,0,340);
-  g.addColorStop(0,'#aad4f0');g.addColorStop(1,'#dcefe0');
-  ctx.fillStyle=g;ctx.fillRect(0,0,960,340);
-  // sun glow
-  let sg=ctx.createRadialGradient(150,80,10,150,80,120);
-  sg.addColorStop(0,'rgba(255,250,220,0.9)');sg.addColorStop(1,'rgba(255,250,220,0)');
-  ctx.fillStyle=sg;ctx.fillRect(0,0,400,260);
+  let g=ctx.createLinearGradient(0,0,0,groundY);
+  g.addColorStop(0,'#bfe4f2');g.addColorStop(1,'#e8f3e0');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,groundY);
   // distant fence
-  ctx.fillStyle='#b79a6b';ctx.fillRect(0,300,960,20);
-  ctx.fillStyle='#a88c5e';
-  for(let x=0;x<960;x+=26){ctx.fillRect(x,282,16,38);}
+  ctx.fillStyle='#9fb98a';ctx.fillRect(0,groundY-70,W,18);
+  ctx.fillStyle='#8aa677';
+  for(let x=0;x<W;x+=22){ctx.fillRect(x,groundY-90,12,38);}
   // grass
-  let gg=ctx.createLinearGradient(0,320,0,540);
-  gg.addColorStop(0,'#7db24e');gg.addColorStop(1,'#4f8a35');
-  ctx.fillStyle=gg;ctx.fillRect(0,320,960,220);
-  // grass texture tufts deterministic
-  for(let i=0;i<260;i++){
-    let x=(i*97+((i*i)%53))%960;
-    let y=330+((i*131)%200);
-    let h=4+((i*7)%6);
-    ctx.strokeStyle='rgba(40,80,25,0.35)';ctx.lineWidth=1;
-    ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+2,y-h);ctx.stroke();
-    ctx.strokeStyle='rgba(150,200,90,0.3)';
-    ctx.beginPath();ctx.moveTo(x+1,y);ctx.lineTo(x-1,y-h+1);ctx.stroke();
+  let gg=ctx.createLinearGradient(0,groundY,0,H);
+  gg.addColorStop(0,'#6fae52');gg.addColorStop(1,'#4f8c3a');
+  ctx.fillStyle=gg;ctx.fillRect(0,groundY,W,H-groundY);
+  // grass texture
+  for(let i=0;i<400;i++){
+    let x=rnd(i)*W,y=groundY+rnd(i*1.3)*(H-groundY);
+    ctx.strokeStyle=rnd(i*2.1)>0.5?'#5c9a44':'#79b85c';
+    ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+rnd(i*3)*2-1,y-3-rnd(i*4)*3);ctx.stroke();
   }
 }
 
-window.renderFrame=function(time){
-  let t=time; if(t<0)t=0; if(t>12)t=12;
-  ctx.clearRect(0,0,960,540);
-  drawBackground(ctx);
-  drawHouseBack(ctx);
+const puddle={cx:500,cy:groundY+22,rx:78,ry:16};
+function drawPuddle(){
+  ctx.save();
+  ctx.fillStyle='rgba(60,90,110,0.5)';
+  ctx.beginPath();ctx.ellipse(puddle.cx,puddle.cy,puddle.rx,puddle.ry,0,0,7);ctx.fill();
+  let g=ctx.createLinearGradient(0,puddle.cy-puddle.ry,0,puddle.cy+puddle.ry);
+  g.addColorStop(0,'#aecfe0');g.addColorStop(0.5,'#7ba6bf');g.addColorStop(1,'#5f8aa6');
+  ctx.fillStyle=g;
+  ctx.beginPath();ctx.ellipse(puddle.cx,puddle.cy,puddle.rx-4,puddle.ry-3,0,0,7);ctx.fill();
+  ctx.restore();
+}
+function drawReflection(s){
+  // only when dog over/near puddle
+  if(s.cx<puddle.cx-180||s.cx>puddle.cx+180)return;
+  ctx.save();
+  ctx.beginPath();ctx.ellipse(puddle.cx,puddle.cy,puddle.rx-4,puddle.ry-3,0,0,7);ctx.clip();
+  let axis=puddle.cy-6;
+  ctx.translate(0,2*axis);ctx.scale(1,-1);
+  ctx.globalAlpha=0.33;
+  // bluish tint via composite
+  drawDogSide(s.cx,s,0.33,1);
+  ctx.restore();
+}
 
-  // resting bone (before grab) drawn before dog so dog covers it when reaching
-  if(t<tc){
-    drawBone(ctx,restBone,-0.15,22,4.2);
-    ctx.save();ctx.globalAlpha=0.3;ctx.fillStyle='#1a140c';
-    ctx.beginPath();ctx.ellipse(restBone.sx,restBone.sy+10,14,4,0,0,2*PI);ctx.fill();ctx.restore();
+function drawHouse_back(){
+  // interior dark seen through doorway
+  ctx.fillStyle='#2a211a';
+  ctx.fillRect(695,groundY-96,90,96);
+  // floor shading
+  ctx.fillStyle='#3a2d22';
+  ctx.beginPath();ctx.moveTo(695,groundY);ctx.lineTo(785,groundY);ctx.lineTo(778,groundY-14);ctx.lineTo(702,groundY-14);ctx.closePath();ctx.fill();
+}
+function drawBone_rest(){
+  drawBone(766,groundY-8,-0.05,0.85);
+}
+function drawHouse_front(){
+  // walls around doorway
+  ctx.fillStyle='#b06a3e';
+  ctx.fillRect(672,groundY-112,24,112); // left wall
+  ctx.fillRect(785,groundY-112,58,112); // right wall
+  ctx.fillRect(672,groundY-132,171,22); // top band
+  // plank lines
+  ctx.strokeStyle='#8f5330';ctx.lineWidth=1.5;
+  for(let y=groundY-108;y<groundY;y+=14){
+    ctx.beginPath();ctx.moveTo(785,y);ctx.lineTo(843,y);ctx.stroke();
+  }
+  // doorway frame shadow
+  ctx.strokeStyle='#20160f';ctx.lineWidth=3;
+  ctx.strokeRect(695,groundY-96,90,96);
+  // roof
+  ctx.fillStyle='#7a4428';
+  ctx.beginPath();ctx.moveTo(656,groundY-128);ctx.lineTo(757,groundY-172);ctx.lineTo(859,groundY-128);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#8a4f30';
+  ctx.beginPath();ctx.moveTo(662,groundY-130);ctx.lineTo(757,groundY-168);ctx.lineTo(852,groundY-130);ctx.lineTo(843,groundY-124);ctx.lineTo(757,groundY-160);ctx.lineTo(672,groundY-124);ctx.closePath();ctx.fill();
+}
+
+function contactShadow(cx,w,a){
+  ctx.save();ctx.globalAlpha=a;ctx.fillStyle='rgba(20,30,15,0.5)';
+  ctx.beginPath();ctx.ellipse(cx,groundY+6,w,8,0,0,7);ctx.fill();ctx.restore();
+}
+
+// ---------- MAIN ----------
+function renderFrame(t){
+  if(t<0)t=0;if(t>12)t=12;
+  let s=getState(t);
+  ctx.clearRect(0,0,W,H);
+  drawBackground();
+  drawPuddle();
+  drawReflection(s);
+
+  drawHouse_back();
+  if(!s.bone) drawBone_rest();
+
+  // dog
+  let shW=34*(1-s.lift/200);
+  if(s.mode!=='air') contactShadow(s.cx, s.frontal>0.5?36:34, 1-s.frontal*0.1);
+  else contactShadow(s.cx, 20, 0.3);
+
+  if(s.frontal<0.95){
+    let a=1-smooth(s.frontal,0.35,0.9);
+    if(a>0.01) drawDogSide(s.cx,s,a,1-0.7*s.frontal);
+  }
+  if(s.frontal>0.05){
+    let a=smooth(s.frontal,0.35,0.9);
+    drawDogFront(s.cx,s,a);
   }
 
-  const st=drawDog(ctx,t);
-
-  // held bone after grab (on top, in mouth)
-  if(t>=tc){
-    const m=mouthWorld(st), f=mouthFront(st);
-    const ang=Math.atan2(f.sy-m.sy,f.sx-m.sx);
-    const len=clamp(Math.hypot(f.sx-m.sx,f.sy-m.sy)*2.2,10,26);
-    drawBone(ctx,m,ang,len,4.2);
-  }
-
-  drawHouseFront(ctx);
-};
-
-window.renderFrame(0);
+  drawHouse_front();
+}
+window.renderFrame=renderFrame;
+renderFrame(0);
 </script>
 </body>
 </html>

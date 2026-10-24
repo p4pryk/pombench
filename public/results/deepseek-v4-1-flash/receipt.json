@@ -1,14 +1,30 @@
 {
   "modelId": "DeepSeek-V4.1-Flash",
-  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
-  "sourceHash": "eba089a89f975160e1598d641c009aa391d4849878feaa3961554b5eb363e9b4",
-  "responseHash": "435b7355e9f5eec77cbbc4067eb8920dc6ed0893b5e9a9284ee02ab26c7c445a",
-  "requestHash": "8f05c0076a63f7d63436d015c28871ccda370815098ef63fe47b804d1c4e9420",
-  "streamHash": "df72ddc9f1e56aeb0dd63e291ce6fcc81ab2591f261884b3f57c7cd418882952",
+  "modelVersion": "2026-09-10",
+  "source": "Actual Foundry API usage",
+  "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+  "sourceHash": "12c0a34e861dce05fc152030ed18327e37886db39bdbc1cdcf6f151a38f761f8",
+  "requestHash": "8f995e9e0c5a1563b9ffb873a6290289ca819203478bf9278a51f1c317989d3f",
+  "responseHash": "13e824cda4528a6f2bbfe7b2f72935b9ca87c16eaad035fc5dfd5a0a3455f7cb",
+  "streamHash": "97f3b26f7bc55b566e7304be409d6c4cdb5e4db4e5637ff043cc349c216363e3",
   "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
-  "submission": 1,
   "tools": [],
   "usageComplete": true,
+  "submission": 1,
+  "rawUsage": {
+    "prompt_tokens": 2038,
+    "total_tokens": 10395,
+    "completion_tokens": 8357,
+    "prompt_tokens_details": null,
+    "reasoning_tokens": 0
+  },
+  "usage": {
+    "input_tokens": 2038,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 8357,
+    "total_tokens": 10395
+  },
   "visualScore": null,
-  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+  "visualReview": "Inspect the recorded film against all seven visual criteria. Technical execution does not prove puddle clearance, realism or narrative success."
 }

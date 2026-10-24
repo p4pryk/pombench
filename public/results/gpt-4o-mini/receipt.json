@@ -1,14 +1,39 @@
 {
   "modelId": "gpt-4o-mini",
-  "promptHash": "3850754f96a88338a0af42b127bf088265bbd7b30c690d0e23a31f2233a95ffd",
-  "sourceHash": "fcb77ab783f410dd1c8b17bf7cb0c8cfe0daa0e5b31688b94e4f6c9057afe785",
-  "responseHash": "08465c95cc884c7c15232bf302da7a66a191316c6608efd75d401826919aaa7d",
-  "requestHash": "30c026d3f7914de5075ccb76c2a3ca8b679408be3a2d977cf1a1ec10d9bbf31a",
-  "streamHash": null,
+  "modelVersion": "2024-07-18",
+  "source": "Actual Foundry API usage",
+  "promptHash": "9cdf60875daf64c26e03bb93b09d7a890c77e7e32a308753f7c91253571d983b",
+  "sourceHash": "43c44dc2de4cc2ea3551f054bb5444a692af3be5589287d7215fbaaefec222b1",
+  "requestHash": "7fdb35ea91056d24cc0132298ff8af51564696a49151b960b8c3525320373156",
+  "responseHash": "1aadc6df061fb27f713429e4b45dce884cda062b519de1741a77fa547f805cff",
+  "streamHash": "2afc92a68513b32a2d846578293d70213724949accb3bc990e10a8add52d8b26",
   "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
-  "submission": 1,
   "tools": [],
   "usageComplete": true,
+  "submission": 2,
+  "rawUsage": {
+    "completion_tokens": 1249,
+    "completion_tokens_details": {
+      "accepted_prediction_tokens": 0,
+      "audio_tokens": 0,
+      "reasoning_tokens": 0,
+      "rejected_prediction_tokens": 0
+    },
+    "prompt_tokens": 2203,
+    "prompt_tokens_details": {
+      "audio_tokens": 0,
+      "cached_tokens": 1920
+    },
+    "total_tokens": 3452
+  },
+  "usage": {
+    "input_tokens": 2203,
+    "cached_input_tokens": 1920,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 1249,
+    "total_tokens": 3452,
+    "reasoning_output_tokens": 0
+  },
   "visualScore": null,
-  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+  "visualReview": "Inspect the recorded film against all seven visual criteria. Technical execution does not prove puddle clearance, realism or narrative success."
 }

@@ -1,14 +1,36 @@
 {
   "modelId": "gpt-5-nano",
-  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
-  "sourceHash": "35af851dc19c4491815fdee20d735402283e48862bda78d02def2afba86d14ae",
-  "responseHash": "6c2c03812216d8e707600e5afa3f1c93ff82eef17dd812c22cc8e49e83b07058",
-  "requestHash": "3b97083e4df88f086b5bbff0029e2d31fee18b438754c2074b1f24f1b3d0daa2",
-  "streamHash": "5413c563135ff1b560efbf1b6e346bfd415d5d7747c18192b28df89e26f05e8e",
+  "modelVersion": "2025-08-07",
+  "source": "Actual Foundry API usage",
+  "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+  "sourceHash": "3e32b8f87a6c736b1ad55226d2a176d19c88f1b8dd6dcffef69b3bf58642af9f",
+  "requestHash": "eb81d2ae16e3a7574f948cdd77b219ae0b23b90ff7875f0965178a466c7f51c1",
+  "responseHash": "c52be51ac568fe751895591bcae87d6b0f5f69215cb12c17911eb220c34ec4da",
+  "streamHash": "cbe936f171ed2c523a8411b88276dc5f6655c2157d20f982477f762ff2166a9c",
   "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
-  "submission": 1,
   "tools": [],
   "usageComplete": true,
+  "submission": 1,
+  "rawUsage": {
+    "input_tokens": 2031,
+    "input_tokens_details": {
+      "cache_write_tokens": 0,
+      "cached_tokens": 0
+    },
+    "output_tokens": 5751,
+    "output_tokens_details": {
+      "reasoning_tokens": 896
+    },
+    "total_tokens": 7782
+  },
+  "usage": {
+    "input_tokens": 2031,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 5751,
+    "total_tokens": 7782,
+    "reasoning_output_tokens": 896
+  },
   "visualScore": null,
-  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+  "visualReview": "Inspect the recorded film against all seven visual criteria. Technical execution does not prove puddle clearance, realism or narrative success."
 }

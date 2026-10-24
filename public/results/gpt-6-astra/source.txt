@@ -2,368 +2,346 @@
 <html>
 <head>
 <meta charset="utf-8">
-<style>html,body{margin:0;background:#1c241c}#stage{display:block;width:960px;height:540px}</style>
+<style>html,body{margin:0;background:#20261d}#stage{display:block;width:960px;height:540px}</style>
 </head>
 <body>
 <canvas id="stage" width="960" height="540"></canvas>
 <script>
 "use strict";
-const canvas=document.getElementById("stage");
-const gl=canvas.getContext("webgl",{antialias:true,alpha:false,preserveDrawingBuffer:true});
-const VS=`
-attribute vec3 aPosition,aNormal,aColor;
-uniform mat4 uModel,uVP;
-varying vec3 vNormal,vColor,vWorld;
-void main(){
- vec4 p=uModel*vec4(aPosition,1.0);
- vWorld=p.xyz; vNormal=mat3(uModel)*aNormal; vColor=aColor;
- gl_Position=uVP*p;
-}`;
-const FS=`
-precision highp float;
-varying vec3 vNormal,vColor,vWorld;
-uniform float uAlpha;
-void main(){
- vec3 n=normalize(vNormal);
- float sun=max(dot(n,normalize(vec3(-0.65,1.0,0.7))),0.0);
- float sky=0.5+0.5*n.y;
- vec3 light=vec3(0.40,0.43,0.45)+vec3(0.57,0.48,0.34)*sun+vec3(0.12,0.14,0.13)*sky;
- vec3 c=vColor*light;
- float fog=clamp((length(vWorld.xz)-3.0)*0.024,0.0,0.13);
- c=mix(c,vec3(0.57,0.64,0.52),fog);
- gl_FragColor=vec4(pow(c,vec3(0.88)),uAlpha);
-}`;
-function shader(type,src){let s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);return s}
-let program=gl.createProgram();gl.attachShader(program,shader(gl.VERTEX_SHADER,VS));gl.attachShader(program,shader(gl.FRAGMENT_SHADER,FS));gl.linkProgram(program);gl.useProgram(program);
-const loc={p:gl.getAttribLocation(program,"aPosition"),n:gl.getAttribLocation(program,"aNormal"),c:gl.getAttribLocation(program,"aColor"),m:gl.getUniformLocation(program,"uModel"),vp:gl.getUniformLocation(program,"uVP"),a:gl.getUniformLocation(program,"uAlpha")};
-function vadd(a,b){return[a[0]+b[0],a[1]+b[1],a[2]+b[2]]}
-function sub(a,b){return[a[0]-b[0],a[1]-b[1],a[2]-b[2]]}
-function mul(a,s){return[a[0]*s,a[1]*s,a[2]*s]}
-function dot(a,b){return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]}
-function cross(a,b){return[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]]}
-function unit(a){let l=Math.hypot(...a)||1;return mul(a,1/l)}
-function ident(){return[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]}
-function mm(a,b){let c=new Array(16).fill(0);for(let j=0;j<4;j++)for(let i=0;i<4;i++)for(let k=0;k<4;k++)c[j*4+i]+=a[k*4+i]*b[j*4+k];return c}
-function tr(x,y,z){let m=ident();m[12]=x;m[13]=y;m[14]=z;return m}
-function sc(x,y,z){return[x,0,0,0,0,y,0,0,0,0,z,0,0,0,0,1]}
-function ry(a){let c=Math.cos(a),s=Math.sin(a);return[c,0,s,0,0,1,0,0,-s,0,c,0,0,0,0,1]}
-function rz(a){let c=Math.cos(a),s=Math.sin(a);return[c,s,0,0,-s,c,0,0,0,0,1,0,0,0,0,1]}
-function pt(m,p){return[m[0]*p[0]+m[4]*p[1]+m[8]*p[2]+m[12],m[1]*p[0]+m[5]*p[1]+m[9]*p[2]+m[13],m[2]*p[0]+m[6]*p[1]+m[10]*p[2]+m[14]]}
-function transform(p,r=0){return mm(tr(...p),ry(r))}
-function look(eye,target){let z=unit(sub(eye,target)),x=unit(cross([0,1,0],z)),y=cross(z,x);return[x[0],y[0],z[0],0,x[1],y[1],z[1],0,x[2],y[2],z[2],0,-dot(x,eye),-dot(y,eye),-dot(z,eye),1]}
-function ortho(l,r,b,t,n,f){return[2/(r-l),0,0,0,0,2/(t-b),0,0,0,0,-2/(f-n),0,-(r+l)/(r-l),-(t+b)/(t-b),-(f+n)/(f-n),1]}
-const vp=mm(ortho(-4.23,4.23,-2.38,2.38,.1,40),look([-6.8,4.3,8.8],[.45,.72,0]));
-gl.uniformMatrix4fv(loc.vp,false,new Float32Array(vp));
-gl.enable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
-let seed=17;
-function rand(){seed=(Math.imul(seed,1664525)+1013904223)|0;return(seed>>>0)/4294967296}
-function vert(a,p,n,c){a.push(...p,...n,...c)}
-function tri(a,p,q,r,c,n){n=n||unit(cross(sub(q,p),sub(r,p)));vert(a,p,n,c);vert(a,q,n,c);vert(a,r,n,c)}
-function quad(a,p,q,r,s,c){tri(a,p,q,r,c);tri(a,p,r,s,c)}
-function mesh(a){let b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(a),gl.STATIC_DRAW);return{b,count:a.length/9}}
-function draw(o,m=ident(),alpha=1){gl.bindBuffer(gl.ARRAY_BUFFER,o.b);for(let [l,off]of[[loc.p,0],[loc.n,12],[loc.c,24]]){gl.enableVertexAttribArray(l);gl.vertexAttribPointer(l,3,gl.FLOAT,false,36,off)}gl.uniformMatrix4fv(loc.m,false,new Float32Array(m));gl.uniform1f(loc.a,alpha);gl.drawArrays(gl.TRIANGLES,0,o.count)}
-function boxMesh(c){let a=[],p=[[-.5,-.5,-.5],[.5,-.5,-.5],[.5,.5,-.5],[-.5,.5,-.5],[-.5,-.5,.5],[.5,-.5,.5],[.5,.5,.5],[-.5,.5,.5]];for(let f of[[0,3,2,1],[4,5,6,7],[0,4,7,3],[1,2,6,5],[3,7,6,2],[0,1,5,4]])quad(a,...f.map(i=>p[i]),c);return mesh(a)}
-function ellipsoid(rx,yy,zz,c,hairs=0,len=.04,kind=0){
- let a=[],N=32,M=20;
- function point(u,v){return[rx*Math.cos(u)*Math.sin(v),yy*Math.cos(v),zz*Math.sin(u)*Math.sin(v)]}
- function normal(p){return unit([p[0]/(rx*rx),p[1]/(yy*yy),p[2]/(zz*zz)])}
- function color(p,r){let k=.89+.10*r+.055*p[1]/yy;
- if(kind===1) k+=.12*Math.max(0,-p[1]/yy);
- return c.map(v=>Math.min(.98,v*k))}
- for(let j=0;j<M;j++)for(let i=0;i<N;i++){
- let p=point(i/N*6.283,j/M*Math.PI),q=point((i+1)/N*6.283,j/M*Math.PI),r=point((i+1)/N*6.283,(j+1)/M*Math.PI),s=point(i/N*6.283,(j+1)/M*Math.PI);
- for(let v of[p,q,r,p,r,s])vert(a,v,normal(v),color(v,.5));
+const canvas=document.getElementById("stage"),ctx=canvas.getContext("2d");
+const W=960,H=540,TAU=Math.PI*2;
+const clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
+const mix=(a,b,t)=>a+(b-a)*t;
+const smooth=t=>{t=clamp(t);return t*t*(3-2*t)};
+function hash(n){let x=Math.sin(n*127.1+311.7)*43758.5453123;return x-Math.floor(x)}
+function P(p){return [460+.82*p[0]+.65*p[1],390-.26*p[0]+.33*p[1]-.9*p[2]]}
+function depth(p){return -.55*p[0]+.69*p[1]+.411*p[2]}
+function polygon(c,pts,fill){c.beginPath();pts.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.closePath();if(fill){c.fillStyle=fill;c.fill()}}
+function worldPoly(c,pts,fill){polygon(c,pts.map(P),fill)}
+function rgb(a){return `rgb(${a.map(x=>Math.round(clamp(x,0,255))).join(",")})`}
+const background=document.createElement("canvas");background.width=W;background.height=H;
+const bg=background.getContext("2d");
+function groundEllipse(c,x,y,rx,ry,color){
+ let pts=[];for(let i=0;i<64;i++){let a=i*TAU/64;pts.push(P([x+rx*Math.cos(a),y+ry*Math.sin(a),.2]))}polygon(c,pts,color);
+}
+function waterPath(c){
+ c.beginPath();
+ for(let i=0;i<=100;i++){let a=i*TAU/100,r=1+.045*Math.sin(a*5)+.025*Math.cos(a*9);
+ let p=P([-145+44*Math.cos(a)*r,88*Math.sin(a)*r,0]);i?c.lineTo(...p):c.moveTo(...p)}
+ c.closePath();
+}
+function makeBackground(){
+ let g=bg.createLinearGradient(0,0,0,540);g.addColorStop(0,"#b6c7ac");g.addColorStop(.39,"#788563");g.addColorStop(.65,"#77825a");g.addColorStop(1,"#a0a071");bg.fillStyle=g;bg.fillRect(0,0,W,H);
+ // Distant trees, softly grouped foliage.
+ for(let i=0;i<330;i++){let x=hash(i+1)*990,y=hash(i+98)*154,r=12+hash(i+821)*48;bg.beginPath();bg.arc(x,y,r,0,TAU);bg.fillStyle=`rgba(${40+hash(i+44)*35},${65+hash(i+16)*40},${38+hash(i+27)*32},.19)`;bg.fill()}
+ // Weathered garden fence.
+ for(let i=0;i<31;i++){
+ let x=i*34-20,top=130+9*Math.sin(i*.34);
+ let g=bg.createLinearGradient(x,0,x+31,0);g.addColorStop(0,"#77715c");g.addColorStop(.25,"#99927a");g.addColorStop(.85,"#8a856c");g.addColorStop(1,"#686951");
+ polygon(bg,[[x,250],[x,top+8],[x+15,top],[x+31,top+8],[x+31,250]],g);
+ for(let j=0;j<6;j++){bg.strokeStyle="rgba(57,56,40,.13)";bg.lineWidth=.6;bg.beginPath();bg.moveTo(x+4+j*4,top+12);bg.bezierCurveTo(x+j*4,180,x+7+j*4,216,x+3+j*4,251);bg.stroke()}
  }
- for(let i=0;i<hairs;i++){
- let u=rand()*Math.PI*2,y=rand()*2-1,s=Math.sqrt(1-y*y),p=[rx*s*Math.cos(u),yy*y,zz*s*Math.sin(u)],n=normal(p);
- let dir=unit(vadd(mul(n,.76),kind===2?[.15,.48,0]:[-.22,-.36,0]));
- let L=len*(.5+rand()*.85),w=.0025+rand()*.0032;
- let side=unit(cross(n,Math.abs(n[1])>.9?[1,0,0]:[0,1,0]));
- let middle=vadd(p,mul(dir,L*.57)),tip=vadd(vadd(p,mul(dir,L)),kind===2?[0,.012,0]:[-L*.12,-L*.12,0]);
- let root=mul(side,w),half=mul(side,w*.42),co=color(p,rand()),ct=co.map(v=>Math.min(1,v*(1.02+rand()*.09)));
- let nn=unit(vadd(n,mul(side,(rand()-.5)*.7)));
- for(let [v,col]of[[vadd(p,root),co],[sub(p,root),co],[sub(middle,half),ct],[vadd(p,root),co],[sub(middle,half),ct],[vadd(middle,half),ct],[vadd(middle,half),ct],[sub(middle,half),ct],[tip,ct]])vert(a,v,nn,col);
+ bg.fillStyle="#777661";bg.fillRect(0,201,960,9);bg.fillRect(0,242,960,9);
+ for(let i=0;i<37;i++){let x=hash(142+i)*1000,y=245+hash(33+i)*35;bg.fillStyle=i%2?"#667451":"#718059";bg.beginPath();bg.ellipse(x,y,18+hash(i+901)*32,9+hash(i+781)*17,0,0,TAU);bg.fill()}
+ // Sunlit earth, moss and individual grass blades.
+ for(let i=0;i<18000;i++){
+ let x=hash(i+1111)*960,y=253+hash(i+52311)*287;
+ let q=hash(i+281),a=.025+.10*hash(i+201);
+ bg.fillStyle=q<.45?`rgba(40,65,29,${a})`:`rgba(224,215,149,${a})`;
+ bg.beginPath();bg.ellipse(x,y,.7+hash(i+338)*3,.4+hash(i+903)*1.3,0,0,TAU);bg.fill();
+ if(i%3===0){let h=2+hash(i+532)*7;bg.strokeStyle=`rgba(${65+q*47},${83+q*42},${39+q*25},.3)`;bg.lineWidth=.65;bg.beginPath();bg.moveTo(x,y);bg.quadraticCurveTo(x-1,y-h*.6,x-3+hash(i+987)*6,y-h);bg.stroke()}
  }
- return mesh(a);
+ // Worn approach is earth, not a painted path.
+ for(let i=0;i<2700;i++){
+ let x=-365+hash(i+931)*735,y=(hash(i+765)-.5)*106,p=P([x,y,0]);
+ bg.fillStyle=`rgba(168,148,107,${.035+hash(i+91)*.09})`;
+ bg.beginPath();bg.ellipse(p[0],p[1],2+hash(i+91)*7,1+hash(i+342)*3,-.2,0,TAU);bg.fill();
+ }
+ groundEllipse(bg,265,25,169,149,"rgba(35,40,26,.12)");
+ groundEllipse(bg,275,45,138,123,"rgba(33,36,24,.13)");
+ groundEllipse(bg,-145,0,49,94,"rgba(78,70,49,.35)");
+ waterPath(bg);let wg=bg.createLinearGradient(330,350,410,458);wg.addColorStop(0,"#829790");wg.addColorStop(.45,"#a6b7ad");wg.addColorStop(1,"#bcc9b4");bg.fillStyle=wg;bg.fill();
+ bg.save();waterPath(bg);bg.clip();
+ for(let i=0;i<55;i++){let x=300+hash(i+987)*145,y=365+hash(i+862)*95;bg.strokeStyle="rgba(224,230,204,.15)";bg.lineWidth=.7;bg.beginPath();bg.moveTo(x,y);bg.lineTo(x+7+hash(i+221)*16,y-1);bg.stroke()}
+ bg.restore();
+ // Small plants along the fence.
+ for(let i=0;i<90;i++){let x=hash(i+654)*960,y=255+hash(i+199)*16;for(let j=0;j<4;j++){bg.strokeStyle=j%2?"#637648":"#7d8a51";bg.lineWidth=1.3;bg.beginPath();bg.moveTo(x,y);bg.quadraticCurveTo(x+j*3-4,y-9,x+j*5-7,y-15-hash(i+j+99)*8);bg.stroke()}}
 }
-const white=ellipsoid(1,1,1,[.86,.85,.75]);
-const black=ellipsoid(1,1,1,[.026,.023,.020]);
-const nose=ellipsoid(.081,.050,.073,[.025,.023,.022],100,.002);
-const eye=ellipsoid(.042,.044,.025,[.037,.024,.015]);
-const iris=ellipsoid(.021,.025,.012,[.010,.009,.007]);
-const glint=ellipsoid(.008,.009,.005,[1,.97,.85]);
-const body=ellipsoid(.61,.35,.29,[.69,.335,.108],5900,.075,1);
-const belly=ellipsoid(.44,.255,.25,[.82,.53,.26],2400,.068,1);
-const ruff=ellipsoid(.34,.40,.355,[.88,.565,.28],6600,.105,1);
-const bib=ellipsoid(.15,.275,.24,[.94,.75,.46],2200,.085,1);
-const skull=ellipsoid(.26,.25,.23,[.81,.43,.155],4000,.045,1);
-const cheek=ellipsoid(.205,.153,.243,[.93,.635,.315],2400,.051,1);
-const brow=ellipsoid(.134,.093,.095,[.78,.40,.14],700,.025);
-const muzzle=ellipsoid(.192,.094,.113,[.94,.77,.50],1800,.023);
-const jaw=ellipsoid(.154,.044,.088,[.88,.69,.43],700,.017);
-const upperLeg=ellipsoid(1,1,1,[.77,.42,.16],1000,.10,1);
-const lowerLeg=ellipsoid(1,1,1,[.87,.58,.29],650,.10,1);
-const paw=ellipsoid(.125,.068,.089,[.90,.67,.37],750,.022);
-const haunch=ellipsoid(.24,.29,.245,[.72,.37,.12],2300,.074,1);
-const tailparts=[
- ellipsoid(.155,.15,.16,[.78,.43,.17],1100,.075,2),
- ellipsoid(.19,.17,.18,[.88,.58,.28],1800,.11,2),
- ellipsoid(.245,.19,.205,[.94,.74,.43],2400,.13,2),
- ellipsoid(.255,.145,.19,[.96,.80,.53],2400,.12,2),
- ellipsoid(.18,.11,.16,[.94,.75,.43],1400,.11,2)
-];
-function earMesh(){
- let a=[],A=[-.07,0,-.098],B=[.085,0,.085],C=[-.014,.27,.009],D=[-.117,0,.067],co=[.66,.30,.091];
- tri(a,A,B,C,co);tri(a,B,D,C,[.80,.44,.17]);tri(a,D,A,C,[.82,.46,.20]);
- tri(a,[-.045,.038,-.051],[.055,.037,.065],[-.009,.222,.011],[.32,.19,.12]);
- for(let i=0;i<650;i++){let u=rand(),v=rand();if(u+v>1){u=1-u;v=1-v}let p=vadd(A,vadd(mul(sub(B,A),u),mul(sub(C,A),v)));p[0]+=.006;let L=.015+rand()*.025;tri(a,vadd(p,[0,0,-.003]),vadd(p,[0,0,.003]),vadd(p,[.007,L,0]),[.80+rand()*.11,.47+rand()*.10,.20]);}
- return mesh(a)
+makeBackground();
+
+const orange=[181,102,43],gold=[207,135,65],cream=[227,194,137],pale=[235,214,174];
+let primitives=[];
+let mirror=false;
+function addPoly(v,col){let a=v.map(p=>mirror?[p[0],p[1],-p[2]]:p);primitives.push({d:a.reduce((s,p)=>s+depth(p),0)/a.length,v:a.map(P),c:col})}
+function addHair(a,b,col,width){
+ if(mirror){a=[a[0],a[1],-a[2]];b=[b[0],b[1],-b[2]]}
+ primitives.push({d:depth(a)+.03,v:[P(a),P(b)],c:col,w:width});
 }
-const ear=earMesh();
-const wood=boxMesh([.44,.27,.145]),trim=boxMesh([.69,.51,.31]),darkwood=boxMesh([.255,.165,.096]),roofedge=boxMesh([.19,.25,.235]);
-const stone=boxMesh([.48,.48,.39]);
-function cube(o,p,s,m=ident()){draw(o,mm(m,mm(tr(...p),sc(...s))))}
-function segment(o,a,b,r1,r2,m=ident()){
- let y=unit(sub(b,a)),x=unit(cross([0,0,1],y)),z=cross(x,y),mid=mul(vadd(a,b),.5),L=Math.hypot(...sub(b,a))*.5;
- let mat=[x[0]*r1,x[1]*r1,x[2]*r1,0,y[0]*L,y[1]*L,y[2]*L,0,z[0]*r2,z[1]*r2,z[2]*r2,0,...mid,1];
- draw(o,mm(m,mat))
+function shade(color,n,variation=0){
+ let l=clamp(n[0]*(-.46)+n[1]*(-.24)+n[2]*.855,-1,1);
+ let s=.69+.30*Math.max(0,l)+.07*Math.max(0,n[1]);
+ return rgb(color.map((v,i)=>v*s+variation+(i===2?1:0)));
 }
-function beam(a,b,w,d,o=trim){let y=unit(sub(b,a)),x=unit(cross([0,0,1],y)),z=cross(x,y),mid=mul(vadd(a,b),.5),L=Math.hypot(...sub(b,a));draw(o,[x[0]*w,x[1]*w,x[2]*w,0,y[0]*L,y[1]*L,y[2]*L,0,z[0]*d,z[1]*d,z[2]*d,0,...mid,1])}
-let groundData=[];
-quad(groundData,[-30,-.018,-30],[-30,-.018,30],[30,-.018,30],[30,-.018,-30],[.285,.37,.19]);
-const ground=mesh(groundData);
-let lawn=[],blades=[];
-for(let i=0;i<21000;i++){
- let x=rand()*17-8,z=rand()*13-6,y=.002;
- if(x>2.12&&x<4.7&&Math.abs(z)<1.5)continue;
- let c=[.22+rand()*.12,.30+rand()*.15,.12+rand()*.095],w=.005+rand()*.01,h=.025+rand()*.065;
- tri(blades,[x-w,y,z],[x+w,y,z],[x+(rand()-.5)*.04,y+h,z+(rand()-.5)*.045],c,[0,.9,.3]);
- if(i%5===0)quad(lawn,[x-.035,0,z-.025],[x-.035,0,z+.025],[x+.035,0,z+.025],[x+.035,0,z-.025],[.28+rand()*.07,.35+rand()*.07,.17+rand()*.04]);
-}
-const grass=mesh(blades),groundSpeck=mesh(lawn);
-let shadowarr=[];
-for(let i=0;i<60;i++){let a=i/60*6.283,b=(i+1)/60*6.283;tri(shadowarr,[0,0,0],[Math.cos(a),0,Math.sin(a)],[Math.cos(b),0,Math.sin(b)],[.07,.09,.038],[0,1,0])}
-const shadow=mesh(shadowarr);
-function shade(x,z,sx,sz,alpha,y=.014,angle=0){
- gl.depthMask(false);
- for(let i=5;i>=0;i--)draw(shadow,mm(mm(tr(x,y+(5-i)*.0002,z),ry(angle)),sc(sx*(1+i*.085),1,sz*(1+i*.085))),alpha/6);
- gl.depthMask(true);
-}
-let fenceData=[];
-function staticBox(arr,p,s,c){
- let X=p[0],Y=p[1],Z=p[2],a=s[0]/2,b=s[1]/2,d=s[2]/2;
- let P=[[X-a,Y-b,Z-d],[X+a,Y-b,Z-d],[X+a,Y+b,Z-d],[X-a,Y+b,Z-d],[X-a,Y-b,Z+d],[X+a,Y-b,Z+d],[X+a,Y+b,Z+d],[X-a,Y+b,Z+d]];
- for(let f of[[0,3,2,1],[4,5,6,7],[0,4,7,3],[1,2,6,5],[3,7,6,2]])quad(arr,...f.map(i=>P[i]),c);
-}
-for(let i=0;i<65;i++){
- let x=-10+i*.31,c=.37+rand()*.09,h=1.48+rand()*.055;
- staticBox(fenceData,[x,h/2,-3.0],[.293,h,.085],[c*.92,c,c*.76]);
- for(let j=0;j<5;j++){let xx=x+(rand()-.5)*.27;quad(fenceData,[xx,0,-2.954],[xx+.003,0,-2.954],[xx+.008,h,-2.954],[xx+.003,h,-2.954],[c*.75,c*.82,c*.63]);}
-}
-staticBox(fenceData,[0,.37,-2.90],[20,.10,.10],[.32,.35,.255]);
-staticBox(fenceData,[0,1.14,-2.90],[20,.095,.10],[.34,.36,.27]);
-for(let x=-9;x<11;x+=2.2)staticBox(fenceData,[x,.82,-2.81],[.13,1.67,.15],[.36,.38,.28]);
-const fence=mesh(fenceData);
-let foliage=[];
-for(let i=0;i<2400;i++){
- let x=rand()*20-10,z=-3.3-rand()*3,y=.4+rand()*2.4,sz=.06+rand()*.15,c=[.15+rand()*.09,.24+rand()*.12,.105+rand()*.08];
- if(y>1.4+.65*Math.sin(x*1.3)+rand()*.5)continue;
- tri(foliage,[x-sz,y,z],[x,y+sz,z+.04],[x+sz,y,z],c,[0,.6,1]);
- tri(foliage,[x-sz,y,z],[x+sz,y,z],[x,y-sz,z+.03],c,[0,.7,1]);
-}
-const leaves=mesh(foliage);
-let houseData=[],grainData=[],roofData=[];
-const front=2.22,back=4.40,width=1.13,eave=1.76,ridge=2.49,door=.64,doorH=1.48;
-for(let j=0;j<12;j++){
- let y=.08+j*.14,c=[.49+(j%3)*.023,.305+(j%3)*.017,.164+(j%3)*.009];
- staticBox(houseData,[(front+back)/2,y+.063,-width],[back-front,.127,.105],c);
- staticBox(houseData,[(front+back)/2,y+.063,width],[back-front,.127,.105],c);
- staticBox(houseData,[back,y+.063,0],[.10,.127,width*2],c);
- if(y<doorH){
- staticBox(houseData,[front,y+.063,-(width+door)/2],[.10,.127,width-door],c);
- staticBox(houseData,[front,y+.063,(width+door)/2],[.10,.127,width-door],c);
- }else staticBox(houseData,[front,y+.063,0],[.10,.127,width*2],c);
-}
-tri(houseData,[front,eave,-width],[front,ridge,0],[front,eave,width],[.54,.345,.19],[-1,0,0]);
-tri(houseData,[back,eave,width],[back,ridge,0],[back,eave,-width],[.46,.28,.14],[1,0,0]);
-for(let i=0;i<800;i++){
- let x=front+.07+rand()*(back-front-.14),y=.09+rand()*1.59,z=width+.053;
- quad(grainData,[x,y,z],[x+.04+rand()*.10,y,z],[x+.04,y+.002,z],[x,y+.003,z],[.32,.21,.115]);
- let zz=(rand()>.5?1:-1)*(.70+rand()*.39);
- quad(grainData,[front-.051,y,zz],[front-.051,y,zz+.06],[front-.051,y+.002,zz+.065],[front-.051,y+.003,zz],[.35,.22,.12]);
-}
-for(let side of[-1,1]){
- for(let j=0;j<7;j++)for(let k=0;k<11;k++){
- let x=2.05+k*.236,z0=side*(j*.186),z1=side*((j+1)*.186),y0=2.54-Math.abs(z0)*.637,y1=2.54-Math.abs(z1)*.637;
- let co=.205+rand()*.05;
- quad(roofData,[x,y0+.013,z0],[x+.231,y0+.013,z0],[x+.231,y1+.013,z1],[x,y1+.013,z1],[co*.84,co*1.04,co]);
+function sphere(center,radii,color,seed,fur=0,rot=null,count=330){
+ function trans(v){if(rot)v=rot(v);return [center[0]+v[0],center[1]+v[1],center[2]+v[2]]}
+ function loc(th,ph){return [radii[0]*Math.sin(th)*Math.cos(ph),radii[1]*Math.sin(th)*Math.sin(ph),radii[2]*Math.cos(th)]}
+ const rings=10,slices=18;
+ for(let j=0;j<rings;j++)for(let k=0;k<slices;k++){
+ let th0=j*Math.PI/rings,th1=(j+1)*Math.PI/rings,ph0=k*TAU/slices,ph1=(k+1)*TAU/slices;
+ let n=[Math.sin((th0+th1)/2)*Math.cos((ph0+ph1)/2),Math.sin((th0+th1)/2)*Math.sin((ph0+ph1)/2),Math.cos((th0+th1)/2)];
+ if(rot)n=rot(n);
+ addPoly([trans(loc(th0,ph0)),trans(loc(th1,ph0)),trans(loc(th1,ph1)),trans(loc(th0,ph1))],shade(color,n));
+ }
+ if(!fur)return;
+ for(let i=0;i<count;i++){
+ let z=1-2*(i+.5)/count,ph=i*2.399963+seed,rr=Math.sqrt(1-z*z),n=[rr*Math.cos(ph),rr*Math.sin(ph),z];
+ let local=[n[0]*radii[0],n[1]*radii[1],n[2]*radii[2]];
+ let len=fur*(.48+.85*hash(i+seed*103));
+ // Guard hairs lie along the coat, with a softly lifted root.
+ let dir=[n[0]*.55-.15,n[1]*.72,n[2]*.65-.48];
+ if(n[2]>.6)dir[2]=.20;
+ let tip=local.map((v,j)=>v+dir[j]*len);
+ let normal=rot?rot(n):n;
+ let a=trans(local),b=trans(tip);
+ addHair(a,b,shade(color,normal,(hash(i+seed*997)-.43)*40),.55+hash(i+seed*241)*.55);
  }
 }
-const house=mesh(houseData),grain=mesh(grainData),roof=mesh(roofData);
-const boneShaft=ellipsoid(.052,.045,.28,[.91,.856,.69]);
-const boneEnd=ellipsoid(.079,.074,.075,[.94,.89,.75]);
-const boneGroove=ellipsoid(.015,.036,.008,[.61,.53,.38]);
-function bone(m){
- draw(boneShaft,m);
- for(let z of[-.265,.265])for(let x of[-.043,.043])draw(boneEnd,mm(m,tr(x,0,z)));
+function capsule(a,b,r1,r2,col,seed,fur=3){
+ let mid=a.map((v,i)=>(v+b[i])/2),vec=b.map((v,i)=>v-a[i]),len=Math.hypot(...vec),uz=vec.map(v=>v/len);
+ let ux=Math.abs(uz[2])<.9?[-uz[1],uz[0],0]:[1,0,0],ll=Math.hypot(...ux);ux=ux.map(v=>v/ll);
+ let uy=[uz[1]*ux[2]-uz[2]*ux[1],uz[2]*ux[0]-uz[0]*ux[2],uz[0]*ux[1]-uz[1]*ux[0]];
+ sphere(mid,[r1,r2,len/2+r1*.4],col,seed,fur,v=>v.map((_,i)=>ux[i]*v[0]+uy[i]*v[1]+uz[i]*v[2]),110);
 }
-const smooth=x=>{x=Math.max(0,Math.min(1,x));return x*x*(3-2*x)};
-function mix(a,b,t){return a+(b-a)*t}
-function position(t){
- if(t<=1)return -2.65;
- if(t<3){let u=(t-1)/2;return -2.65+3.50*(u-.12*Math.sin(2*Math.PI*u)/(2*Math.PI));}
- if(t<4.5)return mix(.85,2.30,smooth((t-3)/1.5));
- if(t<6)return 2.30;
- if(t<8)return mix(2.30,.73,smooth((t-6)/2));
- return .73;
-}
-function headParams(t){
- let down=smooth((t-4.52)/.65)*(1-smooth((t-5.43)/.56));
- return{x:mix(.61,.73,down),y:mix(1.025,.405,down),a:mix(.015,-.55,down),down};
-}
-function dogState(t){
- let heading=t<8?0:2.11*smooth((t-8)/2);
- let moving=(t>1&&t<4.5)||(t>6&&t<8);
- let run=t<3&&t>1;
- let ramp=run?smooth((t-1)/.25)*(1-.65*smooth((t-2.8)/.2)):0;
- let bounce=ramp*(.025+.027*Math.cos((position(t)+2.65)/.59*12.566));
- let breath=t>=10?.006*Math.sin((t-10)*3.1):.002*Math.sin(t*4);
- let crouch=.038*headParams(t).down;
- return{x:position(t),z:t<8?0:.11*smooth((t-8)/2),heading,bounce:bounce+breath-crouch,moving,run,ramp};
-}
-function footPositions(t,state){
- let res=[],x=state.x;
- for(let rear of[false,true])for(let side of[-1,1]){
- let baseX=rear?-.43:.40,baseZ=side*(rear?.225:.238),fx=baseX,fy=.065;
- if(state.moving){
- let reverse=t>=6,dist=reverse?2.30-x:x+2.65;
- let stride=state.run?.64:.38,phase=((dist/stride+(rear? .5:0)+(side===1?.5:0))%1+1)%1,stance=state.run?.57:.70;
- let reach;
- if(phase<stance)reach=stride*(stance*.5-phase);
- else {let u=(phase-stance)/(1-stance);reach=mix(-stride*stance*.5,stride*stance*.5,smooth(u));fy+=(state.run?.16:.09)*Math.sin(Math.PI*u);}
- let amp=Math.min(1,(reverse?Math.min(t-6,8-t):Math.min(t-1,4.5-t))/.17);
- fx+=(reverse?-1:1)*reach*Math.max(0,amp);fy=.065+(fy-.065)*Math.max(0,amp);
+function paintPrimitives(alpha=1){
+ primitives.sort((a,b)=>a.d-b.d);
+ ctx.save();ctx.globalAlpha=alpha;
+ for(const q of primitives){
+ if(q.w){ctx.strokeStyle=q.c;ctx.lineWidth=q.w;ctx.beginPath();ctx.moveTo(...q.v[0]);ctx.lineTo(...q.v[1]);ctx.stroke()}
+ else polygon(ctx,q.v,q.c);
  }
- if(t>8&&t<10){
- let u=(t-8)/2,ph=(u*2+(rear?.5:0)+(side===1?.5:0))%1;
- fy+=.075*Math.pow(Math.sin(Math.PI*ph),6)*Math.sin(Math.PI*u);
- fx+=.045*Math.sin(ph*6.283)*Math.sin(Math.PI*u);
- }
- res.push({rear,side,p:[fx,fy,baseZ]});
- }
- return res;
+ ctx.restore();primitives=[];
 }
-function dog(t){
- let s=dogState(t),root=transform([s.x,s.bounce,s.z],s.heading),feet=footPositions(t,s),h=headParams(t);
- // The leg chains are independent of the coat and meet at the planted paws.
- for(let f of feet){
- let side=f.side,z=side*.218,p=f.p.slice();p[1]-=s.bounce;
- if(f.rear){
- let hip=[-.43,.73,z],knee=[-.245+(.05*(p[0]+.43)),.46,z],hock=[p[0]-.045,.225,z];
- draw(haunch,mm(root,tr(-.43,.66,z*.70)));
- segment(upperLeg,hip,knee,.145,.138,root);
- segment(lowerLeg,knee,hock,.090,.078,root);
- segment(lowerLeg,hock,[p[0],p[1]+.028,p[2]],.053,.052,root);
+function timeline(t){
+ let x=-345,z=0,a=0,gait=0,moving=false,jump=0,compress=0;
+ if(t>=1&&t<1.65){x=mix(-345,-245,smooth((t-1)/.65));moving=true;gait=(t-1)*3.7}
+ else if(t>=1.65&&t<1.82){let u=(t-1.65)/.17;x=mix(-245,-223,u);z=-9*Math.sin(u*Math.PI/2);compress=9*u;moving=true;gait=2.4}
+ else if(t>=1.82&&t<2.6){let u=(t-1.82)/.78;x=mix(-223,-30,u);z=70*4*u*(1-u);jump=u;moving=true;gait=3}
+ else if(t>=2.6&&t<3){let u=(t-2.6)/.4;x=mix(-30,70,u);z=-9*Math.sin(Math.min(1,u*2)*Math.PI);compress=-z;moving=true;gait=3+(t-2.6)*4}
+ else if(t>=3&&t<4.35){x=mix(70,176,smooth((t-3)/1.35));moving=true;gait=4.6+(t-3)*2.6}
+ else if(t>=4.35&&t<6){x=176}
+ else if(t>=6&&t<8){x=mix(176,32,smooth((t-6)/2));moving=true;gait=8.1-(t-6)*2.4}
+ else if(t>=8){x=32;a=2.241*smooth((t-8)/2);moving=t<10;gait=3.3+(t-8)*1.4}
+ let lower=smooth((t-4.5)/.78)*(1-smooth((t-5.45)/.55));
+ let held=t>=5.35;
+ if(!moving&&t>=10)z=Math.sin((t-10)*2.4)*.65;
+ return {t,x,z,a,gait,moving,jump,compress,lower,held};
+}
+function dog(s){
+ const c=Math.cos(s.a),sn=Math.sin(s.a);
+ function D(v){return [s.x+v[0]*c-v[1]*sn,v[0]*sn+v[1]*c,v[2]+s.z]}
+ function R(v){return [v[0]*c-v[1]*sn,v[0]*sn+v[1]*c,v[2]]}
+ function vol(v,r,col,id,f=5,n=350){sphere(D(v),r,col,id,f,R,n)}
+ function limb(a,b,r1,r2,col,id,f=3){capsule(D(a),D(b),r1,r2,col,id,f)}
+ const flight=s.t>=1.82&&s.t<2.6;
+ let bob=s.moving&&!flight?Math.sin(s.gait*TAU*2)*1.8:0;
+ let torso=70+bob;
+ // Four compact articulated limbs. Stance phases use nearly fixed ground-space feet.
+ for(let side of [-1,1])for(let rear of [true,false]){
+ let base=rear?-35:30, yy=side*19;
+ let hip=[base,yy,rear?torso-1:torso+2],knee,paw,hock;
+ if(flight){
+ let u=(s.t-1.82)/.78,tuck=Math.sin(Math.PI*u);
+ if(rear){knee=[-15,yy,46+tuck*12];hock=[-43+tuck*13,yy,28+tuck*15];paw=[-43+18*u,yy,15+28*tuck]}
+ else{knee=[39,yy,48+16*tuck];hock=[28+25*u,yy,31+22*tuck];paw=[24+39*u,yy,12+35*tuck]}
  }else{
- let shoulder=[.36,.82,z],elbow=[.32+(p[0]-.4)*.38,.43,z],wrist=[p[0]-.024,p[1]+.13,p[2]];
- segment(upperLeg,shoulder,elbow,.121,.105,root);
- segment(lowerLeg,elbow,wrist,.066,.061,root);
- segment(lowerLeg,wrist,p,.05,.048,root);
+ let phase=((s.gait+(rear?.48:0)+(side===1?.5:0))%1+1)%1;
+ let stride=s.t>=8?11:s.t>=6?19:s.t>3?23:33;
+ if(!s.moving)stride=0;
+ let stance=.62,px,lift=0;
+ if(phase<stance)px=mix(stride,-stride,phase/stance);
+ else{let u=(phase-stance)/(1-stance);px=mix(-stride,stride,smooth(u));lift=Math.sin(u*Math.PI)*(s.t>=6?9:18)}
+ if(s.t>=6&&s.t<8)px=-px;
+ paw=[base+px,yy+1,6+lift-s.z];
+ if(rear){knee=[base+17+px*.18,yy,43+bob-s.compress*.35];hock=[base-5+px*.55,yy,22+lift*.4-s.compress*.2]}
+ else{knee=[base-3+px*.28,yy,43+bob-s.compress*.3];hock=[base+px*.78,yy,19+lift*.65-s.compress*.2]}
  }
- draw(paw,mm(root,tr(p[0]+.04,p[1],p[2])));
- // Fine toe separations, not oversized claws.
- for(let dz of[-.028,.03])draw(black,mm(root,mm(tr(p[0]+.134,p[1]-.010,p[2]+dz),sc(.010,.008,.010))));
+ limb(hip,knee,rear?12:10,10,rear?orange:gold,30+(rear?2:0)+side,5);
+ limb(knee,hock,6.8,6.4,gold,41+side,3);
+ limb(hock,paw,5.4,5.1,cream,51+side,2.5);
+ vol([paw[0]+3,paw[1],paw[2]], [10,7,5.5],cream,61+side+(rear?3:0),2,100);
+ // Quiet toe clefts rather than mitten-like paws.
+ for(let j=-1;j<=1;j+=2)addHair(D([paw[0]+8,paw[1]+j*2.1,paw[2]+2]),D([paw[0]+10,paw[1]+j*2.1,paw[2]]),"#89704c",.65);
  }
- draw(body,mm(root,mm(tr(-.05,.80,0),rz(s.ramp*.025*Math.sin(t*17)))));
- draw(belly,mm(root,tr(.025,.665,0)));
- // Curled plume rises from the sacrum and bends back over the spine.
- let lag=.035*Math.sin(t*5.5)*(.25+s.ramp),tailRoot=mm(root,mm(tr(-.56,1.005,0),rz(lag)));
- let tailP=[[-.05,.03,0],[-.17,.23,.008],[-.09,.41,.018],[.135,.43,.035],[.33,.32,.045]];
- for(let i=0;i<tailparts.length;i++)draw(tailparts[i],mm(tailRoot,mm(tr(...tailP[i]),rz(i>2?-.25:0))));
- let neckX=mix(.39,.47,h.down),neckY=mix(.93,.73,h.down);
- draw(ruff,mm(root,mm(tr(neckX,neckY,0),rz(-h.down*.30))));
- draw(bib,mm(root,mm(tr(neckX+.23,neckY-.13,0),rz(-h.down*.3))));
- let notice=.045*Math.sin(Math.min(t,1)*Math.PI)* (t<1?1:0);
- let head=mm(root,mm(tr(h.x,h.y,0),rz(h.a+notice)));
- draw(skull,head);draw(cheek,mm(head,tr(.075,-.10,0)));
- // Small, upright ears with recessed warm inner surfaces.
- for(let side of[-1,1]){
- let twitch=(t>=10?.018*Math.sin(t*4+side):.012*Math.sin(t*3+side));
- let em=mm(head,mm(tr(-.055,.167,side*.155),mm(rz(-.16+twitch),sc(1,1,side))));
- draw(ear,em);
+ vol([-12,0,torso],[51,27,32],orange,3,7,950);
+ vol([-38,0,torso-5],[25,26,29],gold,7,8,420);
+ vol([19,0,torso+12],[32,32,40],gold,11,10,1050);
+ vol([32,0,torso+9],[23,28,36],cream,12,9,620);
+ vol([-1,0,torso-21],[39,23,15],cream,14,5,250);
+ // The tail is a continuous, curled plume, anchored to the sacrum.
+ let lag=s.moving?Math.sin(s.gait*TAU-.8)*.10:.045*Math.sin(s.t*2.5);
+ let tail=[
+ [-52,0,86],[-64,0,107],[-57,1,128],[-38,2,140],[-18,3,136],[-8,4,122]
+ ];
+ tail=tail.map((p,i)=>[p[0],p[1]+Math.sin(i*.6)*lag*35,p[2]+s.z*.015+bob*.4]);
+ for(let i=0;i<tail.length-1;i++)limb(tail[i],tail[i+1],i===0?9:14,i===0?10:17,i<2?gold:cream,90+i,12);
+ vol([-26,3+lag*20,135+bob*.4],[23,19,14],pale,97,13,450);
+ // Head and muzzle share one rigid skull transform.
+ let angle=s.lower,drop=s.lower*39;
+ let notice=s.t<1?-.10*Math.sin(s.t*Math.PI):0;
+ function head(v){
+ let xx=v[0]-28,zz=v[2]-88;
+ let p=[28+xx*Math.cos(angle)+zz*Math.sin(angle),v[1],88-xx*Math.sin(angle)+zz*Math.cos(angle)-drop+bob*.25];
+ if(notice){let xx=p[0]-30,yy=p[1];p[0]=30+xx*Math.cos(notice)-yy*Math.sin(notice);p[1]=xx*Math.sin(notice)+yy*Math.cos(notice)}
+ return p;
  }
- // Dark almond rims and small brown eyes live on both sides of the skull.
- let blink=1;
- if(t>.65&&t<.80)blink=1-.88*Math.sin((t-.65)/.15*Math.PI);
- if(t>10.9&&t<11.06)blink=1-.87*Math.sin((t-10.9)/.16*Math.PI);
- for(let side of[-1,1]){
- let em=mm(head,mm(tr(.145,.047,side*.181),mm(ry(-side*.43),sc(1,blink,side))));
- draw(black,mm(em,sc(.052,.052,.026)));
- draw(eye,mm(em,tr(.001,0,.013)));
- draw(iris,mm(em,tr(.010,0,.030)));
- draw(glint,mm(em,tr(.002,.017,.041)));
- draw(brow,mm(head,mm(tr(.113,.105,side*.155),sc(1,.72,.55))));
+ function HR(v){
+ let p=[v[0]*Math.cos(angle)+v[2]*Math.sin(angle),v[1],-v[0]*Math.sin(angle)+v[2]*Math.cos(angle)];
+ if(notice)p=[p[0]*Math.cos(notice)-p[1]*Math.sin(notice),p[0]*Math.sin(notice)+p[1]*Math.cos(notice),p[2]];
+ return R(p);
  }
- draw(muzzle,mm(head,tr(.229,-.065,0)));
- // The mouth opens before contact, then closes on the single bone.
- let opening=smooth((t-4.77)/.30)*(1-smooth((t-5.24)/.18))*.075;
- let held=t>=5.36;
- let gap=held?.026:.010;
- draw(black,mm(head,mm(tr(.283,-.127-opening*.40,0),sc(.126,.019+opening*.40,.085))));
- draw(jaw,mm(head,mm(tr(.262,-.151-opening-gap*.20,0),rz(-opening*1.4))));
- draw(nose,mm(head,tr(.386,-.043,0)));
- draw(black,mm(head,mm(tr(.437,-.038,.037),sc(.009,.012,.015))));
- draw(black,mm(head,mm(tr(.437,-.038,-.037),sc(.009,.012,.015))));
- draw(glint,mm(head,mm(tr(.427,-.020,.016),sc(1.0,.45,1))));
- if(held)bone(mm(head,tr(.36,-.10,0)));
- // Very fine pale whiskers, built as geometry rather than an outline.
+ function hv(v,r,col,id,f,n){sphere(D(head(v)),r,col,id,f,HR,n||350)}
+ hv([45,0,117],[27,23.5,25],gold,101,5,780);
+ hv([51,0,102],[21,22,18],cream,103,6,530);
+ // Small upright ears: thick outer edges, recessed warm inner skin.
+ for(let side of [-1,1]){
+ let a=[30,side*12,134],b=[46,side*25,135],tip=[33,side*23,157];
+ let vv=[a,b,tip].map(v=>D(head(v)));
+ addPoly(vv,"#b57c3d");
+ let back=[25,side*22,141];
+ addPoly([D(head(a)),D(head(tip)),D(head(back))],"#bf8849");
+ addPoly([[33,side*15,138],[41,side*23,138],[33,side*22,151]].map(v=>D(head(v))),"#75503a");
+ for(let i=0;i<65;i++){
+ let u=hash(i+side+203),v=hash(i+399)*(1-u);
+ let p=a.map((x,j)=>x+(b[j]-x)*u+(tip[j]-x)*v);
+ let q=[p[0]-1,p[1]+side*1.8,p[2]+2.5];
+ addHair(D(head(p)),D(head(q)),i%3?"#d4a365":"#edc88c",.7);
+ }
+ }
+ // Short pointed muzzle, mobile lower jaw, moist small nose.
+ let gape=(s.t>4.8&&s.t<5.35)?Math.sin(clamp((s.t-4.8)/.55)*Math.PI)*5:(s.held?3:0);
+ hv([70,0,103-gape],[15,11,6],pale,117,2,200);
+ hv([73,0,105],[13,11.7,5], [54,37,26],118,0);
+ hv([67,0,110],[17,13.5,10],pale,113,2.8,350);
+ hv([81,0,108],[6.3,8,5.2],[33,29,25],115,0);
+ hv([83,-2,110],[1.8,2.7,1.1],[118,112,99],116,0);
+ for(let side of [-1,1]){
+ hv([61,side*17.6,122],[5.4,4.2,5.1],[98,60,29],130+side,2,100);
+ hv([63,side*18.2,123],[3.8,3.1,3.8],[22,19,16],140+side,0);
+ hv([64,side*18.9,124.2],[1.1,1,1.1],[227,227,204],150+side,0);
+ hv([59,side*18,130],[8,5,3.5],cream,160+side,2,110);
+ for(let j=0;j<3;j++){
+ let a=[74,side*9,106-j*.9],b=[77+j,side*(21+j*2),105-j*2];
+ addHair(D(head(a)),D(head(b)),"rgba(77,62,44,.58)",.48);
+ }
+ }
+ if(s.held)bone(D(head([84,0,103])),HR);
 }
-function drawHouse(){
- cube(darkwood,[3.31,.025,0],[2.25,.10,2.22]);
- // Floorboards lead the eye into the actual open interior.
- for(let i=0;i<11;i++)cube(i%2?wood:darkwood,[3.30,.079,-1.02+i*.203],[2.10,.020,.193]);
- draw(house);draw(grain);
- cube(trim,[front-.075,.77,-door-.04],[.15,1.48,.095]);
- cube(trim,[front-.075,.77,door+.04],[.15,1.48,.095]);
- cube(trim,[front-.075,doorH+.017,0],[.15,.115,door*2+.17]);
- cube(trim,[front-.11,.075,0],[.26,.055,1.40]);
- for(let z of[-width,width])cube(trim,[front-.025,.90,z],[.16,1.77,.13]);
- draw(roof);
- beam([2.005,1.70,-1.30],[2.005,2.56,0],.085,.09,roofedge);
- beam([2.005,2.56,0],[2.005,1.70,1.30],.085,.09,roofedge);
- cube(roofedge,[3.30,2.558,0],[2.68,.055,.075]);
-}
-function restingBone(){bone(tr(2.30+.73+.36*Math.cos(-.55)+.10*Math.sin(-.55),.405+.36*Math.sin(-.55)-.10*Math.cos(-.55),0))}
-function stones(){
- for(let i=0;i<5;i++){
- let x=-.25+i*.57,z=-1.18-.09*Math.sin(i*2);
- cube(stone,[x,.012,z],[.45,.040,.34],ry(.06*Math.sin(i)));
+function bone(center,rotation=null){
+ const B=v=>rotation?rotation(v):v;
+ function pos(v){v=B(v);return center.map((x,i)=>x+v[i])}
+ capsule(pos([0,-23,0]),pos([0,23,0]),4.1,4.1,[226,215,183],321,0);
+ for(let end of [-1,1])for(let side of [-1,1]){
+ sphere(pos([0,end*24,side*4.2]),[6.1,6.7,5.6],[235,224,191],322+side,0,rotation,0);
  }
+}
+const restBone=[176+28+56*Math.cos(1)+15*Math.sin(1),0,88-56*Math.sin(1)+15*Math.cos(1)-39];
+
+function houseBack(){
+ worldPoly(ctx,[[205,-132,0],[389,-132,0],[389,-132,177],[205,-132,177]],"#544839");
+ worldPoly(ctx,[[205,-132,0],[389,-132,0],[389,132,0],[205,132,0]],"#76624a");
+ worldPoly(ctx,[[385,-130,0],[385,130,0],[385,130,174],[385,-130,174]],"#332f25");
+ // Interior floorboards provide a visible resting surface for the one bone.
+ for(let y=-120;y<=120;y+=24){
+ let a=P([206,y,.4]),b=P([387,y,.4]);ctx.strokeStyle="rgba(35,27,19,.36)";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(...a);ctx.lineTo(...b);ctx.stroke();
+ }
+ let g=ctx.createLinearGradient(620,260,774,330);
+ g.addColorStop(0,"rgba(24,23,18,0)");g.addColorStop(1,"rgba(20,20,16,.44)");
+ worldPoly(ctx,[[210,-127,1],[386,-127,1],[386,127,1],[210,127,1]],g);
+}
+function woodFace(verts,base,orientation){
+ const pp=verts.map(P);ctx.save();polygon(ctx,pp);ctx.clip();ctx.fillStyle=base;ctx.fillRect(500,70,460,330);
+ for(let i=0;i<600;i++){
+ let x=540+hash(i+121)*430,y=100+hash(i+217)*290;
+ ctx.strokeStyle=i%3?"rgba(61,37,21,.11)":"rgba(242,196,126,.13)";ctx.lineWidth=.4+hash(i+533)*.8;
+ ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+orientation*hash(i+91)*32,y+6+hash(i+643)*27);ctx.stroke();
+ }ctx.restore();
+}
+function houseFront(){
+ // Near side wall naturally obscures objects deeper than the doorway.
+ woodFace([[205,132,0],[389,132,0],[389,132,177],[205,132,177]],"#9b6943",-.4);
+ for(let x=205;x<389;x+=30){
+ let a=P([x,132,0]),b=P([x,132,177]);ctx.strokeStyle="#745036";ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(...a);ctx.lineTo(...b);ctx.stroke();
+ }
+ // Front facade, split around a genuinely open arched doorway.
+ const xf=203,half=91;
+ woodFace([[xf,-132,0],[xf,-half,0],[xf,-half,145],[xf,-132,177]],"#bb8556",.2);
+ woodFace([[xf,half,0],[xf,132,0],[xf,132,177],[xf,half,145]],"#bd8859",.2);
+ let arch=[];
+ for(let i=0;i<=30;i++){let a=Math.PI-i*Math.PI/30;arch.push([xf,Math.cos(a)*half,137+42*Math.sin(a)])}
+ let header=[[xf,-132,177],[xf,0,248],[xf,132,177],[xf,half,137],...arch.slice().reverse(),[xf,-half,137]];
+ woodFace(header,"#c19162",.2);
+ // Door reveal and rounded timber jamb.
+ for(let side of [-1,1]){
+ worldPoly(ctx,[[203,side*91,0],[215,side*91,0],[215,side*91,137],[203,side*91,137]],side===1?"#735033":"#a77d50");
+ let a=P([201,side*97,2]),b=P([201,side*97,138]);ctx.strokeStyle="#dfb37a";ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(...a);ctx.lineTo(...b);ctx.stroke();
+ }
+ ctx.beginPath();for(let i=0;i<=40;i++){let a=Math.PI-i*Math.PI/40,p=P([201,Math.cos(a)*97,137+48*Math.sin(a)]);i?ctx.lineTo(...p):ctx.moveTo(...p)}
+ ctx.strokeStyle="#dfb37a";ctx.lineWidth=6;ctx.stroke();
+ // Roof with real overhang and overlapping slate courses.
+ let nearRoof=[[187,0,253],[404,0,253],[404,150,173],[187,150,173]];
+ let farRoof=[[187,-150,173],[404,-150,173],[404,0,253],[187,0,253]];
+ worldPoly(ctx,farRoof,"#545a52");worldPoly(ctx,nearRoof,"#47514a");
+ ctx.save();polygon(ctx,nearRoof.map(P));ctx.clip();
+ for(let row=0;row<6;row++)for(let col=0;col<8;col++){
+ let x=175+col*33+(row%2)*16,y=row*29,z=253-y*80/150;
+ worldPoly(ctx,[[x,y,z+.5],[x+32,y,z+.5],[x+32,y+27,z-27*80/150+.5],[x,y+27,z-27*80/150+.5]],rgb([65+hash(row*8+col)*15,76+hash(row*8+col)*14,70+hash(row*8+col)*13]));
+ let a=P([x,y+27,z-27*80/150+1]),b=P([x+32,y+27,z-27*80/150+1]);ctx.strokeStyle="rgba(22,31,27,.6)";ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(...a);ctx.lineTo(...b);ctx.stroke();
+ }
+ ctx.restore();
+ for(let side of [-1,1]){
+ let a=P([184,0,253]),b=P([184,side*152,172]);ctx.strokeStyle="#343f38";ctx.lineWidth=10;ctx.beginPath();ctx.moveTo(...a);ctx.lineTo(...b);ctx.stroke();
+ ctx.strokeStyle="#818875";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(a[0],a[1]-3);ctx.lineTo(b[0],b[1]-3);ctx.stroke();
+ }
+ let a=P([185,152,171]),b=P([405,152,171]);ctx.strokeStyle="#303b32";ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(...a);ctx.lineTo(...b);ctx.stroke();
+ // Two discreet nail heads at the doorway.
+ for(let yy of [-119,119]){let p=P([200,yy,131]);ctx.fillStyle="#6d5940";ctx.beginPath();ctx.arc(...p,1.6,0,TAU);ctx.fill()}
+}
+
+function shadows(s){
+ const airborne=s.t>=1.82&&s.t<2.6;
+ ctx.save();
+ for(let i=5;i>=0;i--)groundEllipse(ctx,s.x-8,4,51+i*4+(airborne?s.z*.12:0),23+i*2,`rgba(33,35,23,${(airborne?.010:.024)*(1-i*.08)})`);
+ if(!airborne){
+ for(let side of [-1,1])for(let rear of [-1,1]){
+ let xx=s.x+rear*30*Math.cos(s.a)-side*19*Math.sin(s.a),yy=rear*30*Math.sin(s.a)+side*19*Math.cos(s.a);
+ groundEllipse(ctx,xx,yy,11,7,"rgba(33,32,22,.14)");
+ }
+ }
+ ctx.restore();
 }
 window.renderFrame=function(timeSeconds){
- const t=Math.max(0,Math.min(12,Number(timeSeconds)||0));
- gl.viewport(0,0,960,540);
- gl.clearColor(.61,.69,.57,1);
- gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
- gl.useProgram(program);gl.uniformMatrix4fv(loc.vp,false,new Float32Array(vp));
- draw(ground);draw(groundSpeck);draw(leaves);draw(fence);
- shade(3.22,.13,1.53,1.29,.30);
- shade(3.87,-.62,1.62,.79,.13);
- stones();
- draw(grass);
- let s=dogState(t),root=transform([s.x,0,s.z],s.heading);
- let mid=pt(root,[-.08,0,0]);
- shade(mid[0]+.10,mid[2]-.06,.77,.37,.24,.019,s.heading);
- shade(mid[0]+.28,mid[2]-.20,.86,.34,.10,.018,s.heading);
- for(let f of footPositions(t,s)){
- let p=pt(root,f.p),height=f.p[1]-.065;
- shade(p[0]+.025,p[2],.12+height*.2,.080+height*.2,.29*(1-height*3),.021,s.heading);
+ const t=clamp(Number.isFinite(timeSeconds)?timeSeconds:0,0,12),s=timeline(t);
+ ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;ctx.clearRect(0,0,W,H);ctx.drawImage(background,0,0);
+ // A mirror of this frame's articulated animal, clipped to the only water surface.
+ ctx.save();waterPath(ctx);ctx.clip();mirror=true;dog(s);paintPrimitives(.31);mirror=false;
+ ctx.fillStyle="rgba(171,193,178,.13)";ctx.fillRect(0,0,W,H);ctx.restore();
+ waterPath(ctx);ctx.strokeStyle="rgba(218,222,182,.55)";ctx.lineWidth=.8;ctx.stroke();
+ houseBack();
+ if(!s.held){
+ groundEllipse(ctx,restBone[0],restBone[1],9,31,"rgba(25,22,17,.3)");
+ bone(restBone);paintPrimitives();
  }
- // Depth testing handles both the doorway jambs and the roof; there is no cutaway.
- drawHouse();
- if(t<5.36)restingBone();
- dog(t);
- gl.finish();
+ shadows(s);
+ dog(s);paintPrimitives();
+ houseFront();
+ // Sparse foreground blades anchor the yard without hiding the action.
+ for(let i=0;i<100;i++){
+ let x=hash(i+9192)*960,y=502+hash(i+8921)*38,h=3+hash(i+681)*10;
+ ctx.strokeStyle=i%2?"rgba(87,100,49,.48)":"rgba(172,176,102,.62)";ctx.lineWidth=.9;
+ ctx.beginPath();ctx.moveTo(x,y);ctx.quadraticCurveTo(x-2,y-h*.6,x-4+hash(i+323)*8,y-h);ctx.stroke();
+ }
+ // Gentle optical falloff, constant throughout the shot.
+ let vg=ctx.createRadialGradient(475,285,205,475,285,610);vg.addColorStop(0,"rgba(26,32,18,0)");vg.addColorStop(1,"rgba(26,32,18,.15)");ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
 };
 window.renderFrame(0);
 </script>

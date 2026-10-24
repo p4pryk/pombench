@@ -2,54 +2,56 @@
   "status": "captured",
   "technicalChecks": {
     "contract": true,
-    "renders": true,
+    "renders": false,
     "visible": true,
     "motion": false,
-    "deterministic": true,
+    "deterministic": false,
     "offline": true
   },
-  "technicalPassed": 5,
+  "technicalPassed": 3,
   "technicalTotal": 6,
   "visualScore": null,
-  "visualReview": "Not reviewed. Technical checks do not verify anatomy, foot contact, bone contact or doghouse occlusion or task compliance.",
+  "visualReview": "Not reviewed. Technical checks do not verify anatomy, foot contact, bone contact, doghouse occlusion, puddle clearance, weight-bearing landing, water reflection or task compliance.",
   "metrics": {
     "sampleColorStd": [
-      8.99468994140625,
-      8.994606018066406,
-      8.99487018585205,
-      8.927001953125,
-      8.927001953125,
-      8.874114036560059,
-      8.894213676452637,
-      8.944701194763184,
-      8.935072898864746,
-      8.934950828552246,
-      8.94470500946045,
-      8.94470500946045
+      26.473176956176758,
+      26.467575073242188,
+      26.46917152404785,
+      24.815534591674805,
+      21.52158546447754,
+      20.941938400268555,
+      23.679468154907227,
+      23.679468154907227,
+      23.67543601989746,
+      23.669496536254883,
+      23.66922950744629,
+      23.66901206970215
     ],
     "changedPixelFractions": [
-      0.0009837962962962962,
-      0.007208719135802469,
-      0.00722608024691358,
+      0.0011593364197530864,
+      0.012424768518518519,
+      0.01242283950617284,
+      0.008937114197530864,
+      0.005244984567901235,
+      0.010692515432098766,
       0.0,
-      0.0007716049382716049,
-      0.0011516203703703703,
-      0.007233796296296296,
-      0.007353395061728395,
-      0.0020003858024691358,
-      0.001865354938271605,
-      0.0
+      0.0002199074074074074,
+      0.0003587962962962963,
+      0.00018518518518518518,
+      0.0001408179012345679
     ],
-    "finalBoundaryStepRmse": 0.0,
+    "finalBoundaryStepRmse": 0.1663944572210312,
     "repeatPixelRmse": {
-      "repeat-a": 0.0,
-      "repeat-b": 0.0,
-      "repeat-c": 0.0
+      "repeat-a": 0.7948344945907593,
+      "repeat-b": 0.9235352277755737,
+      "repeat-c": 0.24380308389663696
     },
-    "renderRoundTripMedianMs": 0.6618124999999964,
-    "renderRoundTripP95Ms": 0.8833354500010956
+    "renderRoundTripMedianMs": 1.0053960000004736,
+    "renderRoundTripP95Ms": 3.4983895999995656
   },
-  "errors": [],
+  "errors": [
+    "Own animation/timer loop used: requestAnimationFrame"
+  ],
   "blockedRequests": [],
   "cspViolations": [],
   "capture": {
@@ -60,8 +62,8 @@
     "height": 540,
     "complete": true,
     "isolation": "Separate offline Chromium process, service workers and downloads disabled, CSP, all post-bootstrap network blocked. Organizer measures screenshot pixels; candidate reports are ignored.",
-    "sourceHash": "fcb77ab783f410dd1c8b17bf7cb0c8cfe0daa0e5b31688b94e4f6c9057afe785",
-    "frameEvidenceHash": "e3f2f7d501e2a8e55b527ad1d48ec8d6392778d73d9176b4bceec369ba336360"
+    "sourceHash": "43c44dc2de4cc2ea3551f054bb5444a692af3be5589287d7215fbaaefec222b1",
+    "frameEvidenceHash": "040d60b66055e25dffcb87d29a02dde12a705b1c98091481d5ad55eaa0ff7ae0"
   },
   "contactSheet": [
     {
@@ -114,9 +116,9 @@
     }
   ],
   "evidenceHashes": {
-    "capture.json": "e3f2f7d501e2a8e55b527ad1d48ec8d6392778d73d9176b4bceec369ba336360",
-    "poster.png": "de417b11c604e371db2a3a65ab1ebe187d20261460c44ec10ea4dfc50e80b643",
-    "contact-sheet.jpg": "6eec9390917ebe101095b03aae5635eb867b4c4399d05395d90b020f109f150d",
-    "animation.mp4": "3d83bfb525f88f2dd1ee8a07e7cfaa6456163e57228a875dfa6ea2245ef46173"
+    "capture.json": "040d60b66055e25dffcb87d29a02dde12a705b1c98091481d5ad55eaa0ff7ae0",
+    "poster.png": "3126ae5d4eb478b277ee001b87b4e3fa1d21b6aaa67f8955fb2975e83e353784",
+    "contact-sheet.jpg": "10444f211371e6e4893f0c20a0a24b3df24af3e85050367504c0fdd7a0867e53",
+    "animation.mp4": "a191b4fbdee8cf518965cfcf85cc95669fbaa651b613f939a6e1edd426eef50f"
   }
 }

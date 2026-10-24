@@ -4,50 +4,50 @@
     "contract": false,
     "renders": true,
     "visible": true,
-    "motion": false,
+    "motion": true,
     "deterministic": true,
     "offline": true
   },
-  "technicalPassed": 4,
+  "technicalPassed": 5,
   "technicalTotal": 6,
   "visualScore": null,
-  "visualReview": "Not reviewed. Technical checks do not verify anatomy, foot contact, bone contact or doghouse occlusion or task compliance.",
+  "visualReview": "Not reviewed. Technical checks do not verify anatomy, foot contact, bone contact, doghouse occlusion, puddle clearance, weight-bearing landing, water reflection or task compliance.",
   "metrics": {
     "sampleColorStd": [
-      47.64274978637695,
-      47.64274978637695,
-      47.64274978637695,
-      47.64274978637695,
-      47.64274978637695,
-      47.64274978637695,
-      47.64274978637695,
-      47.64274978637695,
-      47.64274978637695,
-      47.64274978637695,
-      47.64274978637695,
-      47.64274978637695
+      56.77682113647461,
+      56.77682113647461,
+      56.64909744262695,
+      56.77682113647461,
+      56.776824951171875,
+      56.34232711791992,
+      56.69646072387695,
+      56.682735443115234,
+      56.74729919433594,
+      56.7221794128418,
+      56.59175491333008,
+      56.59175491333008
     ],
     "changedPixelFractions": [
       0.0,
-      1.9290123456790124e-06,
-      1.9290123456790124e-06,
-      0.0,
-      0.0,
-      0.0,
-      0.0,
-      0.0,
-      0.0,
-      1.9290123456790124e-06,
-      3.858024691358025e-06
+      0.013715277777777778,
+      0.013715277777777778,
+      0.014162808641975309,
+      0.014164737654320988,
+      0.012826003086419752,
+      0.010061728395061729,
+      0.00443287037037037,
+      0.0018672839506172839,
+      0.002964891975308642,
+      0.0
     ],
-    "finalBoundaryStepRmse": 0.010393492877483368,
+    "finalBoundaryStepRmse": 0.0,
     "repeatPixelRmse": {
       "repeat-a": 0.0,
       "repeat-b": 0.0,
       "repeat-c": 0.0
     },
-    "renderRoundTripMedianMs": 0.6187499999996362,
-    "renderRoundTripP95Ms": 1.2388827000004996
+    "renderRoundTripMedianMs": 1.2810000000001764,
+    "renderRoundTripP95Ms": 5.027158650000137
   },
   "errors": [],
   "blockedRequests": [],
@@ -60,8 +60,8 @@
     "height": 540,
     "complete": true,
     "isolation": "Separate offline Chromium process, service workers and downloads disabled, CSP, all post-bootstrap network blocked. Organizer measures screenshot pixels; candidate reports are ignored.",
-    "sourceHash": "c46eb734cabe3bb626e0d251441c4f516af5d66dcb3a8fedcc8c9f8d92a93e1a",
-    "frameEvidenceHash": "c6780272bcc1300a056ebcb05850186476996efea95bea9c3189ddb5d3587acb"
+    "sourceHash": "35aef7c20cbd75d0b4de826521cecd2f4d142175cb4139f288a7dc344db55fb0",
+    "frameEvidenceHash": "c170f609db5dba5d0b915d5c45e1f81dd15b67688d4536f9a2950b455813e219"
   },
   "contactSheet": [
     {
@@ -114,9 +114,9 @@
     }
   ],
   "evidenceHashes": {
-    "capture.json": "c6780272bcc1300a056ebcb05850186476996efea95bea9c3189ddb5d3587acb",
-    "poster.png": "c7f503c1385b9a69a04f2cca5f7cb6d60c80911bf75ebb4d7c9fe9a57c35131a",
-    "contact-sheet.jpg": "cd49afc734751a1bb77720a593cab1d61542d1f613022cfb1b1bde30f73aacc2",
-    "animation.mp4": "d0602283da9c05ac2237e31927a4b64a6af17948a19aa37fc8774c32dc48017e"
+    "capture.json": "c170f609db5dba5d0b915d5c45e1f81dd15b67688d4536f9a2950b455813e219",
+    "poster.png": "8b2b87baea296f4e1b07047d1acdb97e87b0b81fd7759fdb7e94d09279bb1a2a",
+    "contact-sheet.jpg": "6a38346a7b486336ae9c719fcad3d8375aeec15a58bab32b60b6bc084b671bc2",
+    "animation.mp4": "9a50925b5babc1c7d0c6dba7de46c35f4c333e417ba2389a5ba1951d8c73c800"
   }
 }

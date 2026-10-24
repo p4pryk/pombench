@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Animal Animation: Pomeranian and Bone</title>
+<title>PomBench Animation</title>
 <style>
-  body { margin:0; padding:0; overflow:hidden; }
-  canvas#stage { display:block; width:960px; height:540px; }
+  body { margin: 0; overflow: hidden; }
+  canvas#stage { display: block; width: 960px; height: 540px; }
 </style>
 </head>
 <body>
@@ -14,285 +14,338 @@
 const canvas = document.getElementById('stage');
 const ctx = canvas.getContext('2d');
 
-function degToRad(deg) { return deg * Math.PI / 180; }
+// Scene parameters
+const sceneWidth = 960;
+const sceneHeight = 540;
 
-// Constants
-const WIDTH = 960;
-const HEIGHT = 540;
-const GROUND_Y = 420;
-const dogStartX = 100;
-const dogEnterEndX = 340;
-const dogExitX = 640;
-const dogFinalX = 840;
-const dogY = GROUND_Y; // base ground level
-const dogBodyLength = 70; // approximate length
-const dogHeight = 40; // approximate height
-const doorX = 340;
-const doorY = GROUND_Y - 100;
-const doorWidth = 60;
-const doorHeight = 100;
-const boneX = doorX + 10;
-const boneY = doorY + doorHeight/2;
-const boneSize = 10;
-
-// Helper functions
-function drawCircle(cx, cy, r, color, stroke=false) {
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI*2);
-  if(stroke) { ctx.strokeStyle = color; ctx.stroke(); }
-  else { ctx.fillStyle = color; ctx.fill(); }
-}
-function drawLine(x1,y1,x2,y2,color, lineWidth=2) {
-  ctx.strokeStyle = color; ctx.lineWidth = lineWidth;
-  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-}
-function drawPolygon(points, color, fill=true) {
-  ctx.beginPath();
-  ctx.moveTo(points[0][0], points[0][1]);
-  for(let i=1;i<points.length;i++) ctx.lineTo(points[i][0], points[i][1]);
-  ctx.closePath();
-  if(fill) { ctx.fillStyle = color; ctx.fill(); }
-  else { ctx.strokeStyle = color; ctx.stroke(); }
+// Timing
+const totalDuration = 12; // seconds
+// Function to get normalized time for each segment
+function getTime(t) {
+    if (t < 0) return 0;
+    if (t > totalDuration) return totalDuration;
+    return t;
 }
 
-// Main render function
-window.renderFrame = function(t) {
-  // Clamp t to [0,12]
-  if(t<0) t=0; if(t>12) t=12;
-  ctx.clearRect(0,0,WIDTH,HEIGHT);
-
-  // Draw ground
-  ctx.fillStyle = '#554b2f';
-  ctx.fillRect(0, GROUND_Y+20, WIDTH, HEIGHT - GROUND_Y - 20);
-
-  // Draw yard background
-  ctx.fillStyle = '#88c070';
-  ctx.fillRect(0, 0, WIDTH, GROUND_Y+20);
-
-  // Draw doghouse
-  ctx.fillStyle = '#a0522d';
-  ctx.fillRect(doorX - 10, doorY, doorWidth + 20, doorHeight + 10);
-  ctx.fillStyle = '#654321';
-  ctx.fillRect(doorX, doorY+10, doorWidth, doorHeight);
-  // Door opening
-  ctx.fillStyle = '#4b2d0c';
-  ctx.fillRect(doorX + 10, doorY + 10, doorWidth - 20, doorHeight - 20);
-  // Door handle
-  ctx.fillStyle = '#222';
-  ctx.beginPath();
-  ctx.arc(doorX + doorWidth - 8, doorY + doorHeight/2, 4, 0, Math.PI*2);
-  ctx.fill();
-
-  // Determine phase based on time t
-  if(t<=1){
-    // 0-1s: Setup scene, yard, dog notices the goal (bone)
-    // Static, no movement
-    var dogX = dogStartX;
-    var dogYpos = dogY;
-    var bonePosition = {x:boneX,y:boneY};
-    var dogState = 'standing';
-  } else if(t<=3){
-    // 1-3s: dog runs towards tree
-    var progress = (t-1)/2; // 0..1
-    var dogX = dogStartX + (dogEnterEndX - dogStartX) * progress;
-    var dogYpos = dogY;
-    var bonePosition = {x:boneX,y:boneY};
-    var dogState = 'running';
-  } else if(t<=4.5){
-    // 3-4.5s: dog enters the house
-    var progress = (t-3)/1.5;
-    var dogX = dogEnterEndX + (doorX + doorWidth/2 - dogEnterEndX)*progress;
-    var dogYpos = dogY;
-    var bonePosition = {x:boneX,y:boneY};
-    // Animate head/forequarters entering
-  } else if(t<=6){
-    // 4.5-6s: dog grips the bone
-    var progress = (t-4.5)/1.5;
-    var dogX = doorX + doorWidth/2;
-    var dogYpos = dogY;
-    var boneDropY = doorY + 30 + Math.sin((progress)*Math.PI)*5; // slight lift/drop
-    var bonePosition = {x: boneX, y: boneDropY};
-  } else if(t<=8){
-    // 6-8s: dog backs out holding bone
-    var progress = (t-6)/2;
-    var dogX = doorX + doorWidth/2 + (dogExitX - (doorX + doorWidth/2))*progress;
-    var dogYpos = dogY;
-    var boneXpos = boneX + (dogX - (doorX + doorWidth/2))*progress;
-    var boneYpos = boneY; // held in mouth
-    var bonePosition = {x: boneXpos, y: boneYpos};
-  } else {
-    // 8-10s: rotate towards viewer
-    var progress = (t-8)/2;
-    var angle = Math.PI/4 * (1 - Math.cos(progress*Math.PI));
-    var faceDirection = 'frontal';
-    // position dog at final
-    var dogX = dogFinalX;
-    var dogYpos = dogY;
-    var bonePosition = {x:dogX + Math.cos(angle)*20, y:dogY-10};
-    // Final pose
-    if(t >=10){
-      faceDirection='front';
+// Utility functions
+function lerp(a, b, t) {
+    return a + (b - a) * t;
+}
+function lerpPoint(p1, p2, t) {
+    return {x: lerp(p1.x,p2.x,t), y: lerp(p1.y,p2.y,t)};
+}
+function rotatePoint(p, angle, origin) {
+    const cosA = Math.cos(angle);
+    const sinA = Math.sin(angle);
+    const dx = p.x - origin.x;
+    const dy = p.y - origin.y;
+    return {
+        x: origin.x + dx * cosA - dy * sinA,
+        y: origin.y + dx * sinA + dy * cosA
+    };
+}
+// Animate dog
+function getDogPose(t) {
+    // Determine phase based on t
+    if (t < 1) {
+        // scene setting, dog spotted bone and puddle
+        return {phase: 'approach'};
     }
-  }
-
-  // Draw dog based on current state
-  // For simplicity, we'll construct a stylized dog with volume and proportions
-  // and animate parts accordingly
-  
-  // Position parameters
-  const px = (t<=8)? dogX : (t>=10)? dogX : dogX;
-  const py = dogYpos;
-
-  ctx.save();
-
-  // Flip for turning if needed
-  if(t>8 && t<10){
-    // smooth turn
-    const progress = (t-8)/2;
-    const angle = Math.PI/4 * (1 - Math.cos(progress*Math.PI));
-    ctx.translate(px, py - 10);
-    ctx.rotate(angle);
-    ctx.translate(-px, -py +10);
-  } else {
-    ctx.translate(px, py - 10);
-  }
-
-  // Draw body (elliptical rounded rectangle)
-  ctx.fillStyle = '#ffa040';
-  ctx.beginPath();
-  ctx.ellipse(px, py - 10, 40, 20, 0, 0, Math.PI*2);
-  ctx.fill();
-
-  // Fur voluminous collar/neck ruff
-  ctx.fillStyle = '#f59224';
-  ctx.beginPath();
-  ctx.ellipse(px, py - 20, 22, 12, 0, 0, Math.PI*2);
-  ctx.fill();
-
-  // Draw tail
-  ctx.save();
-  ctx.translate(px + 25, py - 10);
-  ctx.rotate(Math.PI/8);
-  ctx.fillStyle = '#f59224';
-  ctx.beginPath();
-  ctx.ellipse(0, 0, 8, 4, 0, 0, Math.PI*2);
-  ctx.fill();
-  ctx.restore();
-
-  // Draw head
-  ctx.translate(0, -20);
-  ctx.fillStyle = '#f59224';
-  ctx.beginPath();
-  ctx.arc(px, py - 40, 12, 0, Math.PI*2);
-  ctx.fill();
-
-  // Ears
-  ctx.fillStyle = '#f59224';
-  ctx.beginPath();
-  ctx.moveTo(px - 4, py - 44);
-  ctx.lineTo(px, py - 50);
-  ctx.lineTo(px + 4, py - 44);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.moveTo(px + 4, py - 44);
-  ctx.lineTo(px + 8, py - 50);
-  ctx.lineTo(px + 12, py - 44);
-  ctx.closePath();
-  ctx.fill();
-
-  // Eyes
-  ctx.fillStyle = '#222';
-  ctx.beginPath();
-  ctx.arc(px - 4, py - 42, 2.5, 0, Math.PI*2);
-  ctx.arc(px + 4, py - 42, 2.5, 0, Math.PI*2);
-  ctx.fill();
-
-  // Paws
-  ctx.fillStyle = '#f59224';
-  // front paws
-  ctx.beginPath();
-  ctx.ellipse(px - 15, py + 7, 4, 4, 0, 0, Math.PI*2);
-  ctx.ellipse(px + 15, py + 7, 4, 4, 0, 0, Math.PI*2);
-  ctx.fill();
-  // rear paws
-  ctx.beginPath();
-  ctx.ellipse(px - 10, py + 20, 4, 4, 0, 0, Math.PI*2);
-  ctx.ellipse(px + 10, py + 20, 4, 4, 0, 0, Math.PI*2);
-  ctx.fill();
-
-  // Draw the bone if during retrieval
-  if(t>=4.5 && t<=8){
-    ctx.fillStyle = '#D2B48C'; // bone color
-    ctx.globalAlpha=1;
-    ctx.beginPath();
-    ctx.ellipse(bonePosition.x, bonePosition.y, 8, 4, 0, 0, Math.PI*2);
-    ctx.fill();
-  }
-
-  // Finally, if turn to frontal (t>=10), draw a frontal pose with bone held
-  if(t>=10){
-    ctx.restore(); // undo rotation
-    ctx.save();
-    ctx.translate(dogX, dogY-10);
-    ctx.rotate(0);
-    // Head front
-    ctx.beginPath();
-    ctx.arc(0, -40, 12, 0, Math.PI*2);
-    ctx.fillStyle = '#f59224';
-    ctx.fill();
-    // Ears
-    ctx.beginPath();
-    ctx.moveTo(-4, -44);
-    ctx.lineTo(0, -50);
-    ctx.lineTo(4, -44);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.moveTo(4, -44);
-    ctx.lineTo(8, -50);
-    ctx.lineTo(12, -44);
-    ctx.closePath();
-    ctx.fill();
-    // Eyes
-    ctx.fillStyle='#222';
-    ctx.beginPath();
-    ctx.arc(-4, -42,2.5,0,Math.PI*2);
-    ctx.arc(4,-42,2.5,0,Math.PI*2);
-    ctx.fill();
-
-    // Paws
-    ctx.fillStyle='#f59224';
-    ctx.beginPath();
-    ctx.ellipse(-15,7,4,4,0,0,Math.PI*2);
-    ctx.ellipse(15,7,4,4,0,0,Math.PI*2);
-    ctx.fill();
-
-    // Tail curled over back
-    ctx.save();
-    ctx.translate(10, -20);
-    ctx.rotate(Math.PI/4);
-    ctx.fillStyle='#f59224';
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 8, 4, 0, 0, Math.PI*2);
-    ctx.fill();
-    ctx.restore();
-
-    // Draw bone between teeth
-    ctx.fillStyle='#D2B48C';
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 8, 4, 0, 0, Math.PI*2);
-    ctx.fill();
-
-    ctx.restore();
-  }
-
-  ctx.restore();
+    if (t <= 3) {
+        // running towards doghouse with anticipation
+        const progress = (t - 1)/(2);
+        return {phase: 'run', progress: progress};
+    }
+    if (t <= 4.5) {
+        // entering doghouse
+        const progress = (t - 3)/(1.5);
+        return {phase: 'enter', progress: progress};
+    }
+    if (t <= 6) {
+        // grabbing bone
+        const progress = (t - 4.5)/1.5;
+        return {phase: 'grab', progress: progress};
+    }
+    if (t <=8) {
+        // backing out with bone
+        const progress = (t - 6)/2;
+        return {phase: 'backout', progress: progress};
+    }
+    if (t <=10) {
+        // turn to face viewer
+        const progress = (t - 8)/2;
+        return {phase: 'turn', progress: progress};
+    }
+    // final pose
+    return {phase: 'final'};
 }
 
-renderFrame(0);
+// Puddle parameters
+const puddle = {
+    x: 300,
+    y: 420,
+    radius: 60,
+    width: 20
+    // shape can be made irregular but for simplicity, circles
+};
+
+// Ground
+function drawGround() {
+    ctx.fillStyle = '#4a6b3a';
+    ctx.fillRect(0, sceneHeight - 100, sceneWidth, 100);
+}
+
+// Water puddle
+function drawPuddle() {
+    ctx.save();
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = '#6699cc';
+    ctx.beginPath();
+    ctx.arc(puddle.x, puddle.y, puddle.radius, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+}
+
+// Reflection inside puddle
+function drawDogReflection(pose) {
+    // Draw a mirrored dog in the puddle
+    ctx.save();
+    ctx.translate(puddle.x, puddle.y);
+    ctx.scale(1, -1);
+    ctx.translate(-puddle.x, -puddle.y);
+    drawDogBody(pose, true);
+    ctx.restore();
+}
+
+// Draw dog
+function drawDogBody(pose, reflection=false) {
+    // For shape, basic silhouette, enrich with fur and features
+    // approximate proportions of Pomeranian
+    const bodyCenterX = sceneWidth/2;
+    const bodyCenterY = 420;
+    // position depends on phase
+    let baseX = sceneWidth/2;
+    let baseY = 420;
+    let bodyOffsetX = 0;
+    let bodyOffsetY = 0;
+    let headOffsetX = 0;
+    let headOffsetY = 0;
+    let tailOffsetX = 0;
+    let tailOffsetY = 0;
+    let headTurn = 0;
+    let tailCurl = Math.PI/4;
+    let headGimbal = 0;
+    let bodyDirection = 0;
+    let bodyScale = 1;
+    // set pose based on phase
+    switch (pose.phase) {
+        case 'approach':
+            // waiting, static pose
+            break;
+        case 'run':
+            // moving forward
+            bodyOffsetX = -lerp(0,100, pose.progress);
+            break;
+        case 'enter':
+            bodyOffsetX = -100; // into doghouse
+            break;
+        case 'grab':
+            bodyOffsetX = -100;
+            // perhaps slightly lean head down
+            headGimbal = Math.sin(pose.progress * Math.PI)*0.1;
+            break;
+        case 'backout':
+            bodyOffsetX = -100 + lerp(0, 20, pose.progress);
+            break;
+        case 'turn':
+            // rotate towards camera
+            headTurn = Math.PI/4 * (1 - pose.progress); // rotate head
+            bodyDirection = Math.PI/4 * (1 - pose.progress);
+            break;
+        case 'final':
+            bodyOffsetX = 0;
+            headTurn = 0;
+            bodyDirection = 0;
+            break;
+    }
+    // run pose
+    const direction = pose.phase === 'turn' ? bodyDirection : 0;
+    // body shape
+    ctx.save();
+    ctx.translate(baseX + bodyOffsetX, baseY);
+    ctx.rotate(direction);
+    // draw body
+    ctx.fillStyle = '#e68a34'; // orange coat
+    ctx.beginPath();
+    ctx.ellipse(0,0, 30, 20, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // fur volume: add some strokes for textures (simulate volume)
+    ctx.strokeStyle = '#d55f24';
+    ctx.lineWidth=2;
+    ctx.stroke();
+
+    // head
+    ctx.save();
+    ctx.translate(20, -10);
+    ctx.rotate(headGimbal);
+    // head shape
+    ctx.fillStyle= '#e68a34';
+    ctx.beginPath();
+    ctx.ellipse(0,0,12,10,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.stroke();
+
+    // ears
+    ctx.fillStyle='#c1542c';
+    ctx.beginPath();
+    ctx.moveTo(4,-5);
+    ctx.lineTo(0,-12);
+    ctx.lineTo(8,-7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-4,-5);
+    ctx.lineTo(0,-12);
+    ctx.lineTo(-8,-7);
+    ctx.closePath();
+    ctx.fill();
+
+    // eyes
+    ctx.fillStyle='black';
+    ctx.beginPath();
+    ctx.arc(4,-2,1.5,0,Math.PI*2);
+    ctx.arc(-4,-2,1.5,0,Math.PI*2);
+    ctx.fill();
+
+    // muzzle
+    ctx.fillStyle='#d97b5b';
+    ctx.beginPath();
+    ctx.ellipse(8,2,3,2,0,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.restore();
+
+    // tail
+    ctx.save();
+    ctx.translate(-10, -8);
+    ctx.rotate(tailCurl);
+    ctx.fillStyle='#e68a34';
+    ctx.beginPath();
+    ctx.ellipse(0,0,4,8,0,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.restore();
+
+    // paws
+    ctx.strokeStyle='#c1542c';
+    ctx.lineWidth=2;
+
+    // front left
+    ctx.beginPath();
+    ctx.moveTo(-15,10);
+    ctx.lineTo(-15,14);
+    ctx.stroke();
+    // front right
+    ctx.beginPath();
+    ctx.moveTo(15,10);
+    ctx.lineTo(15,14);
+    ctx.stroke();
+    // back left
+    ctx.beginPath();
+    ctx.moveTo(-8,22);
+    ctx.lineTo(-8,26);
+    ctx.stroke();
+    // back right
+    ctx.beginPath();
+    ctx.moveTo(8,22);
+    ctx.lineTo(8,26);
+    ctx.stroke();
+
+    // if reflection, flip Y
+}
+
+// Draw scene
+function drawScene(time) {
+    ctx.clearRect(0,0,sceneWidth,sceneHeight);
+    drawGround();
+    drawPuddle();
+
+    // determine pose
+    const t = getTime(time);
+    const pose = getDogPose(t);
+
+    // draw reflection inside puddle
+    if (pose.phase==='approach' || pose.phase==='run'|| pose.phase==='enter'||pose.phase==='grab'||pose.phase==='backout') {
+        drawDogReflection(pose);
+    }
+
+    // Draw dog
+    drawDogBody(pose);
+
+    // Draw doghouse
+    ctx.save();
+    ctx.fillStyle = '#774b3e';
+    ctx.fillRect(650, 370, 80, 70);
+    ctx.fillStyle='#4a2f1a';
+    ctx.fillRect(648, 370, 84, 70);
+    ctx.fillStyle='#222';
+    ctx.fillRect(675, 410, 10, 30); // step
+    ctx.restore();
+
+    // inside door: draw entrance
+    ctx.save();
+    ctx.fillStyle='#774b3e';
+    ctx.fillRect(698, 410, 14, 30);
+    ctx.restore();
+
+    // Bone resting in front of doghouse,
+    // within reach during approach/grab
+    if (t>=0 && t<=6){
+        // animate bone close to door
+        ctx.save();
+        ctx.fillStyle='white';
+        const boneX = 700;
+        const boneY = 445;
+        ctx.beginPath();
+        ctx.arc(boneX, boneY,4,0,Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+        // show bone in mouth when grabbed
+        if (t>=4.5 && t<=8){
+            // draw bone in mouth during grab/backout
+            ctx.save();
+            ctx.fillStyle='white';
+            ctx.translate(0,0);
+            // draw the bone in the dog's mouth
+            // approximate position inside dog's head
+            ctx.translate(sceneWidth/2 + (pose.phase==='backout' ? 0 : 0)+ (pose.phase==='grab' ? 0 : 0), 410);
+            ctx.beginPath();
+            ctx.arc(0,0,3,0,Math.PI*2);
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    // Bone in mouth during final pose
+    if (t>=8 && t<=10){
+        ctx.save();
+        ctx.fillStyle='white';
+        ctx.translate(sceneWidth/2 + (0), 410);
+        ctx.beginPath();
+        ctx.arc(0,0,3,0,Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+// Expose renderFrame
+window.renderFrame = function(timeSeconds) {
+    drawScene(timeSeconds);
+}
+
+// optional: automatic animation for testing
+// start renderAt(0);
 </script>
 </body>
 </html>

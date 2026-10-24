@@ -1,14 +1,40 @@
 {
   "modelId": "claude-fable-5-1",
-  "promptHash": "f4492009b461a1c59f6b848a9099a17670f376afa80dd1361e2971fe31520a3a",
-  "sourceHash": "ca96746831638707a793d3fdd8c5b99c42a83b304a7b6ea455a7a9bbdde04045",
-  "responseHash": "b716578852fc3e4a7e205e886b3e0c8fb1888adcd165f398e151cd179ff617eb",
-  "requestHash": "2344f380103c313abb221012d71469ddcb926eb209344c1037ed977099d2737b",
-  "streamHash": "24491fdb47471becd22c7d9cfc8b020f34d2de3dda0f8f2a22ca9b3fdbb3af5d",
+  "modelVersion": "1",
+  "source": "Actual Foundry API usage",
+  "promptHash": "0d6f97c1cbf3f9f01f977152e0274fda223490d84bd3e8a85c66fd4b2f900f43",
+  "sourceHash": "dd2da8cff642c39d9fae588757c2a352fb2c60ad5cefe58f9991c6c585e65178",
+  "requestHash": "5a28176990c64d424f19a51773c75f0562f0b740b8339e4e3854f4c035d54bb9",
+  "responseHash": "f81355b947aa9db9bdc6e57d69106aaaf04530d65d733dea8f43129e2c0a9d61",
+  "streamHash": "ac6ff0da9bc164fe8477a3dbacdeeed5edb86955b10e4ee9aa8facf6cc991b38",
   "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
-  "submission": 1,
   "tools": [],
   "usageComplete": true,
+  "submission": 2,
+  "rawUsage": {
+    "input_tokens": 3589,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 0,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 32768,
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "speed": "standard",
+    "output_tokens_details": {
+      "thinking_tokens": 29480
+    }
+  },
+  "usage": {
+    "input_tokens": 3589,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 32768,
+    "total_tokens": 36357,
+    "reasoning_output_tokens": 29480
+  },
   "visualScore": null,
-  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+  "visualReview": "Inspect the recorded film against all seven visual criteria. Technical execution does not prove puddle clearance, realism or narrative success."
 }

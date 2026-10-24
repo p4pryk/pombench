@@ -1,889 +1,1452 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Pomeranian Animation</title><style>html,body{margin:0;background:#a2ca8a;overflow:hidden;height:100%;}canvas#stage{display:block;background:#c6dbb8;}</style></head><body><canvas id="stage" width="960" height="540"></canvas><script>
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><title>PomBench</title><style>
+  html,body{margin:0;background:#8cb964;overflow:hidden;user-select:none}
+  canvas{display:block;margin:0 auto;background:#a3c36f;image-rendering:pixelated;}
+</style></head><body>
+<canvas id="stage" width="960" height="540"></canvas>
+<script>
 (() => {
-"use strict";
-// Global constants and config
-const W=960,H=540;
-const GRAVITY=9.8; // m/s² scaled internally for subtle effects
+  const canvas = document.getElementById("stage");
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width, H = canvas.height;
 
-// Coordinate helper
-function vec2(x,y){return {x:x,y:y};}
-function vadd(a,b){return {x:a.x+b.x,y:a.y+b.y};}
-function vsub(a,b){return {x:a.x-b.x,y:a.y-b.y};}
-function vmul(v,s){return {x:v.x*s,y:v.y*s};}
-function vlerp(a,b,t){return {x:a.x+(b.x - a.x)*t,y:a.y+(b.y - a.y)*t};}
-function vdist(a,b){return Math.sqrt((b.x - a.x)**2 + (b.y - a.y)**2);}
-function vnorm(v){let l=Math.sqrt(v.x*v.x+v.y*v.y); return l<1e-8 ? {x:0,y:0} : {x:v.x/l,y:v.y/l};}
-function vperp(v){return {x:-v.y,y:v.x};}
+  // CONSTANTS SCALE
+  const SCALE = 0.85;
+  // Scene Layout positions
+  const groundY = 440 * SCALE |0; // ground height from top
+  const puddleCenterX = 490 * SCALE |0;
+  const puddleCenterY = groundY + 4; // puddle very shallow, a bit below ground line
+  const puddleRadiusX = 100 * SCALE;
+  const puddleRadiusY = 25 * SCALE;
 
-// Clamp
-function clamp(x,a,b){return x<a?a: x>b?b:x;}
+  const houseX = 700 * SCALE |0;
+  const houseY = groundY - 130 * SCALE |0;
+  const houseW = 200 * SCALE |0;
+  const houseH = 130 * SCALE |0;
 
-// Time and phases (seconds)
-const T_START=0;
-const PHASES=[
-  {start:0,end:1,name:"establish"},
-  {start:1,end:3,name:"runToHouse"},
-  {start:3,end:4.5,name:"enterHouse"},
-  {start:4.5,end:6,name:"grabBone"},
-  {start:6,end:8,name:"backout"},
-  {start:8,end:10,name:"turnToViewer"},
-  {start:10,end:12,name:"finalPose"}
-];
+  // Bone position inside house resting position (relative to house)
+  // Bone is on floor inside doghouse ~ near front left of doorway
+  const boneRestX = houseX + 45 * SCALE;
+  const boneRestY = groundY - 12 * SCALE;
 
-// Camera setup
-// Fixed camera, 3/4 view, approx 45° rotated left
-// We'll emulate a mild 3D-ish perspective by layering and scaling
-// The camera origin is near mid-backyard, looking toward doghouse right front side.
-// Yard floor horizon at bottom ~420 y, dog ground plane y~400-430.
+  // DOG SIZE & BODY PARTS (approximate, units relative dog length ~ 1)
+  // Miniature Pomeranian length ~ 30cm real, scaled to fit scene easily
+  // dog length here for drawing ~ 150 px scaled * SCALE
 
-const cam = {
-  pos: {x:480, y:460, z:0}, // for compositing reference (Z is up)
-  angleY: Math.PI/4, // rotate around vertical axis for 3/4 left view (~45°)
-  fov: Math.PI/3,
-  near: 1,
-  far: 1000
-};
+  const DOG_LENGTH = 150 * SCALE;
 
-// Dog base body dimension (approximate real Pomeranian miniature)
-// Body length ~25cm (scaling to screen: 100px), height ~16cm (65px)
-// We scale world units ~4px/cm roughly
-const DOG_BASE_LEN=100; // px approx length from shoulder to base tail pivot
-const DOG_BASE_H=65;
-const LEG_LEN=35;
-const LEG_WIDTH=14;
-const PAW_LEN=10;
-const PAW_WIDTH=7;
+  // Timings s
+  const T_START = 0;
+  const T_RUN_START = 1;
+  const T_PUDDLE_CLEAR_END = 3;
+  const T_ENTER_END = 4.5;
+  const T_GRAB_END = 6;
+  const T_BACK_OUT_END = 8;
+  const T_TURN_END = 10;
+  const T_SETTLE_END = 12;
 
-// Bone size
-const BONE_LEN=34;
-const BONE_THICK=14;
+  // Convenience clipping rectangle for doghouse interior (for occlusion at doorway)
+  // Doorway position relative to house body
+  const doorWidth = 70 * SCALE;
+  const doorHeight = 110 * SCALE;
+  const doorX = houseX + (houseW - doorWidth) / 2;
+  const doorY = houseY + houseH - doorHeight;
 
-// Doghouse size and position
-// Doghouse front facing approx right side at x=780,y=430 (ground level)
-const HOUSE = {
-  pos: {x:780,y:430},
-  width: 200,
-  depth: 140,
-  height: 150,
-  doorWidth: 72,
-  doorHeight: 100,
-  doorOffsetX: 50, // inside house coords from front face left edge
-  doorOffsetY: 0,
-  doorDepth: 0 // flat front door on a face tilted ~45° (simplify)
-};
+  // Deterministic noise to simulate fur texture
+  // Using simple sine combos for fur flick in animate
 
-// Colors and palette
-const COLORS = {
-  yardGround: '#c6dbb8',
-  yardShadow: 'rgba(0,0,0,0.18)',
-  houseBase: '#87563e',
-  houseRoof: '#6a432a',
-  houseInterior: '#3f2a1a',
-  bone: '#faf3dd',
-  boneShadow: 'rgba(0,0,0,0.17)',
-  dogOrange: '#e18c30',
-  dogCream: '#f3dba7',
-  dogShadow: 'rgba(0,0,0,0.25)',
-  eyeInk: '#0c0b0a',
-  tonguePink: '#cc9187',
-  noseBlack: '#1a1714',
-  pawPad: '#bb7d5c',
-  coatShadow: 'rgba(176,109,53,0.9)',
-}
+  // Paint helper: Fur shading & lighting
+  // directional light from top left slightly front:
+  // ambient color base #f3d7b5 (cream/orange mix) with hue variation for ruff
 
-// Fur directions and layering
-// We'll simulate soft shading with layered fills
+  // Dog basic colors
+  const baseFur = "#ecb761";
+  const ruffColor = "#f3d7b5";
+  const shadowFur = "#a36217";
+  const earInside = "#b87933";
+  const eyeColor = "#1a130b";
 
-// Utility: deterministic noise for subtle fur shading
-function seededNoise(seed) {
-  // Simple hash function based noise
-  let x = Math.sin(seed)*10000;
-  return x - Math.floor(x);
-}
+  // Bone color
+  const boneColorMain = "#e7dbd0";
+  const boneShadow = "#c8bfac";
 
-// Dog skeleton and animation curves
-// We'll represent the skeleton as a hierarchy with positions relative to body origin
-
-// The dog runs left to right, from yard left ~x=350->760 (door)
-const Y_GROUND=HOUSE.pos.y; // ground level for dog paws
-
-// Setup dog animation keyframes with interpolation
-// We use simple periodic functions for running gait
-// Four legs: LF (front left), RF (front right), LR (rear left), RR (rear right)
-// We mimic a trot gait pattern for natural running Pomeranian:
-// trot pattern: diagonal legs move in sync: LF+RR together, RF+LR together but offset half gait
-
-// Generate leg angle offsets (rotation about shoulder/hip)
-function runLegAngle(t,u_phase) {
-  // u_phase 0..1 full cycle, t in [1..3]
-  // Angle range in radians, front legs + paw flex
-  let stepCycle = (t/0.5) % 1; // running footstep cycle 2 steps/s
-  let phase = (stepCycle + u_phase) % 1;
-  // phase close to 0 or 1 means paw on ground (stance)
-  // phase close to 0.5 means paw lifted (swing)
-  // We approximate a periodic curve: smooth max
-  // At stance, leg extends downward (angle ~ 0 rad)
-  // At swing, leg flexes and raises paw (angle ~ -0.5 rad)
-  let angle = 0;
-  if(phase < 0.5){
-    // stance phase, leg down
-    let w = phase / 0.5;
-    angle = -0.5*(1-w) + 0*w;
-  } else {
-    // swing phase, leg raised
-    let w = (phase-0.5)/0.5;
-    angle = 0*-w + (-0.5)*w;
+  // Utilities
+  function lerp(a,b,t){return a*(1-t)+b*t;}
+  function clamp(x,a,b){return x < a ? a : x > b ? b : x;}
+  function smoothstep(edge0, edge1, x){
+    x = clamp((x-edge0)/(edge1-edge0),0,1);
+    return x*x*(3-2*x);
   }
-  // We damp the amplitude by 0.75 for realism
-  return 0.75*angle;
-}
-// Some tweak: smoother paw flex during swing
-function pawFlex(t,u_phase){
-  let stepCycle = (t/0.5) % 1;
-  let phase = (stepCycle + u_phase) % 1;
-  if(phase < 0.5) return 0;
-  // flex increases 0 to -0.3 during swing
-  return -0.3*(phase-0.5)*2;
-}
+  function easeInOut(t){
+    return t<0.5 ? 2*t*t : -1+(4-2*t)*t;
+  }
+  // Sine oscillation in 0..1 range smooth
+  function sine01(t,freq=1,phase=0){
+    return 0.5 + 0.5*Math.sin(2*Math.PI*freq*t + phase);
+  }
 
-// Positions along dog length of key joints relative to body origin (pivot point at shoulder center)
-const J = {
-  neck: vec2(20,-18),
-  head: vec2(45,-10),
-  tailBase: vec2(-22,-18),
-  tailTip: vec2(-55,-25),
-  spineLengthFrontBack: DOG_BASE_LEN,
-  legShoulderFrontRight: vec2(18,4),
-  legShoulderFrontLeft: vec2(18,4),
-  legHipRearRight: vec2(-20,20),
-  legHipRearLeft: vec2(-20,20),
-};
-// We'll simplify symmetry and offsets
+  // 2D Vector helper
+  function v2(x,y){return {x:x,y:y};}
+  function vAdd(a,b){return {x:a.x+b.x,y:a.y+b.y};}
+  function vSub(a,b){return {x:a.x-b.x,y:a.y-b.y};}
+  function vMul(a,s){return {x:a.x*s,y:a.y*s};}
+  function vLerp(a,b,t){return {x:lerp(a.x,b.x,t),y:lerp(a.y,b.y,t)};}
+  function vDist(a,b){return Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2);}
 
-// Tracking dog world position and pose keyframes per phase
-// The dog's pivot point will be at the shoulder along bottom axis (y ~ 425)
-
-// Bone position inside doghouse:
-// in house coords, bone rests centered on floor inside, just inside door frame
-
-const boneRestHouseLocal = {x: -70, y: HOUSE.doorHeight-30}; // 70px in, 70px above floor
-// Rearrange + height so bone visible from door side view
-
-// === Draw helpers ===
-function drawShadow(ctx, x, y, radiusX, radiusY, opacity) {
-  ctx.save();
-  ctx.fillStyle = `rgba(0,0,0,${opacity})`;
-  ctx.beginPath();
-  ctx.ellipse(x, y, radiusX, radiusY, 0, 0, 2*Math.PI);
-  ctx.fill();
-  ctx.restore();
-}
-
-function drawBone(ctx, posX, posY, rot) {
-  ctx.save();
-  ctx.translate(posX, posY);
-  ctx.rotate(rot);
-  // Bone shape - two balls joined with narrow stick
-  // Color creamy with soft shadows
-  const l = BONE_LEN;
-  const r = BONE_THICK/2;
-  ctx.fillStyle = COLORS.bone;
-  // central shaft
-  ctx.beginPath();
-  ctx.moveTo(-l/4, -r/2);
-  ctx.lineTo(l/4, -r/2);
-  ctx.arc(l/4,0,r,Math.PI*1.5,Math.PI*0.5,false);
-  ctx.lineTo(-l/4, r/2);
-  ctx.arc(-l/4,0,r,Math.PI*0.5,Math.PI*1.5,false);
-  ctx.closePath();
-  ctx.fill();
-  // end balls
-  ctx.beginPath();
-  ctx.arc(-l/2, 0, r*0.75, 0, 2*Math.PI);
-  ctx.arc(l/2, 0, r*0.75, 0, 2*Math.PI);
-  ctx.fill();
-  // subtle shading
-  let grad = ctx.createRadialGradient(0,0,r,0,0,r*2);
-  grad.addColorStop(0, '#fef7e7');
-  grad.addColorStop(1, '#cdbf9c');
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  ctx.ellipse(0,0,l*0.7,r*0.9,0,0,2*Math.PI);
-  ctx.fill();
-  ctx.restore();
-}
-
-function drawDogHouse(ctx) {
-  // Draw doghouse in fixed 3/4 perspective
-  const x=HOUSE.pos.x;
-  const y=HOUSE.pos.y;
-  const w=HOUSE.width;
-  const d=HOUSE.depth;
-  const h=HOUSE.height;
-  const doorW=HOUSE.doorWidth;
-  const doorH=HOUSE.doorHeight;
-  // We draw as a right-facing house rotated ~45°
-  // Front face (width x height), side face (depth x height), sloped roof
+  // Dog running gait step constants (four legs phase offsets, stance/swing durations)
+  // Approx 3 strides per second (fast trot)
+  const strideDuration = 0.4; // s per stride
+  // Leg phase in stride [0..1], walking model adapted and compressed for trotting dog
+  // sequence LF, RH, RF, LH in trot (diagonal pairs)
+  // We'll create offsets so legs move properly, stance phases controlled for run
   
-  // Base shadows
-  ctx.shadowColor = 'rgba(0,0,0,0.12)';
-  ctx.shadowBlur = 8;
-  ctx.shadowOffsetY = 4;
-  
-  // Ground shadow under base, ellipse (dark greenish)
-  ctx.fillStyle = 'rgba(30,40,20,0.12)';
-  ctx.beginPath();
-  ctx.ellipse(x+w/2,y+1.5,w*0.7,d*0.25,0,0,2*Math.PI);
-  ctx.fill();
-  
-  ctx.shadowColor='transparent'; // reset
+  // LEG NAMES
+  // LF=left front, RF=right front, LH=left hind, RH=right hind
 
-  // Side face color (dark brown)
-  ctx.fillStyle = COLORS.houseBase;
-  ctx.beginPath();
-  // front bottom left corner
-  ctx.moveTo(x,y);
-  // front bottom right
-  ctx.lineTo(x+w,y);
-  // side bottom right
-  ctx.lineTo(x+w+d*Math.cos(Math.PI/4),y-d*Math.sin(Math.PI/4));
-  // side bottom left
-  ctx.lineTo(x+d*Math.cos(Math.PI/4), y-d*Math.sin(Math.PI/4));
-  ctx.closePath();
-  ctx.fill();
+  // Leg animation params:
+  // pawY motion - stance paw on ground at y=0; swing paw rises to y>0.
+  // complex joint bend simulation done by approximations
 
-  // Front face (lighter brown)
-  ctx.fillStyle = '#a2734e';
-  ctx.beginPath();
-  ctx.moveTo(x,y);
-  ctx.lineTo(x+w,y);
-  ctx.lineTo(x+w,y - h);
-  ctx.lineTo(x,y - h);
-  ctx.closePath();
-  ctx.fill();
+  // DOG POSE MODEL
+  // Positions and angles for body parts, joints, fur volume, tail curve
+  // Animate keypoints individually and "skin" shapes
+  // We build side and 3/4 views combined in 2D layers with radial gradients & shading
 
-  // Roof (flat trapezoid)
-  ctx.fillStyle = COLORS.houseRoof;
-  ctx.beginPath();
-  ctx.moveTo(x,y - h);
-  ctx.lineTo(x+w,y - h);
-  ctx.lineTo(x+w + d*Math.cos(Math.PI/4), y - h - d*Math.sin(Math.PI/4));
-  ctx.lineTo(x + d*Math.cos(Math.PI/4), y - h - d*Math.sin(Math.PI/4));
-  ctx.closePath();
-  ctx.fill();
+  // Camera and view:
+  // 3/4 camera from front-left, slightly above ground, zoomed to fit whole scene
+  // We'll place the dog on ground (X,Y) and then apply rotation around vertical Y axis for turn
 
-  // Door frame on front face (a rectangle inset on front face, center-left side)
-  // Door bottom left corner coords:
-  const doorX = x + HOUSE.doorOffsetX;
-  const doorY = y;
-  ctx.fillStyle = '#4a381e';
-  ctx.fillRect(doorX, doorY - doorH, doorW, doorH);
+  // DOG MODEL KEY DATA
+  // Body 3D coords we fake with 2D layered shapes
 
-  // Door interior shadow rectangle (darker inside)
-  ctx.fillStyle = COLORS.houseInterior;
-  ctx.fillRect(doorX + 4, doorY - doorH + 6, doorW - 8, doorH - 20);
+  // Dog anatomy parameters (relative to DOG_LENGTH)
+  const dLen = DOG_LENGTH;
+  // Body parts sizes
+  const headLength = 0.45*dLen;    // snout+head total length
+  const headHeight = 0.35*dLen;
+  const neckLen = 0.15*dLen;
+  const neckHeight = 0.18*dLen;
+  const chestLen = 0.4*dLen;
+  const chestHeight = 0.28*dLen;
+  const bellyLen = 0.55*dLen;
+  const bellyHeight = 0.22*dLen;
+  const tailLength = 0.45*dLen;
+  const tailBaseRadius = 12 * SCALE;
+  const pawRadius = 14 * SCALE;
 
-  // Door rim highlight (top edge)
-  ctx.strokeStyle = '#b68e5f';
-  ctx.lineWidth=2;
-  ctx.beginPath();
-  ctx.moveTo(doorX, doorY - doorH + 3);
-  ctx.lineTo(doorX + doorW, doorY - doorH + 3);
-  ctx.stroke();
+  // Paws positions relative to body center (side view)
+  // Spine line from shoulder to pelvis is approx 50 degrees slope ground
+  // We'll establish a "spinePos" as dog front-hip vector controlling body angle
 
-  // Door threshold shadow line
-  ctx.strokeStyle = 'rgba(0,0,0,0.17)';
-  ctx.lineWidth=2;
-  ctx.beginPath();
-  ctx.moveTo(doorX, doorY - 2);
-  ctx.lineTo(doorX + doorW, doorY - 2);
-  ctx.stroke();
-}
+  // To position all the dog parts in the 2D canvas coordinate, with 3/4 rotation, we use
+  // a reference point "dogPos" at ground level where the middle of dog belly meets ground, 
+  // approx the pelvis/hip joint in 3/4 view offset.
 
-function drawGround(ctx) {
-  // Ground is canvas background, but add mottled light surface and shadows
-  // Slight darker splotches under dog paws and doghouse shadow done separately
-  // Add light graded base in y
-  let grad = ctx.createLinearGradient(0,H*0.5,0,H);
-  grad.addColorStop(0, '#9cc570');
-  grad.addColorStop(1, '#c6dbb8');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0,0,W,H);
-  // subtle dirt/grass texture with low opacity noise lines - omitted due to performance
-}
+  // We need to transform 3D dog model to 2D projection for camera ~ orthographic but lateral tilt + rotate in Y.
 
-// === Dog drawing functions ===
-// We build the dog from body parts with subtle shading and fur layering
-// The dog pivot is the shoulder at paw contact ground level (origin: (0,0))
-// We'll apply local translations to each part and rotate legs accordingly
+  // Let's define the dog's local coordinates in 3D (x forward, y up, z right):
+  //  x forward from pelvis (0 to ~dLen inside dog)
+  //  y up from ground 0 to ~0.35*dLen
+  //  z right from center from -half width to +half width
 
-function drawEllipseFur(ctx,x,y,rx,ry,fillStyle,shadowColor) {
-  ctx.save();
-  ctx.translate(x,y);
-  ctx.fillStyle = fillStyle;
-  ctx.shadowColor = shadowColor;
-  ctx.shadowBlur = 8;
-  ctx.beginPath();
-  ctx.ellipse(0,0,rx,ry,0,0,2*Math.PI);
-  ctx.fill();
-  ctx.shadowColor='transparent';
-  ctx.restore();
-}
+  // We'll approximate width (from spine approx)
+  // Max half width ~ body radius + fur volume ~ 0.17*dLen
 
-function drawFurPatch(ctx, x,y, sizeX,sizeY, furColor, dx,dy, rot=0) {
-  // Advanced: use multi-layer ellipses with directional strokes
-  ctx.save();
-  ctx.translate(x+dx,y+dy);
-  ctx.rotate(rot);
-  let grad = ctx.createRadialGradient(0,0,sizeX,sizeX*0.3,0,0);
-  grad.addColorStop(0, furColor);
-  grad.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  ctx.ellipse(0,0,sizeX,sizeY*Math.random()*0.7+0.8,0,0,2*Math.PI);
-  ctx.fill();
-  ctx.restore();
-}
+  // Projection vector and scale parameters
+  // Camera from 45deg right front, elevation 15deg
+  // Orthographic projection with basic rotated coordinates
 
-function drawLeg(ctx,x,y,angle,bendAngle,isFront,coatColor,shadowColor){
-  // leg from shoulder/hip pivot with upper and lower leg segments and paw
-  ctx.save();
-  ctx.translate(x,y);
-  ctx.rotate(angle);
-  // Upper leg
-  ctx.fillStyle = coatColor;
-  ctx.shadowColor=shadowColor;
-  ctx.shadowBlur=2;
-  ctx.beginPath();
-  ctx.ellipse(0,LEG_LEN/2,LEG_WIDTH*0.95,LEG_LEN*0.65,0,0,2*Math.PI);
-  ctx.fill();
-  // Knee joint on lower end
-  ctx.beginPath();
-  ctx.ellipse(0,LEG_LEN,LEG_WIDTH*0.6,LEG_WIDTH*0.5,0,0,2*Math.PI);
-  ctx.fill();
-  // Lower leg
-  ctx.translate(0,LEG_LEN);
-  ctx.rotate(bendAngle);
-  ctx.beginPath();
-  ctx.ellipse(0,LEG_LEN/2,LEG_WIDTH*0.85,LEG_LEN*0.7,0,0,2*Math.PI);
-  ctx.fill();
-  // paw base
-  ctx.beginPath();
-  ctx.ellipse(0,LEG_LEN, PAW_WIDTH * 1.05, PAW_LEN/2, 0, 0, 2*Math.PI);
-  ctx.fill();
+  // layout for large dog length 150px scaled
 
-  // paw pads for realism
-  ctx.fillStyle=COLORS.pawPad;
-  for(let i=-1;i<=1;i+=2){
-    ctx.beginPath();
-    ctx.ellipse(i*3,LEG_LEN+2,2,3,0,0,2*Math.PI);
-    ctx.fill();
-  }
-  // shadow reset
-  ctx.shadowColor='transparent';
-  ctx.restore();
-}
-
-function drawTail(ctx,x,y, angle, curl, coatColor) {
-  // Tail starts at (x,y) rotates by base angle and curls up in segments
-  ctx.save();
-  ctx.translate(x,y);
-  ctx.rotate(angle);
-  // Draw multiple segments with upward curve
-  let seg_len = 20;
-  let segs = 3;
-  for(let i=0;i<segs;i++){
-    ctx.save();
-    let curlAngle = curl * (Math.sin(Math.PI*(i/segs)))*0.7;
-    ctx.rotate(curlAngle);
-    // segment ellipse shape with some taper
-    let rx = seg_len * (1 - i*0.2);
-    let ry = 13 * (1 - i*0.35);
-    // lighter cream near tip
-    let c = (i < segs-1) ? coatColor : COLORS.dogCream;
-    ctx.fillStyle = c;
-    ctx.shadowColor = COLORS.dogShadow;
-    ctx.shadowBlur=4;
-    ctx.beginPath();
-    ctx.ellipse(rx/2, 0, rx/2, ry/2, 0, 0, 2*Math.PI);
-    ctx.fill();
-    ctx.restore();
-    ctx.translate(seg_len*0.75,0);
-  }
-  ctx.restore();
-}
-
-function drawHead(ctx,x,y,rot,eyeDir, coatColor, creamColor) {
-  // x,y pivot is neck joint
-  ctx.save();
-  ctx.translate(x,y);
-  ctx.rotate(rot);
-
-  // Head main body - short muzzle and rounded skull
-  // Base oval for skull
-  ctx.fillStyle = coatColor;
-  ctx.shadowColor=COLORS.dogShadow;
-  ctx.shadowBlur = 10;
-  ctx.beginPath();
-  ctx.ellipse(0,0,37,33,0,0,2*Math.PI);
-  ctx.fill();
-
-  // Neck ruff (similar to big collar) behind ears
-  ctx.fillStyle = creamColor;
-  ctx.beginPath();
-  ctx.ellipse(-10,10,20,25,Math.PI*0.25,0,Math.PI*2);
-  ctx.fill();
-
-  // Muzzle slightly pointed forward
-  ctx.fillStyle = creamColor;
-  ctx.beginPath();
-  ctx.ellipse(24,6,18,12,0,0,2*Math.PI);
-  ctx.fill();
-
-  // Nose tip - volumed rounded dark
-  ctx.fillStyle = COLORS.noseBlack;
-  ctx.beginPath();
-  ctx.ellipse(36,5,5,4,0,0,2*Math.PI);
-  ctx.fill();
-
-  // Mouth line under muzzle
-  ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(26,18);
-  ctx.lineTo(40,18);
-  ctx.stroke();
-
-  // Open mouth or closed? mouth-opening controlled externally
-
-  // Ears triangular, erect and layered
-  // Left ear
-  ctx.save();
-  ctx.translate(-10,-30);
-  ctx.rotate(-0.1);
-  ctx.fillStyle = coatColor;
-  ctx.beginPath();
-  ctx.moveTo(0,0);
-  ctx.lineTo(26,10);
-  ctx.lineTo(7,35);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-  ctx.restore();
-
-  // Right ear
-  ctx.save();
-  ctx.translate(15,-32);
-  ctx.rotate(0.15);
-  ctx.fillStyle = coatColor;
-  ctx.beginPath();
-  ctx.moveTo(0,0);
-  ctx.lineTo(23,-5);
-  ctx.lineTo(9,20);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-  ctx.restore();
-
-  // Eyes dark and expressive
-  // Shape near muzzle base
-  ctx.fillStyle = COLORS.eyeInk;
-  ctx.beginPath();
-  // Left eye
-  ctx.ellipse(8,-2,8,5,0,0,2*Math.PI);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(12,-4, 3, 2, 0, 0, 2 * Math.PI);
-  ctx.fillStyle = '#fff';
-  ctx.fill();
-
-  // Right eye
-  ctx.fillStyle = COLORS.eyeInk;
-  ctx.beginPath();
-  ctx.ellipse(22,-5,8,5,0,0,2*Math.PI);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(26,-7, 3, 2, 0, 0, 2 * Math.PI);
-  ctx.fillStyle = '#fff';
-  ctx.fill();
-
-  ctx.restore();
-}
-
-function drawBoneInMouth(ctx, x, y, rot) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(rot);
-  drawBone(ctx, 0, 0, 0);
-  ctx.restore();
-}
-
-// Draw dog body parts with layering and shading
-function drawDog(ctx,pose){
-  // pose contains many params for drawing dog in world coords, angle, animation phases
-
-  let baseX = pose.pos.x;
-  let baseY = pose.pos.y;
-
-  ctx.save();
-  ctx.translate(baseX, baseY);
-
-  // Body core: trapezoid shape with thick fur volume
-  // Body angle rotation
-  ctx.rotate(pose.bodyAngle);
-
-  // Shadows below dog body on ground (ellipse)
-  let shadowX = 0;
-  let shadowY = DOG_BASE_H*0.3;
-  drawShadow(ctx, shadowX, shadowY, DOG_BASE_LEN*0.5,DOG_BASE_H*0.15,0.15);
-
-  // Body base shape ellipse (deep orange)
-  ctx.fillStyle = COLORS.dogOrange;
-  ctx.shadowColor = COLORS.dogShadow;
-  ctx.shadowBlur = 10;
-  ctx.beginPath();
-  ctx.ellipse(0,0,DOG_BASE_LEN*0.5,DOG_BASE_H*0.48,0,0,2*Math.PI);
-  ctx.fill();
-
-  // Lighter neck ruff ellipse front top
-  ctx.fillStyle = COLORS.dogCream;
-  ctx.beginPath();
-  ctx.ellipse(DOG_BASE_LEN*0.18,-DOG_BASE_H*0.28,DOG_BASE_LEN*0.15,DOG_BASE_H*0.23,0,0,2*Math.PI);
-  ctx.fill();
-
-  // Legs and paws
-  // Four legs positioned relative to body
-  // Front legs:
-  // LF: front left, on dog coordinates near +18,4
-  // RF: front right, symmetric offset
-
-  // Rear legs near -20,20
-
-  // Leg angles from gait cycle:
-  // Fl (left front)
-  let LF_angle = pose.runLegAngles.LF;
-  let LF_bend = pose.runPawFlex.LF;
-  drawLeg(ctx, DOG_BASE_LEN*0.18, DOG_BASE_H*0.34, LF_angle, LF_bend, true, COLORS.dogCream, COLORS.dogShadow);
-  // RF
-  let RF_angle = pose.runLegAngles.RF;
-  let RF_bend = pose.runPawFlex.RF;
-  drawLeg(ctx, DOG_BASE_LEN*0.18, DOG_BASE_H*0.14, RF_angle, RF_bend, true, COLORS.dogCream, COLORS.dogShadow);
-  // LR (left rear)
-  let LR_angle = pose.runLegAngles.LR;
-  let LR_bend = pose.runPawFlex.LR;
-  drawLeg(ctx, -DOG_BASE_LEN*0.22, DOG_BASE_H*0.35, LR_angle, LR_bend, false, COLORS.dogOrange, COLORS.dogShadow);
-  // RR (right rear)
-  let RR_angle = pose.runLegAngles.RR;
-  let RR_bend = pose.runPawFlex.RR;
-  drawLeg(ctx, -DOG_BASE_LEN*0.22, DOG_BASE_H*0.15, RR_angle, RR_bend, false, COLORS.dogOrange, COLORS.dogShadow);
-
-
-  // Tail: at left rear pivot
-  let tailX = -DOG_BASE_LEN*0.47;
-  let tailY = -DOG_BASE_H*0.43;
-
-  drawTail(ctx, tailX, tailY, pose.tailAngle+Math.PI*0.8 , pose.tailCurl, COLORS.dogOrange);
-
-  // Head
-  // Head joint at front neck, shifted forward and up
-  // show head rotation slightly matched to movement
-  drawHead(ctx,DOG_BASE_LEN*0.18, -DOG_BASE_H*0.38, pose.headAngle, pose.eyeDir, COLORS.dogOrange, COLORS.dogCream);
-
-  // If holding bone, draw bone at mouth
-  if(pose.boneHeld){
-    // Mouth position approx forward and down near muzzle
-    let boneX = DOG_BASE_LEN*0.25;
-    let boneY = -DOG_BASE_H*0.38 + 4;
-    drawBoneInMouth(ctx, boneX, boneY, pose.boneRot);
+  // Puddle ellipse polygon for reflection masking
+  function insidePuddle(x,y){
+    let dx = (x - puddleCenterX) / puddleRadiusX;
+    let dy = (y - puddleCenterY) / puddleRadiusY;
+    return (dx*dx + dy*dy) <= 1;
   }
 
-  ctx.restore();
-}
+  // BODY 3D MODEL points (local) to 2D projected
 
-// Doghouse occlusion for dog entering / exiting house (doorway rectangle mask)
-// We clip the house interior region inside the door opening to partially hide dog parts
+  // Projection parameters
+  const camAngleY = Math.PI/4; // 45deg
+  const camAngleX = 0.3;       // ~17deg elevation
 
-function clipDoor(ctx){
-  const doorX = HOUSE.pos.x + HOUSE.doorOffsetX;
-  const doorY = HOUSE.pos.y;
-  const doorW = HOUSE.doorWidth;
-  const doorH = HOUSE.doorHeight;
+  function project3D(p){
+    // p: {x,y,z} dog local coordinates
+    // rotate by camAngleY around Y axis (vertical) then camAngleX around X axis (horizontal tilt upward)
+    // then orthographic project to 2D screen plane
 
-  ctx.beginPath();
-  ctx.rect(doorX, doorY - doorH, doorW, doorH);
-  ctx.clip();
-}
+    // Rotate Y:
+    let cosY = Math.cos(camAngleY);
+    let sinY = Math.sin(camAngleY);
+    let x1 = cosY*p.x - sinY*p.z;
+    let z1 = sinY*p.x + cosY*p.z;
+    let y1 = p.y;
 
-// === Animation sequence functions ===
+    // Rotate X (pitch)
+    let cosX = Math.cos(camAngleX);
+    let sinX = Math.sin(camAngleX);
+    let y2 = cosX*y1 - sinX*z1;
+    let z2 = sinX*y1 + cosX*z1;
+    let x2 = x1;
 
-// Given t in seconds, compute dog position and joint params
-function animationState(t) {
-  // Clamp time for phases
-  t = Math.max(0, Math.min(t,12));
+    // Orthographic projection x,z ignore z2 (depth)
+    // Return 2D coordinate {x,y} on screen, relative to dogPos:
+    // y coordinate inverted pointing down on canvas (increase y down)
+    return {x:x2 * SCALE, y:-y2 * SCALE};
+  }
 
-  // Dog world positions: x moves from left 350->760 over 1..3 s run
-  // House at 780 y=430 ground level
-  let dogPosX = 350;
-  let dogPosY = Y_GROUND;
-  let dogBodyAngle = 0;
-  let tailCurl = 0.95 * Math.sin(t*14) * 0.18; // subtle tail wag default
-  let headAngle = 0;
-  let eyeDir = 0; // neutral
-  let boneHeld = false;
-  let boneRot = 0;
+  // We'll offset all by absolute dog position in canvas coordinates before drawing
 
-  // Run gait leg angles
-  let runLegAngles = {LF:0, RF:0, LR:0, RR:0};
-  let runPawFlex = {LF:0, RF:0, LR:0, RR:0};
+  // Dog parts 3D points local definitions
 
-  // Bone position world - needed for grab and backout synchronization
-  // Bone original pos inside doghouse floor (inside front door)
-  let doorXStart = HOUSE.pos.x + HOUSE.doorOffsetX;
-  let doorYFloor = HOUSE.pos.y;
-  // Bone resting position in yard coords
-  let bonePosXRest = doorXStart + boneRestHouseLocal.x;
-  let bonePosYRest = doorYFloor - boneRestHouseLocal.y;
-  // During grab and hold, bone moves with dog mouth
+  // Key joints (using local dog 3D coordinates, y=up vertical, x=forward, z=right):
+  // Pelvis positioned at origin (0,0,0)
+  // Head front at x ~ +dLen
+  // Tail base near pelvis, curled above back
+  // Shoulders at x ~ dLen*0.13
+  // Hips at origin (0,0,0)
+  // Legs endpoints at ground level y=0
 
-  // Phase stepwise
+  // Leg lengths (approximate)
+  const upperLegLen = 0.27*dLen;
+  const lowerLegLen = 0.22*dLen;
+  const pawLen = 0.07*dLen;
 
-  if(t < 1){
-    // Phase 0 establish scene no dog move
-    dogPosX = 350;
-    dogPosY = Y_GROUND;
-    dogBodyAngle = 0;
-    headAngle = 0;
-    // Dog is idle, subtle breathing tail swings
-    tailCurl = 0.15 * Math.sin(t*8);
-    boneHeld = false;
+  // Knee and elbow joint angles depend on gait cycle
 
-  } else if(t < 3){
-    // run toward doghouse
-    let runT = (t-1)/2; // 0..1
-    dogPosX = 350 + 410*runT;
-    dogPosY = Y_GROUND - 3*Math.sin(runT*Math.PI*2);
-    dogBodyAngle = 0.04 * Math.sin(runT*Math.PI*14);
-    tailCurl = 0.12 + 0.3 * Math.sin(t*20);
-    headAngle = 0;
+  // Legs base x,z positions:
+  // Front left shoulder location
+  const shoulderX = 0.13 * dLen;
+  const shoulderZ = -0.17 * dLen; // left is negative z (camera right is positive z)
+  // Front right shoulder
+  const shoulderRightZ = 0.17 * dLen;
 
-    // run gait legs - trot pattern diagonals
-    runLegAngles.LF = runLegAngle(t,0);
-    runLegAngles.RR = runLegAngle(t,0);
-    runLegAngles.RF = runLegAngle(t,0.5);
-    runLegAngles.LR = runLegAngle(t,0.5);
-    runPawFlex.LF = pawFlex(t,0);
-    runPawFlex.RR = pawFlex(t,0);
-    runPawFlex.RF = pawFlex(t,0.5);
-    runPawFlex.LR = pawFlex(t,0.5);
+  // Hind left hip location
+  const hipX = 0;
+  const hipZ = -0.14 * dLen;
+  // Hind right hip
+  const hipRightZ = 0.14 * dLen;
 
-    boneHeld = false;
-  } else if(t < 4.5){
-    // Enter through doorway forwards, approx 1.5s duration
-    // Dog pivot approaches door threshold about x= doorXStart+40 center offset
+  // Neck base position, fixed relative to shoulders:
+  const neckBaseX = shoulderX - 0.05*dLen;
+  const neckBaseZ = 0;
 
-    let enterT = (t-3)/1.5; // 0..1
+  // Head center approx at end of neck + offset forward
+  const neckLength3D = 0.15 * dLen;
 
-    // Approach onto door step a bit + slight Y offset for step up
-    dogPosX = 760 + 20*enterT;
-    dogPosY = Y_GROUND - 12*enterT;
+  // Tail base position near hips, projecting from pelvis,
+  // tail curls up right over back, visible from side and 3/4 front
 
-    // Body rotates slightly to face house doorway (45 deg turned)
-    dogBodyAngle = 0.3 * enterT;
+  // Tail bending modeled as arcs
 
-    // Legs: slow walking backward-like paw movement but forward
-    let walkT = t - 3;
-    runLegAngles.LF = 0.09 * Math.sin(walkT*13 + Math.PI*0.1);
-    runLegAngles.RF = 0.1 * Math.sin(walkT*13);
-    runLegAngles.LR = -0.07 * Math.sin(walkT*13);
-    runLegAngles.RR = -0.1 * Math.sin(walkT*13 + Math.PI*0.15);
-    runPawFlex.LF = 0;
-    runPawFlex.RF = 0;
-    runPawFlex.LR = 0;
-    runPawFlex.RR = 0;
+  // SOMETHING IMPORTANT:
+  // The dog's main "body" is bent along spine angle
+  // Spine angle (pitch) changes with running, jump, landing (0 ~ flat to ground)
 
-    headAngle = 0.1 * Math.sin(t*10);
-    tailCurl = 0.4 * enterT;
+  // Leg gait cycle modeled as time dependent phase:
+  // We'll construct a time parameter tAnim from 0 to 12 seconds and branch logic
 
-    boneHeld = false;
-  } else if(t < 6){
-    // Grab bone in 1.5s time, from door partially occluded entered position
-    let grabT = (t-4.5)/1.5; // 0..1
+  // Dog X,Y position along run path:
+  // The dog starts on left side at about x=220, y=groundY (pixels), moves forward toward houseX=700
+  // The dog moves from approx x=220 to x=houseX + 30 in 7 seconds (run + puddle + enter + grab + back out)
+  // The run phase: 1 to 3s
 
-    // Dog mostly standing in door, small adjustments in body pose
-    dogPosX = 780;
-    dogPosY = Y_GROUND - 15*(0.7 - Math.abs(grabT - 0.5)*2) * 0.25;
-    dogBodyAngle = 0.32 - 0.07*grabT;
-    headAngle = 0.2*Math.sin(grabT*Math.PI*4);
+  // We'll parametrize dog's forward position as function of time
 
-    // Legs stable stance, slight bend
-    runLegAngles.LF = -0.03;
-    runLegAngles.RF = -0.015;
-    runLegAngles.LR = 0.01;
-    runLegAngles.RR = -0.015;
-    runPawFlex.LF = 0;
-    runPawFlex.RF = 0;
-    runPawFlex.LR = 0;
-    runPawFlex.RR = 0;
+  // Dog positions (in canvas coordinates)
+  // Dog runs approximately along a line y= groundY - 5 * sin( small angle)= roughly flat, slight vertical bobbing for run
 
-    tailCurl = 0.5 * Math.sin(t*10);
+  // Dog motion key frame path x(t):
 
-    // The bone is originally resting inside house at fixed pos
-    // Grab phase: mouth lowers and opens, bone moves gradually from resting pos to mouth
-
-    // Mouth vertical / jaw open simulate by head lift on y
-    // We simulate a vertical bone moving mouth - linear lerp from house pos to mouth pos
-    boneHeld = grabT > 0.33; // hold after 1/3 of phase
-
-    if(grabT < 0.33){
-      boneRot = 0;
-    } else {
-      boneRot = 0.2*Math.sin(6*grabT*Math.PI);
+  function dogX(t){
+    if(t < 1) return 220 * SCALE;
+    if(t >= 1 && t <= 3){
+      // Running forward from 220 to 670
+      let p = (t - 1)/2;
+      return lerp(220* SCALE, 670* SCALE, p);
     }
-  } else if(t < 8){
-    // Back out with bone for 2s: reverse walking, slow movement out the door
-    let backT = (t-6)/2; // 0..1
-    dogPosX = 780 - 290*backT;
-    dogPosY = Y_GROUND + 8*backT;
-    dogBodyAngle = 0.25 * Math.sin(backT*Math.PI*4) + 0.01;
-
-    // Legs: slow backward stepping
-    let backStep = t-6;
-    runLegAngles.LF = 0.1 * Math.sin(backStep*7 + Math.PI*0.1);
-    runLegAngles.RF = 0.12 * Math.sin(backStep*7);
-    runLegAngles.LR = -0.1 * Math.sin(backStep*7);
-    runLegAngles.RR = -0.12 * Math.sin(backStep*7 + Math.PI*0.15);
-    runPawFlex.LF = 0;
-    runPawFlex.RF = 0;
-    runPawFlex.LR = 0;
-    runPawFlex.RR = 0;
-
-    tailCurl = 0.3 + 0.2 * Math.sin(t*12);
-
-    headAngle = 0.1*Math.sin(t*10);
-
-    // Bone rigidly held, mouth moves with dog head
-    boneHeld = true;
-    boneRot = 0.1*Math.sin(t*10)*0.35;
-
-  } else if(t < 10){
-    // Turn toward viewer for 2s
-    let turnT = (t-8)/2; // 0..1
-
-    dogPosX = 490 + 20*turnT;
-    dogPosY = Y_GROUND - 5*Math.sin(turnT*Math.PI*1.5);
-    // Body rotates from facing right (0 rad) to facing forward (PI/2 rad)
-    dogBodyAngle = 0.3 * (1 - turnT);
-    headAngle = 0.6 * (turnT);
-    tailCurl = 0.15 * Math.sin(t*15) + 0.4*turnT;
-    // Legs steady stance, no large paw movement for pivot
-    runLegAngles.LF = -0.02;
-    runLegAngles.RF = -0.04;
-    runLegAngles.LR = 0.02;
-    runLegAngles.RR = -0.01;
-    runPawFlex.LF = 0;
-    runPawFlex.RF = 0;
-    runPawFlex.LR = 0;
-    runPawFlex.RR = 0;
-    boneHeld = true;
-    boneRot = 0.7*turnT;
-  } else {
-    // Final pose: frontal facing viewer, small breathing, tail sway, steady legs
-    dogPosX = 510;
-    dogPosY = Y_GROUND - 5;
-    dogBodyAngle = 0;
-    headAngle = 0;
-    tailCurl = 0.3 * Math.sin(t*6);
-    runLegAngles.LF = 0;
-    runLegAngles.RF = 0;
-    runLegAngles.LR = 0;
-    runLegAngles.RR = 0;
-    runPawFlex.LF = 0;
-    runPawFlex.RF = 0;
-    runPawFlex.LR = 0;
-    runPawFlex.RR = 0;
-    boneHeld = true;
-    boneRot = 0.2 * Math.sin(t*4);
+    if(t > 3 && t <= 4.5){
+      // enters doghouse, advance 670 to 715 linearly
+      let p = (t-3)/1.5;
+      return lerp(670* SCALE, 715* SCALE, p);
+    }
+    if(t > 4.5 && t <=6){
+      // Standing or reaching for bone - no position change
+      return 715* SCALE;
+    }
+    if(t > 6 && t <=8){
+      // Back out from doghouse 715 to 630
+      let p = (t-6)/2;
+      return lerp(715* SCALE, 630* SCALE, p);
+    }
+    if(t > 8 && t <= 10){
+      // Turning in place at 630
+      return 630* SCALE;
+    }
+    if(t>10){
+      // Settled front pose at 650 (a bit step forward)
+      return 650* SCALE;
+    }
   }
 
-  return {pos:{x:dogPosX,y:dogPosY}, bodyAngle: dogBodyAngle, tailCurl: tailCurl, headAngle: headAngle, eyeDir: eyeDir,
-    runLegAngles:runLegAngles, runPawFlex:runPawFlex, boneHeld: boneHeld, boneRot: boneRot};
-}
-
-// === Main renderFrame function ===
-window.renderFrame = function(t) {
-  let ctx = document.getElementById('stage').getContext('2d');
-  ctx.clearRect(0,0,W,H);
-
-  // Background ground with gradient and textured
-  drawGround(ctx);
-
-  // Doghouse first so its shadow is behind dog
-  drawDogHouse(ctx);
-
-  // Bone resting position: during house enter and earlier
-  // Bone is only visible from outside when in doorway line of sight
-  // Calculate bone position fixed at rest or held
-
-  let dogstate = animationState(t);
-
-  // Draw bone resting on floor inside doghouse if not held
-  if(t < 4.8){
-    // Gatekeeper threshold range: bone visible inside door
-    let doorX = HOUSE.pos.x + HOUSE.doorOffsetX;
-    let doorY = HOUSE.pos.y;
-    // We offset bone z for layering later
-    drawBone(ctx, doorX + boneRestHouseLocal.x, doorY - boneRestHouseLocal.y, 0);
+  // Dog Y (vertical ground level) fixed, but add small vertical bob for run
+  function dogY(t){
+    if(t < 1) return groundY;
+    if(t >= 1 && t <= 3){
+      // Bob around groundY a bit, running bounce ~5px amplitude, frequency ~ 4Hz
+      // tRun relative time:
+      let tb = (t-1)*4*Math.PI;
+      return groundY + Math.sin(tb)*2;
+    }
+    if(t >3 && t <= 6) return groundY;
+    if(t >6 && t <=8){
+      // backing out small low step effect
+      let tb = (t-6)*2;
+      return groundY + Math.sin(tb*Math.PI)*1.5;
+    }
+    if(t >8){
+      return groundY;
+    }
   }
 
-  // For occlusion: clip the door area so dog body parts behind door are hidden
+  // Dog rotation forward direction (angle around Y axis), 0 = facing forward to right
+  // running: 0, turning stage: changes to face viewer (toward top-left camera)
+  // The final front pose faces camera directly; we'll approximate front facing as -pi/4 Y angle
+  // since camera is at 45deg, facing front dog is at -45deg rotation (he faces camera front)
 
-  // Draw dog partially clipped during entering and backing phases
-  if(t>=3 && t<=8){
+  function dogYaw(t){
+    if(t < 8) return 0;
+    if(t >= 8 && t < 10){
+      // smooth turn from 0 to -pi/4 over 2s
+      let p = (t-8)/2;
+      return lerp(0, -Math.PI / 4, easeInOut(p));
+    }
+    return -Math.PI / 4; // final front facing pose
+  }
+
+  // Dog body pitch angle (lean forward/back) for running and jump lift
+  // approximate small forward lean on run, jump up/body arch during leap, straight on land
+  function dogPitch(t){
+    if(t < 1) return 0;
+    if(t >= 1 && t <= 2.8){
+      // running lean forward ~6 deg forward
+      return -Math.PI/30;
+    }
+    if(t > 2.8 && t < 3.1){
+      // anticipation and jump: crouch (pitch down), then rapid arch upward
+      let p = (t-2.8)/0.3;
+      if(p<0.5) return lerp(-Math.PI/30, Math.PI/12, p*2);
+      else return lerp(Math.PI/12, 0, (p-0.5)*2);
+    }
+    if(t >= 3.1 && t < 3.4) {
+      // airborne arch ~10 deg up
+      return Math.PI/12;
+    }
+    if(t >= 3.4 && t < 3.8){
+      // landing slow pitch back to neutral
+      let p = (t-3.4)/0.4;
+      return lerp(Math.PI/12, 0, p);
+    }
+    if(t >= 3.8 && t <=8){
+      return 0;
+    }
+    if(t > 8){
+      return 0;
+    }
+  }
+
+  // Tail curl angle around base Y-Z axis (rotation)
+  // normal tail curl is ~110 deg, modulated by motion and breathing
+
+  function tailCurl(t){
+    // subtle tail swing during run and breathing in final pose
+    if(t < 8){
+      // fast subtle swing laterally +/- 10 deg at ~2Hz
+      let sway = Math.sin(2*Math.PI*t*2)*Math.PI/18;
+      return Math.PI*0.6 + sway;
+    } else {
+      // final settle posture slow subtle sway +-5 deg at 0.8Hz
+      let sway = Math.sin(2*Math.PI*t*0.8)*Math.PI/36;
+      return Math.PI*0.6 + sway;
+    }
+  }
+
+  // Head pitch (nodding up/down) and yaw turning toward viewer in last stage
+  // Head stable in run, nods slightly on jump, then turns head side-to-front in turn stage
+
+  function headPitch(t){
+    if(t < 1) return 0;
+    if(t >=1 && t < 3){
+      return 0;
+    }
+    if(t >=3 && t < 6){
+      // slight dips when grabbing bone
+      let p = (t-3)/3;
+      if(p>0.7) return -Math.PI/15;
+      else return 0;
+    }
+    if(t >= 8 && t < 10){
+      // nod slightly forward while turning
+      let p = (t-8)/2;
+      return lerp(0, Math.PI/18, Math.sin(p*Math.PI));
+    }
+    return 0;
+  }
+
+  function headYaw(t){
+    // from 0 to about 30deg right (toward viewer camera)
+    if(t < 8) return 0;
+    if(t >= 8 && t < 10){
+      let p = (t-8)/2;
+      return lerp(0, Math.PI/6, easeInOut(p));
+    }
+    if(t >=10){
+      return Math.PI/6;
+    }
+    return 0;
+  }
+
+  // Paw stance phases for run gait
+  // Each leg has stance phase and swing phase binary, repeatedly per strideDuration
+
+  // Legs 4 paw phase offsets for trot gait (from literature approximate):
+  // LF and RH in phase 0, RF and LH in phase 0.5:
+
+  // For running gait stance duration ~55% of stride, swing 45%, slightly asymmetric
+  // stance = foot on ground (y=0), swing lifts paw
+
+  // Each leg paw vertical lift function pawY(t)
+
+  // We build a normalized cycle 0..1
+  function gaitPhase(t){
+    let c = (t % strideDuration) / strideDuration;
+    return c; 
+  }
+
+  // paw vertical position y relative to ground (0=contact on ground)
+  function pawLift(phase){
+    // smooth step between stance->swing lift 0->+maxY=20 px then land
+    // stance ~ 0.55, swing ~0.45 phases
+    // lift between 0.55..1 and 0..0.1 for landing
+
+    if(phase < 0.55){
+      return 0;
+    }
+    // lift phase
+    let p = (phase - 0.55)/0.45;
+    // up and down shape parabola
+    return 20 * 4 * p * (1-p);
+  }
+
+  // Anticipation jump: at t ~ 2.8 to 3.0, last step shortens final stride, load hind legs
+  // We'll modulate paw lift amplitude and stance timing accordingly
+
+  // Let's implement a function to compute each paw position and leg joint angles over time for run and jump
+
+  // Paws contact x position relative to hip (for front and hind legs)
+  // Runs forward ~ stride length ~ 65 px (0.43 dLen)
+  // So hind paw pushes back from 0 to -stride length in stance, swing moves forward
+  // Front paw swing similarly forward
+
+  const strideLength = 0.43*dLen;
+
+  // Compute leg phase offset per leg:
+  // LF: 0.0
+  // RH: 0.0 (diagonal with LF)
+  // RF: 0.5
+  // LH: 0.5
+
+  function legPhase(t,offset){
+    let p = gaitPhase(t - offset*strideDuration);
+    return p;
+  }
+
+  // Leg x relative step forward/back in stance (stance pushes paw backward, swing moves forward)
+  // We model paw x relative to shoulder/hip as a function of phase
+
+  function pawXrel(phase){
+    // stance from phase 0..0.55 moves paw backward from +strideLength/2 to -strideLength/2
+    // swing moves it forward back from -strideLength/2 to +strideLength/2
+    if(phase < 0.55) {
+      let s = phase/0.55;
+      return lerp(strideLength/2, -strideLength/2, s);
+    } else {
+      let s = (phase-0.55)/0.45;
+      return lerp(-strideLength/2, strideLength/2, s);
+    }
+  }
+
+  // Leg vertical paw offset corresponds to lift
+  // z coordinate fixed per leg position
+
+  // Leg Y coordinate {height from ground} is negative pawLift (jump height)
+
+  // Sprint jump anticipation before puddle clearing:
+  // From t=2.6 to 2.9 last stride shortens; dog crouches with body lowering (pitch)
+
+  // We mix leg movement with jump tuck from 2.9 to 3 flight arc
+
+  // Flight arc approximated by smooth parabola between takeoff and landing
+
+  // Dog jumping variables
+
+  // Jump takeoff at t=2.95, landing at t=3.3
+
+  // Flight parabola peak ~ -30 px vertical (in world coordinates, away from groundY downward)
+
+  // Dog Y position elevated in flight, legs tucked in
+
+  // Paws tucked in with bent joints during flight
+
+  // Paw contact timing control for jump
+
+  // BOUNDARY CONDITIONS control: 0-1 for jump flight phase
+
+  function jumpPhase(t){
+    let start = 2.95;
+    let end = 3.3;
+    if(t < start) return 0;
+    if(t > end) return 1;
+    return (t - start) / (end - start);
+  }
+
+  // Dog flight Y offset: parabola peak at center (p=0.5)
+  function flightYOffset(t){
+    let p = jumpPhase(t);
+    if(p===0 || p===1) return 0;
+    return -30 * 4 * p * (1-p);
+  }
+
+  // Paw tuck angles during flight: legs retracted, no paw contact
+
+  // We'll represent paw angles fixed tucked pose in flight
+
+  // REFLECTION
+
+  // For reflection in puddle, we must draw the reflected dog upside down, resized vertically
+
+  // Reflection drawn by flipping dog Y coordinate around puddle waterline (puddleCenterY)
+
+  // Only dog pixels inside puddle ellipse are reflected, clipped by ellipse mask
+
+  // The reflection will have alpha 0.5 and slight vertical scale shrink 0.65
+
+  // Shadow and contact shadows on ground also included
+
+  // Draw order: draw ground->puddle->reflection clipped->dog->shadows->doghouse->dog parts overlapping
+
+  // DRAWING FUNCTIONS
+
+  // Draw grass ground with texture and lighting
+  function drawGround(){
+    // Base color
+    ctx.fillStyle = "#699138";
+    ctx.fillRect(0, groundY, W, H-groundY);
+
+    // Simple noise texture grass blades
+    let bladeCount = 600;
+    ctx.strokeStyle = "#547526";
+    ctx.lineWidth = 1;
+    for(let i=0;i<bladeCount;i++){
+      let x = (i*13) % W + 7*Math.sin(i);
+      let y = groundY + 4 + 5*Math.sin(i*0.3);
+      ctx.beginPath();
+      ctx.moveTo(x,y);
+      ctx.lineTo(x+1,y-6 - 3*Math.sin(i*0.5));
+      ctx.stroke();
+    }
+  }
+
+  // Draw puddle ellipse with water gloss and reflection mask
+  function drawPuddle(t, dogPos){
+    let cx = puddleCenterX;
+    let cy = puddleCenterY;
+    let rx = puddleRadiusX;
+    let ry = puddleRadiusY;
+
+    // Water base
+    let grad = ctx.createRadialGradient(cx, cy, rx*0.1, cx, cy, rx);
+    grad.addColorStop(0,"#a4dfff");
+    grad.addColorStop(1,"#3796cf");
+    ctx.fillStyle=grad;
+    ctx.beginPath();
+    ctx.ellipse(cx,cy,rx,ry,0,0,2*Math.PI);
+    ctx.fill();
+
+    // Water surface flimsy ripple effect - subtle highlights
+    let rippleCount = 5;
+    ctx.strokeStyle = "rgba(255,255,255,0.17)";
+    ctx.lineWidth = 1;
+    for(let i=0;i<rippleCount;i++){
+      ctx.beginPath();
+      ctx.ellipse(cx + 10*Math.sin(t*10+i), cy + 7*Math.cos(t*7+i*1.5),
+                  rx*0.9 - 6*i, ry*0.9 - 3*i,
+                  0, 0, 2*Math.PI);
+      ctx.stroke();
+    }
+  }
+
+  // Clip region to puddle ellipse to mask reflection
+  function clipPuddle(){
+    ctx.beginPath();
+    ctx.ellipse(puddleCenterX,puddleCenterY,puddleRadiusX,puddleRadiusY,0,0,2*Math.PI);
+    ctx.clip();
+  }
+
+  // Draw dog reflection inside clipped puddle region
+  // Reflection is inverted vertically and followed exact dog pose
+  // plus transparent and vertically scaled about puddleCenterY
+
+  // We'll draw all dog parts with inverted Y on puddleCenterY line, shrink scaleY=0.65, alpha 0.45
+
+  // Since we draw all dog parts separately, we implement a wrapped renderDog at reflection mode
+
+  // Dog drawing parameters for renderDog function:
+  // dogPos: {x,y} canvas coords of dog pelvis on ground
+  // t: time seconds
+  // yawRad, pitchRad: dog body angles
+  // headPitchRad, headYawRad: head angles
+  // pawTheta phase inputs for gait (per leg)
+  // reflection: boolean - render reflection (invert Y scale and alpha)
+
+  // Draw doghouse after reflection
+
+  // BONE DRAWING
+
+  // Bone shape: central shaft length ~ width 20 x 8 px, end knobs rounded
+  // We'll use a simple 2D polygon curved shape
+
+  // The bone depth layering: resting on floor inside house, then held rigid in mouth
+  // Bone outside doghouse positioned inside house floor initially, then pulled by dog mouth xpos
+
+  // Bone local coords relative to its center (for rotation alignment)
+  // Bone length 70 px, width 20 px
+  // Rotation aligned with mouth axis ~ horizontal flat
+
+  // Mouth position approx head muzzle front end
+
+  // We'll fix bone in dog's mouth after grab period (t>4.6)
+
+  // Dog parts drawing:
+
+  // We draw in order:
+
+  // For each leg:
+  // upper leg: thigh bone simple shaded cylinder shape or ellipse ellipse
+  // lower leg: shin bone
+  // paw: circle with small pads and nails (approx)
+  // Joints: use circles shadows
+
+  // Body main shapes:
+  // torso oval with fur texture of multi layered ellipses with radial gradients
+  // neck ruff ellipse around neck
+  // head major shapes: skull, muzzle, ears, eyes
+  // tail plume shape curled over back with fur shading
+
+  // COMPLEX fur texture:
+  // We'll add fine lines radiating from torso ellipse in layers
+  // and shading gradient to simulate fur volume
+
+  // =======================
+  // DRAW DOG FUNCTIONS BEGIN
+  // =======================
+
+  // Draw bone - a single instance
+  // Options:
+  // ctx, x,y position center at bone midpoint
+  // rot - radians rotation of bone axis (default horizontal)
+  // scale uniform scale
+  // color shaded fill color
+  function drawBone(ctx,x,y,rot=0, scale=1, alpha=1){
     ctx.save();
-    clipDoor(ctx);
-    drawDog(ctx,dogstate);
+    ctx.translate(x,y);
+    ctx.rotate(rot);
+    ctx.scale(scale,scale);
+    ctx.globalAlpha = alpha;
+
+    // Bone main shape: a long rectangle shaft 70 x 18
+    // Rounded ends build with circles on ends and bumps for knobs
+
+    ctx.fillStyle = boneColorMain;
+    ctx.strokeStyle = boneShadow;
+    ctx.lineWidth = 1.7;
+
+    ctx.beginPath();
+    // Shaft rectangle straight center - wide center rectangle with rounded nibs at ends
+    let w = 18;
+    let l = 70;
+    let rKnob = 7;
+
+    // Left knob
+    ctx.moveTo(-l/2+rKnob, -w/2);
+    ctx.arc(-l/2+rKnob, -w/2+rKnob, rKnob, -Math.PI/2, 0, false);
+    ctx.lineTo(l/2-rKnob, -w/2+rKnob);
+    ctx.arc(l/2-rKnob, -w/2+rKnob, rKnob, -Math.PI/2, 0, true);
+
+    // Right knob top ellipse arc half (knob bulb top)
+    ctx.lineTo(l/2, -w/4);
+    ctx.arc(l/2+rKnob/2, -w/4, rKnob/2, Math.PI, 0, true);
+    ctx.lineTo(l/2, 0);
+    ctx.lineTo(l/2+rKnob/2, w/4);
+    ctx.arc(l/2+rKnob/2, w/4, rKnob/2, 0, Math.PI, true);
+    ctx.lineTo(l/2, w/2-rKnob);
+    // Right knob bottom arc
+    ctx.arc(l/2-rKnob, w/2-rKnob, rKnob, 0, Math.PI/2, false);
+    ctx.lineTo(-l/2+rKnob, w/2);
+    ctx.arc(-l/2+rKnob, w/2-rKnob, rKnob, Math.PI/2, Math.PI, false);
+
+    // Left knob bottom semicircle
+    ctx.lineTo(-l/2, w/4);
+    ctx.arc(-l/2-rKnob/2, w/4, rKnob/2, 0, Math.PI, false);
+    ctx.lineTo(-l/2, 0);
+    ctx.lineTo(-l/2-rKnob/2, -w/4);
+    ctx.arc(-l/2-rKnob/2, -w/4, rKnob/2, Math.PI, 0, false);
+    
+    ctx.closePath();
+
+    // Fill with gradient for volume light
+    let grad = ctx.createLinearGradient(-l/2,0,l/2,0);
+    grad.addColorStop(0,"#f3e9d9");
+    grad.addColorStop(0.5,"#eae1db");
+    grad.addColorStop(1,"#f4eddb");
+
+    ctx.fillStyle = grad;
+    ctx.fill();
+    // Outline
+    ctx.stroke();
+
+    ctx.globalAlpha=1;
     ctx.restore();
-  } else {
-    drawDog(ctx,dogstate);
   }
 
-  // If bone held and past 4.8 sec, the bone follows mouth position on dog
-  if(dogstate.boneHeld && t >= 4.8) {
-    // We draw bone again on top in mouth to avoid clipping with doghouse
-    // Bone mouth position approx dog position + local offset rotated by body+head angles
-    let dogX = dogstate.pos.x;
-    let dogY = dogstate.pos.y;
+  // Draw dog torso ellipse + shading + fur
+  function drawTorso(ctx,dogPos,pitch,yaw){
+    ctx.save();
+    // The torso ellipse composed of main body and belly elliptical shapes
+    // Drawn rotated by pitch for jump lean
+    // Slight scale for lateral volume
 
-    // Calculate bone mouth offset in dog local coords
-    let boneOffsetX = DOG_BASE_LEN*0.25;
-    let boneOffsetY = -DOG_BASE_H*0.38 + 4;
-    // Rotate bone offset by dog body angle
-    let cosA = Math.cos(dogstate.bodyAngle);
-    let sinA = Math.sin(dogstate.bodyAngle);
-    let bx = cosA * boneOffsetX - sinA * boneOffsetY;
-    let by = sinA * boneOffsetX + cosA * boneOffsetY;
+    ctx.translate(dogPos.x,dogPos.y);
 
-    // Add head rotation offset as small bone tilt
-    let boneRot = dogstate.boneRot;
+    // Apply yaw: 3D rotation to projected 2D offsets included in projection()
 
-    drawBone(ctx, dogX + bx, dogY + by, boneRot);
+    ctx.rotate(pitch);
+
+    // Torso ellipse parameters approx flat ellipsoidal
+    let torsoW = chestHeight*2.3;
+    let torsoH = chestLen*1.2;
+
+    // Body main oval
+    let grad = ctx.createRadialGradient(0,-torsoH*0.3,torsoW*0.68,0,/*centerY*/ -torsoH*0.4,0);
+    grad.addColorStop(0, ruffColor);
+    grad.addColorStop(1, baseFur);
+    ctx.fillStyle = grad;
+    ctx.strokeStyle = shadowFur;
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+    ctx.ellipse(0,-torsoH*0.4,torsoW,torsoH,0,0,2*Math.PI);
+    ctx.fill();
+    ctx.stroke();
+
+    // Belly ellipse (underside)
+    ctx.beginPath();
+    ctx.ellipse(0,torsoH*0.4,torsoW*0.8,torsoH*0.7, 0,0,2*Math.PI);
+    ctx.fillStyle = baseFur;
+    ctx.fill();
+
+    // Fur strokes: mostly on upper surface: subtle line strokes radial from torso center top
+
+    let furStrokeCount = 14;
+    ctx.strokeStyle = "rgba(240,210,150,0.2)";
+    ctx.lineWidth = 0.9;
+    for(let i=0; i < furStrokeCount; i++){
+      let angle = Math.PI * 2 * i / furStrokeCount + pitch;
+      ctx.beginPath();
+      ctx.moveTo(0, -torsoH*0.4);
+      let dx = torsoW * 0.9 * Math.cos(angle);
+      let dy = torsoH * 0.9 * Math.sin(angle);
+      ctx.lineTo(dx, dy - torsoH*0.4);
+      ctx.stroke();
+    }
+
+    ctx.restore();
   }
 
-  // Draw soft shadows of dog paws on ground (approximated)
-  // Paw contact points in world coords offset from dog pos (body origin)
-  // For each paw, calculate positions according to joint angles (approximate)
-  // This stage omitted due to complexity and visual clutter, shadows implicit by body shadow
+  // Draw neck and ruff volume
+  function drawNeckRuff(ctx,dogPos,pitch,yaw){
+    ctx.save();
+    ctx.translate(dogPos.x,dogPos.y);
+    ctx.rotate(pitch);
 
-  // Final subtle overlays or anti-aliasing - none for speed
+    // Neck ruff big ellipse roughly centered 0,0 relative to dog position
+    // Neck positioned forward/up from pelvis about shoulder position
 
-};
+    let neckX = shoulderX * SCALE * Math.cos(yaw);
+    let neckZ = shoulderX * SCALE * Math.sin(yaw);
 
-// Run first frame at load
-window.renderFrame(0);
+    // We simplify ruff as ellipse around neck base point
+    let ruffX = neckX;
+    let ruffY = -neckHeight * SCALE * 0.7;
 
-})()
-</script></body></html>
+    ctx.translate(ruffX, ruffY);
+
+    let ruffW = neckHeight * SCALE * 1.7;
+    let ruffH = neckHeight * SCALE * 1.3;
+
+    ctx.fillStyle = ruffColor;
+    ctx.strokeStyle = shadowFur;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.ellipse(0,0,ruffW,ruffH,0,0,2*Math.PI);
+    ctx.fill();
+    ctx.stroke();
+
+    // Fur texture, short strokes radial
+    let furStrokes = 30;
+    ctx.strokeStyle = "rgba(255,245,220,0.5)";
+    ctx.lineWidth = 1;
+    for(let i=0; i < furStrokes; i++){
+      let a = (2*Math.PI*i)/furStrokes;
+      ctx.beginPath();
+      ctx.moveTo(0,0);
+      ctx.lineTo(ruffW*Math.cos(a)*0.9, ruffH*Math.sin(a)*0.9);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+  // Draw head with muzzle, ears, eyes, nose - side 3/4 view with angle params
+  // Dog head forward length about 0.45*dLen, height 0.35*dLen
+
+  // We'll render a simplified layered shape with fur volume
+  function drawHead(ctx,dogPos, pitch, yaw, headPitch, headYaw){
+    ctx.save();
+
+    // Head base position relative to dog pelvis
+    // Head position along spine at shoulder + neck length
+
+    const neckBaseX = shoulderX * SCALE;
+    const neckBaseY = dogPos.y - neckHeight * SCALE * 0.7;
+    const neckBaseZ = 0;
+
+    // Project neck base offset (converted 3D) and apply body yaw
+    // We simplify head absolute position = dogPos + offset forward + vertical
+
+    // Compute head position projected 2D:
+    let headBase3D = {x: shoulderX + neckLength3D, y: neckHeight, z: 0};
+    let headBase2D_proj = project3D(headBase3D);
+    ctx.translate(dogPos.x + headBase2D_proj.x, dogPos.y + headBase2D_proj.y);
+
+    // Head orientation = body pitch + headPitch (up/down nod) and yaw + headYaw (turn)
+    ctx.rotate(pitch + headPitch);
+
+    // For head yaw (lateral turning) we add a subtle horizontal shear via transform
+    // But for simplicity approx by rotate around small pivot
+
+    // We apply headYaw as rotation about vertical axis; here 2D approx no real 3D but rotate by small
+    ctx.rotate(headYaw);
+
+    // Head shapes:
+
+    // Skull ellipse (circular volume)
+    let headW = headHeight * 1.12;
+    let headH = headLength * 0.68;
+
+    // Head fill gradient for fur color
+    let grad = ctx.createRadialGradient(0,-headH*0.2,headW*0.38,0,-headH*0.2, headW*0.9);
+    grad.addColorStop(0, ruffColor);
+    grad.addColorStop(1, baseFur);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.ellipse(0,-headH*0.2, headW, headH, 0, 0, 2*Math.PI);
+    ctx.fill();
+
+    ctx.strokeStyle = shadowFur;
+    ctx.lineWidth = 1.7;
+    ctx.beginPath();
+    ctx.ellipse(0,-headH*0.2, headW, headH, 0, 0, 2*Math.PI);
+    ctx.stroke();
+
+    // Muzzle shape (lower front)
+    let muzzleW = headW * 0.65;
+    let muzzleH = headH * 0.48;
+    let muzzleY = 15 * SCALE;
+    ctx.fillStyle = baseFur;
+    ctx.strokeStyle = shadowFur;
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.ellipse(0, muzzleY, muzzleW, muzzleH, 0, 0, 2*Math.PI);
+    ctx.fill();
+    ctx.stroke();
+
+    // Nose tip - small circle front center bottom
+    ctx.fillStyle = "#45311c";
+    ctx.beginPath();
+    ctx.ellipse(0, muzzleY + muzzleH/3, muzzleW*0.15, muzzleH*0.12, 0,0,2*Math.PI);
+    ctx.fill();
+
+    // Eyes - almond shape with dark pupil, light eye reflection
+    let eyeX = -headW*0.55;
+    let eyeY = -headH*0.66;
+
+    // Left eye (dog's left = canvas right)
+    // We draw one eye visible (right eye from viewer perspective) mainly
+    ctx.fillStyle = eyeColor;
+    ctx.beginPath();
+    ctx.ellipse(eyeX, eyeY, headW*0.26, headH*0.17, 0, 0, 2*Math.PI);
+    ctx.fill();
+
+    // Eye highlight
+    ctx.fillStyle = "rgba(255,255,255,0.7)";
+    ctx.beginPath();
+    ctx.ellipse(eyeX - headW*0.1, eyeY - headH*0.03, headW*0.07, headH*0.05, 0, 0, 2*Math.PI);
+    ctx.fill();
+
+    // Ears - small upright pointy triangles with fur texture
+    // Left ear
+    ctx.fillStyle = baseFur;
+    ctx.strokeStyle = shadowFur;
+    ctx.lineWidth = 1;
+
+    function drawEar(offsetX, offsetY, flip){
+      ctx.beginPath();
+      ctx.moveTo(offsetX, offsetY);
+      ctx.lineTo(offsetX + flip * 15 * SCALE, offsetY - 45 * SCALE);
+      ctx.lineTo(offsetX + flip * 10 * SCALE, offsetY - 10 * SCALE);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Inner ear fur patch
+      ctx.fillStyle = earInside;
+      ctx.beginPath();
+      ctx.moveTo(offsetX + flip * 5 * SCALE, offsetY - 8 * SCALE);
+      ctx.lineTo(offsetX + flip * 8 * SCALE, offsetY - 37 * SCALE);
+      ctx.lineTo(offsetX + flip * 12 * SCALE, offsetY - 15 * SCALE);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    drawEar(-headW * 0.35, -headH*0.9, -1);
+    drawEar(-headW * 0.75, -headH*0.9, 1);
+
+    ctx.restore();
+  }
+
+  // Draw leg - thigh, shin, paw, shading with joint circles for articulation
+  // posBase: 3D point of leg root (shoulder or hip) relative to dog pelvis local 3D coords
+  // phase: gait cycle phase for paw lift (0..1)
+  // side: "front" or "hind"
+  // isLeft: boolean
+  // dog body angles and position for projection and posture
+
+  // leg animation - angles approximated for stance/swing phases
+
+  // We simplify as 3 segments (thigh, shin, paw) connected and bending coherently
+
+  // Returns paw 3D position projected 2D for drawing shadow/contact
+
+  function drawLeg(ctx, dogPos, posBase, phase, yaw, pitch, isFront, isLeft, t, jumpFlight){
+
+    // Base projected pos 2D
+    let base2D = project3D(posBase);
+    let baseX = dogPos.x + base2D.x;
+    let baseY = dogPos.y + base2D.y;
+
+    // Parameters
+
+    // Joint angles modeled as function of phase
+
+    // For stance (paw down), knee and elbow extend progressively to absorb weight
+
+    // For swing (paw lifted), leg folds to tuck +/- paw lift height
+
+    // Paw vertical lift
+    let lift = pawLift(phase);
+
+    // During jump flight (t between 2.95 and 3.3 s) legs are tucked bent
+    if(jumpFlight){
+      lift = 22 + 5*Math.sin(t * 30 + (isFront ? 0 : 2));
+    }
+
+    // Lengths in 3D
+    let ul = upperLegLen;
+    let ll = lowerLegLen;
+    let pl = pawLen;
+
+    // Stance phase : extended leg, swing: folded leg
+    let stance = phase < 0.55;
+
+    // Angles: bend hip and knee (or shoulder and elbow)
+
+    // We model simple bending 0 (full extend) to max ~60deg flexion for swing
+
+    let maxBend = Math.PI/3;
+
+    let bendAmt = stance ? 0 : maxBend * smoothstep(0,1,(phase-0.55)/0.45);
+
+    // Thigh angle from vertical - body pitch is baseline + hip flexion flare in swing
+
+    // Hip angle oscillates forward/backward with gait
+
+    let baseHipAngle = pitch;
+    if(stance){
+      baseHipAngle += 0;
+    } else {
+      baseHipAngle += bendAmt*0.8;
+    }
+
+    // Knee angle (between thigh and shin) bending during swing
+
+    let kneeAngle = bendAmt;
+
+    // Paw angle (foot) usually flat when stance; slight flex during swing
+
+    let pawAngle = stance ? 0 : -bendAmt/2;
+
+    // Compute joint positions in 2D projection (setup in 3D then project)
+
+    // Define local 3D vectors:
+
+    // Thigh vector down from hip:
+    // Forward is dog X axis
+    // bend in plane Y-Z; for front legs fold mostly backward Y-Z plane; for hind legs backward but more extended
+
+    // We model motion in a vertical plane
+
+    // Hip joint position (posBase)
+
+    // Thigh vector forward and down:
+
+    // Define a 2D plane for leg movement in Y-Z around hip position
+
+    // For simplification assume leg bends only in vertical plane aligned with dog yaw
+
+    // Total rotation: dog pitch + body yaw applied to base position
+
+    // We create 3D vector along downward direction with bend
+
+    // Direction of bend: slightly backward in X, downward in Y
+
+    // THIGH VECTOR:
+
+    // Angle from vertical down is bendAmt forward
+
+    let thighAngle = -bendAmt; // bending backward in body frame Y axis
+
+    // Thigh vector in local coordinate y - down, z- back
+
+    let thighVec = {x:0, y:-ul * Math.cos(bendAmt), z: ul * Math.sin(bendAmt)};
+
+    // Knee position = hip + thighVec
+
+    let kneePos = {x:posBase.x + thighVec.x, y:posBase.y + thighVec.y, z:posBase.z + thighVec.z};
+
+    // Lower leg/shin vector
+
+    let shinBend = kneeAngle; // between thigh and shin
+
+    // Shin bends upward from knee in bent angle
+
+    let shinVec = {x: 0, y:-ll * Math.cos(shinBend), z: -ll * Math.sin(shinBend)};
+
+    // Paw position = knee + shinVec
+    let pawPos = {x:kneePos.x + shinVec.x, y:kneePos.y + shinVec.y, z:kneePos.z + shinVec.z};
+
+    // Apply paw lift upward in Y axis
+
+    pawPos.y -= lift;
+
+    // Project joints to 2D:
+
+    let hip2D = project3D(posBase);
+    let knee2D = project3D(kneePos);
+    let paw2D = project3D(pawPos);
+
+    // Scale positions to canvas
+
+    let hipX = dogPos.x + hip2D.x;
+    let hipY = dogPos.y + hip2D.y;
+    let kneeX = dogPos.x + knee2D.x;
+    let kneeY = dogPos.y + knee2D.y;
+    let pawX = dogPos.x + paw2D.x;
+    let pawY = dogPos.y + paw2D.y;
+
+    // DRAW leg segments
+
+    ctx.strokeStyle = shadowFur;
+    ctx.lineCap = "round";
+
+    // Thigh
+    let gradThigh = ctx.createLinearGradient(hipX, hipY, kneeX, kneeY);
+    gradThigh.addColorStop(0, baseFur);
+    gradThigh.addColorStop(1, shadowFur);
+    ctx.strokeStyle = gradThigh;
+    ctx.lineWidth = pawRadius * 1.8;
+    ctx.beginPath();
+    ctx.moveTo(hipX, hipY);
+    ctx.lineTo(kneeX, kneeY);
+    ctx.stroke();
+
+    // Shin
+    let gradShin = ctx.createLinearGradient(kneeX, kneeY, pawX, pawY);
+    gradShin.addColorStop(0, baseFur);
+    gradShin.addColorStop(1, shadowFur);
+    ctx.strokeStyle = gradShin;
+    ctx.lineWidth = pawRadius * 1.5;
+    ctx.beginPath();
+    ctx.moveTo(kneeX, kneeY);
+    ctx.lineTo(pawX, pawY);
+    ctx.stroke();
+
+    // Paw : small circle
+    ctx.fillStyle = shadowFur;
+    ctx.beginPath();
+    ctx.ellipse(pawX, pawY, pawRadius*0.65, pawRadius*0.4, 0, 0, 2*Math.PI);
+    ctx.fill();
+
+    ctx.fillStyle = baseFur;
+    ctx.beginPath();
+    ctx.ellipse(pawX, pawY, pawRadius*0.55, pawRadius*0.35, 0, 0, 2*Math.PI);
+    ctx.fill();
+
+    // Paw pad details: 3 small ellipses on paw
+    const pads = [
+      {x: 0, y: 1.5},
+      {x: -4, y: 3},
+      {x: 4, y: 3}
+    ];
+    ctx.fillStyle = "#6b3f0f";
+    for(let pad of pads){
+      ctx.beginPath();
+      ctx.ellipse(pawX + pad.x, pawY + pad.y, 3 * SCALE, 2 * SCALE, 0, 0, 2*Math.PI);
+      ctx.fill();
+    }
+
+    // Joint circles to mark hip, knee
+    ctx.fillStyle = shadowFur;
+    ctx.beginPath();
+    ctx.ellipse(hipX, hipY, pawRadius*0.5, pawRadius*0.4, 0, 0, 2*Math.PI);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(kneeX, kneeY, pawRadius*0.43, pawRadius*0.36, 0, 0, 2*Math.PI);
+    ctx.fill();
+
+    return {x:pawX, y:pawY};
+  }
+
+  // Draw tail plume layered as curved ellipse segments with fur gradient
+
+  // Tail base coords near hips (pelvis) + offset around dog y center
+
+  // Tail curling over back around 90 deg arc
+
+  // tailCurl angle defined separately
+
+  function drawTail(ctx,dogPos,pitch,yaw,t){
+    ctx.save();
+    ctx.translate(dogPos.x,dogPos.y);
+
+    ctx.rotate(pitch);
+
+    // Approximate tail base position
+    let tailBase3D = {x:-0.08*dLen, y: neckHeight*0.4, z: 0.18*dLen};
+    let base2D = project3D(tailBase3D);
+    ctx.translate(base2D.x, base2D.y);
+
+    // Tail curve
+    let curlAngle = tailCurl(t);
+    ctx.rotate(curlAngle);
+
+    // Draw multiple layered plumes with radial gradient
+
+    let plumeLength = tailLength * SCALE;
+    let plumeW = tailBaseRadius;
+
+    // Plume layers count
+    let layers = 5;
+    for(let i=0; i < layers; i++){
+      let alpha = 0.12 + 0.14 * (layers - i);
+      let radiusW = plumeW * (1 - i*0.15);
+      let radiusH = plumeLength * (1 - i*0.22);
+      let offsetX = radiusH * 0.18 * i;
+
+      let grad = ctx.createRadialGradient(offsetX,0,radiusW*0.7, offsetX,0,radiusW*1.1);
+      grad.addColorStop(0, `rgba(255,220,144,${alpha.toFixed(2)})`);
+      grad.addColorStop(1, `rgba(255,190,60,0)`);
+
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.ellipse(offsetX, 0, radiusW, radiusH, 0, 0, 2*Math.PI);
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  // Draw dog main front plumed tail visible also in enter/exit
+
+  // Dog body shadows contact
+
+  // Draw dog shadow ground contact (ellipse blurred) under paws
+
+  // Draw bone in resting place or in mouth
+
+  // Doghouse draw function with opaque walls, door shadows, inside bone visible
+
+  function drawDoghouse(ctx){
+    // House main body - angled box with visible front walls and door opening
+    const baseX = houseX;
+    const baseY = houseY;
+    const w = houseW;
+    const h = houseH;
+
+    // Main house walls color warm brown
+    ctx.fillStyle = "#6a3d1a";
+    ctx.strokeStyle = "#3e260e";
+    ctx.lineWidth = 3;
+
+    // Front wall
+    ctx.beginPath();
+    ctx.moveTo(baseX, baseY + h);
+    ctx.lineTo(baseX+w, baseY+h);
+    ctx.lineTo(baseX+w, baseY);
+    ctx.lineTo(baseX, baseY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Roof - simple polygon with highlight
+    ctx.fillStyle = "#8e5f25";
+    ctx.beginPath();
+    ctx.moveTo(baseX, baseY);
+    ctx.lineTo(baseX + w/2, baseY - h/3);
+    ctx.lineTo(baseX + w, baseY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Doorway (cut out from front wall, darker interior)
+    ctx.fillStyle = "#34210c";
+    ctx.strokeStyle = "#1c1308";
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+    ctx.rect(doorX, doorY, doorWidth, doorHeight);
+    ctx.fill();
+    ctx.stroke();
+
+    // Interior floor inside doghouse (visible bottom rectangle inside door)
+    ctx.fillStyle = "#413114";
+    ctx.fillRect(doorX +5, doorY + doorHeight - 12, doorWidth-10, 12);
+
+    // Draw bone resting inside the house if dog not holding the bone
+    // Bone resting x,y (fixed)
+    // Bone rests inside the house floor near door threshold, rotated 10 deg slightly
+  }
+
+  // Draw bone resting inside doghouse (static bone resting pos)
+  function drawBoneRest(ctx){
+    drawBone(ctx,boneRestX,boneRestY, 0.15, 1, 1);
+  }
+
+
+  // Draw dog with all parts in actor pose
+
+  // Times params input various leg phases and animation states:
+
+  function renderDog(ctx,t){
+
+    let dogPx = dogX(t);
+    let dogPy = dogY(t);
+
+    let yaw = dogYaw(t);
+    let pitch = dogPitch(t);
+    let headP = headPitch(t);
+    let headY = headYaw(t);
+    let jumpF = (t >= 2.95 && t < 3.3);
+
+    // Leg phases
+    const phases = {
+      LF: legPhase(t,0),
+      RH: legPhase(t,0),
+      RF: legPhase(t,0.5),
+      LH: legPhase(t,0.5),
+    };
+
+    // Positions base for legs
+    const frontLeftBase = {x:shoulderX, y:0, z:-0.17*dLen};
+    const frontRightBase= {x:shoulderX, y:0, z:0.17*dLen};
+    const hindLeftBase = {x:0, y:0, z:-0.14*dLen};
+    const hindRightBase= {x:0, y:0, z:0.14*dLen};
+
+    // Calculate dogPos 3D base pelvis at y=ground=0 (for projection we put y=0)
+
+    let dogPos = {x:dogPx,y:dogPy};
+
+    // TAIL
+    drawTail(ctx, dogPos, pitch, yaw, t);
+
+    // Body & neck drawn behind legs
+    drawTorso(ctx,dogPos,pitch,yaw);
+    drawNeckRuff(ctx,dogPos,pitch,yaw);
+
+    // Legs drawn behind and in front depending on dog yaw rotation angle
+    // Front left & right legs
+    let pawLF = drawLeg(ctx,dogPos, frontLeftBase, phases.LF, yaw, pitch, true, true, t, jumpF);
+    let pawRF = drawLeg(ctx,dogPos, frontRightBase, phases.RF, yaw, pitch, true, false, t, jumpF);
+    // Hind legs
+    let pawLH = drawLeg(ctx,dogPos, hindLeftBase, phases.LH, yaw, pitch, false, true, t, jumpF);
+    let pawRH = drawLeg(ctx,dogPos, hindRightBase, phases.RH, yaw, pitch, false, false, t, jumpF);
+
+    // Bone logic: if after grab (t>4.6) dog carries bone in mouth
+    let carryingBone = (t >= 4.5);
+
+    // Head drawn last in front of legs
+    drawHead(ctx,dogPos, pitch, yaw, headP, headY);
+
+    // Draw bone in mouth if carrying
+    if(carryingBone){
+      // Bone position: attached to dog's muzzle front center (head front)
+      // Approx head front projected 2D position:
+      let headBase3D = {x: shoulderX + neckLength3D + headLength*0.4, y: neckHeight*0.56, z: 0};
+      let headFront2D = project3D(headBase3D);
+      let boneX = dogPos.x + headFront2D.x;
+      let boneY = dogPos.y + headFront2D.y;
+
+      // Bone rotated approx horizontal with slight pitch following head pitch
+      drawBone(ctx, boneX, boneY, pitch + 0.1, 1, 1);
+    }
+  }
+
+  // Draw dog shadow contact on ground ellipse at paws position
+  // Shadow darkening depending on leg support etc
+
+  // We'll render subtle black with blur under dog feet
+
+  // Positions paw shadow ellipses on ground under paws
+
+  function drawDogShadow(ctx, t){
+    // Get paw positions for drawLeg calls stored here
+
+    let dogPx = dogX(t);
+    let dogPy = dogY(t);
+
+    let yaw = dogYaw(t);
+    let pitch = dogPitch(t);
+
+    let jumpF = (t >= 2.95 && t < 3.3);
+
+    const phases = {
+      LF: legPhase(t,0),
+      RH: legPhase(t,0),
+      RF: legPhase(t,0.5),
+      LH: legPhase(t,0.5),
+    };
+
+    const frontLeftBase = {x:shoulderX, y:0, z:-0.17*dLen};
+    const frontRightBase= {x:shoulderX, y:0, z:0.17*dLen};
+    const hindLeftBase = {x:0, y:0, z:-0.14*dLen};
+    const hindRightBase= {x:0, y:0, z:0.14*dLen};
+
+    let dogPos = {x:dogPx,y:dogPy};
+
+    // Compute paw positions:
+
+    function pawPos(posBase,phase){
+      // Same as drawLeg paw position function
+
+      // Paw lift height
+      let lift = pawLift(phase);
+      if(jumpF) lift = 22 + 5*Math.sin(t * 30);
+
+      let ul = upperLegLen;
+      let ll = lowerLegLen;
+      let bendAmt = phase < 0.55 ? 0 : Math.PI/3 * smoothstep(0,1,(phase-0.55)/0.45);
+      let thighVec = {x:0, y:-ul * Math.cos(bendAmt), z: ul * Math.sin(bendAmt)};
+      let kneePos = {x:posBase.x + thighVec.x, y:posBase.y + thighVec.y, z:posBase.z + thighVec.z};
+      let shinVec = {x: 0, y:-ll * Math.cos(bendAmt), z: -ll * Math.sin(bendAmt)};
+      let pawPos = {x:kneePos.x + shinVec.x, y:kneePos.y + shinVec.y, z:kneePos.z + shinVec.z};
+      pawPos.y -= lift;
+
+      let paw2D = project3D(pawPos);
+      return {x:dogPos.x + paw2D.x, y:dogPos.y + paw2D.y};
+    }
+
+    let shadows = [
+      pawPos(frontLeftBase, phases.LF),
+      pawPos(frontRightBase, phases.RF),
+      pawPos(hindLeftBase, phases.LH),
+      pawPos(hindRightBase, phases.RH)
+    ];
+
+    // Draw shadows ellipses on ground (y=groundY)
+    ctx.fillStyle = "rgba(0,0,0,0.15)";
+    for(let s of shadows){
+      let shadowX = s.x;
+      let shadowY = groundY + 3;
+      ctx.beginPath();
+      ctx.ellipse(shadowX, shadowY, 18*SCALE, 7*SCALE, 0, 0, 2*Math.PI);
+      ctx.fill();
+    }
+  }
+
+  // Draw reflection of dog on puddle surface
+
+  function drawDogReflection(ctx, t){
+    // We draw dog upside down, clipped to puddle shape
+    ctx.save();
+    clipPuddle();
+
+    // Make transform origin at puddleCenterY
+    ctx.translate(0, puddleCenterY);
+    ctx.scale(1, -0.65);
+    ctx.translate(0, -puddleCenterY);
+
+    ctx.globalAlpha = 0.45;
+
+    renderDog(ctx, t);
+
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  // Main renderFrame function exposed
+
+  window.renderFrame = function(t){
+    t = Math.max(t,0);
+    if(t > T_SETTLE_END) t = T_SETTLE_END;
+
+    // Clear
+    ctx.clearRect(0,0,W,H);
+
+    // Draw background ground and puddle
+    drawGround();
+    drawPuddle(t);
+
+    // Draw dog reflection inside puddle area
+    drawDogReflection(ctx,t);
+
+    // Draw doghouse behind dog (occlusion by doorway partial)
+    drawDoghouse(ctx);
+
+    // Draw bone resting in doghouse if dog not carrying bone
+    if(t < 4.5){
+      drawBoneRest(ctx);
+    }
+
+    // Draw dog shadows under paws on ground
+    drawDogShadow(ctx,t);
+
+    // Draw dog in normal colors on top
+    renderDog(ctx,t);
+  };
+
+  // Initial draw
+  window.renderFrame(0);
+})();
+</script>
+</body></html>

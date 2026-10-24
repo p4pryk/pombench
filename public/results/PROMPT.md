@@ -1,8 +1,9 @@
-# POM / MOTION — The Pomeranian and the bone (v3)
+# PomBench — The puddle, the Pomeranian and the bone (v4)
 
 Create the most realistic, sophisticated 12-second animal animation you can
 implement with native browser graphics. ONE miniature Pomeranian dog runs across
-a backyard into its doghouse, retrieves ONE bone, backs out with it, then turns
+a backyard, jumps over ONE shallow puddle on the way into its doghouse, retrieves
+ONE bone, backs out with it, then turns
 its head and body toward the viewer, proudly holding the bone in its mouth.
 Finish with that readable frontal pose. This is a short narrative, NOT a loop.
 
@@ -22,9 +23,12 @@ not a generic fox, wolf, large spitz or a round silhouette with stick legs.
 
 ## One continuous action, in this order
 - 0–1 s: establish the backyard, dog, doghouse doorway and bone inside. The dog
-  notices its goal. Keep the bone discoverable without labels, arrows or text.
+  notices its goal. Establish the shallow puddle on the approach as an obstacle.
+  Keep the bone discoverable without labels, arrows or text.
 - 1–3 s: the dog runs toward the doghouse. Show a coherent four-legged gait,
   paw contacts, weight transfer, head stabilisation and coat / tail follow-through.
+  During this approach it anticipates, takes off, clears the puddle completely,
+  lands on dry ground and continues toward the doorway without a cut or reset.
 - 3–4.5 s: the dog actually enters through the doorway, head and forequarters
   first. The doorway and walls must occlude the body correctly. The rear and
   curled tail can remain visible; no passing through solid walls or roof.
@@ -41,6 +45,32 @@ not a generic fox, wolf, large spitz or a round silhouette with stick legs.
   camera with the bone visible. Maintain this final pose with subtle breathing,
   ear / coat response and restrained tail movement. No return to the house,
   camera cut, sudden reset, fade to black or end card.
+
+## New challenge: clear the puddle and land naturally
+Add ONE shallow, still puddle across the dog’s approach to the doorway. Its size,
+shape and position are your choice, but it must be a visible obstacle that the
+small dog can realistically clear. Keep the leap and landing fully inside the
+frame; scene composition and visual style remain entirely your decision.
+
+- Show readable anticipation: shorten the final running stride, lower the body,
+  load the hind legs, then push off from the near dry bank.
+- All four paws leave the ground. The dog’s centre of mass follows a smooth
+  arcing trajectory while the legs tuck and extend coherently. The coat and tail
+  respond to the jump without detaching, changing breed or stretching the body.
+- Clear the far edge with the whole body and paws. Land on dry ground: forepaws
+  make contact before or with the hind paws, joints compress to absorb weight,
+  then the dog resumes supported forward motion and enters the house.
+- Render a reflection of the actual dog only inside the puddle’s water surface.
+  The reflected pose, position and orientation must follow the dog consistently
+  during approach and flight, with correct masking at the water boundary. This
+  is a reflection of the same animal, not a second dog or an unrelated shadow.
+- Keep the puddle in place throughout the film. No teleport across the obstacle,
+  walking through the water, instantaneous pose swap or hiding the landing behind
+  the doghouse. Preserve the original bone retrieval and final front-facing pose.
+
+The additional visual criterion is **puddle clearance, weight-bearing landing
+and coherent water reflection**. These are judged from the recorded animation,
+not from a model’s claims, variable names or a claimed physics simulation.
 
 ## Realism and scene coherence
 - Paws remain planted during stance. Shoulders, hips, spine and head respond to
@@ -98,11 +128,12 @@ receive one infrastructure retry with unchanged request settings.
 An independent offline browser captures real 960×540 pixels at 30 fps for twelve
 seconds, including the final boundary and repeat samples sought out of order.
 It checks execution, visible output, movement, repeatability and offline operation.
-It does not infer dog anatomy, bone contact or narrative success from source-code
+It does not infer dog anatomy, jump clearance, water reflections, bone contact or narrative success from source-code
 keywords or changed pixels. No loop-closure requirement applies to this task.
 
 The visual result is inspected for Pomeranian identity and natural anatomy;
-grounded running, entry and reverse gait; correct doghouse occlusion; a single
+grounded running; anticipation, puddle clearance, weight-bearing landing and
+water reflection; entry and reverse gait; correct doghouse occlusion; a single
 bone actually gripped and carried; a coherent turn toward the viewer; fur, light,
 contact and readable final framing. Deliver the actual animation, not claims that
 these requirements have been satisfied. There is no self-reported score.

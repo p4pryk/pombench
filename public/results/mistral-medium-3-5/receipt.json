@@ -1,14 +1,31 @@
 {
   "modelId": "mistral-medium-3-5",
-  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
-  "sourceHash": "c46eb734cabe3bb626e0d251441c4f516af5d66dcb3a8fedcc8c9f8d92a93e1a",
-  "responseHash": "3d6735545c4e2c451a29e4954143e4207fe9127981e36a99a4c61320f2e50037",
-  "requestHash": "726fc68d89aefd237342df01e7fbc42fee43f5c5ab5a43a645ba4d74db17f2b9",
-  "streamHash": "adf1db9d24fd663f252c4e0df8b5aae24c66fbee5d55a86cc808db09e5dcb1d4",
+  "modelVersion": "1",
+  "source": "Actual Foundry API usage",
+  "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+  "sourceHash": "35aef7c20cbd75d0b4de826521cecd2f4d142175cb4139f288a7dc344db55fb0",
+  "requestHash": "bcfa33fb4c6048420b92da1fbd3f70de925f64fbcc6fea02a71addca4a765f3d",
+  "responseHash": "ad335e27c44813c89e4ae36524858c4156378eeced014e446c05cf8b70140b8b",
+  "streamHash": "130ae671a1348f7fbe09922d76b33ec1507393d41049c3a15fc017c21b5f5a53",
   "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
-  "submission": 1,
   "tools": [],
   "usageComplete": true,
+  "submission": 1,
+  "rawUsage": {
+    "prompt_tokens": 2107,
+    "total_tokens": 5606,
+    "completion_tokens": 3499,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "usage": {
+    "input_tokens": 2107,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 3499,
+    "total_tokens": 5606
+  },
   "visualScore": null,
-  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+  "visualReview": "Inspect the recorded film against all seven visual criteria. Technical execution does not prove puddle clearance, realism or narrative success."
 }

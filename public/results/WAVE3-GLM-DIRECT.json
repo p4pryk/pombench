@@ -1,7 +1,0 @@
-{
-  "at": "2026-10-22T13:42:13.837382+00:00",
-  "scriptHash": "075f10a843a8bc6c13daca8c353ab086992a8acb9c17a534aaab387f9b7e28a5",
-  "modelId": "FW-GLM-5.3",
-  "route": "AI Foundry API /providers/fireworks/v1/responses",
-  "policy": "Use documented direct Fireworks passthrough after generic Foundry Responses completed only 8192 of 65536 requested tokens and discarded incomplete text. Same existing rescue prompt bytes, model/version, 65536 total output allowance and low effort. Keep and charge the early-truncated response. One conditional execution repair, no manual edits and no aesthetic feedback."
-}

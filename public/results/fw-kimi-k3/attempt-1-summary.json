@@ -1,45 +1,122 @@
 {
-  "status": "render-error",
+  "status": "captured",
   "technicalChecks": {
-    "contract": false,
-    "renders": false,
-    "visible": false,
-    "motion": false,
-    "deterministic": false,
+    "contract": true,
+    "renders": true,
+    "visible": true,
+    "motion": true,
+    "deterministic": true,
     "offline": true
   },
-  "technicalPassed": 1,
+  "technicalPassed": 6,
   "technicalTotal": 6,
   "visualScore": null,
-  "visualReview": "Not reviewed. Technical checks do not verify anatomy, foot contact, bone contact or doghouse occlusion or task compliance.",
+  "visualReview": "Not reviewed. Technical checks do not verify anatomy, foot contact, bone contact, doghouse occlusion, puddle clearance, weight-bearing landing, water reflection or task compliance.",
   "metrics": {
     "sampleColorStd": [
-      0.8716161847114563
-    ]
+      54.462039947509766,
+      54.468807220458984,
+      54.463897705078125,
+      54.28544616699219,
+      53.75181198120117,
+      53.5861930847168,
+      53.63730239868164,
+      54.26298904418945,
+      54.56327438354492,
+      54.53255081176758,
+      54.475650787353516,
+      54.47896194458008
+    ],
+    "changedPixelFractions": [
+      0.0040470679012345676,
+      0.03092399691358025,
+      0.03282021604938272,
+      0.01989969135802469,
+      0.014403935185185185,
+      0.008572530864197531,
+      0.021956018518518517,
+      0.02490162037037037,
+      0.019639274691358025,
+      0.01681712962962963,
+      0.005131172839506173
+    ],
+    "finalBoundaryStepRmse": 0.0705331340432167,
+    "repeatPixelRmse": {
+      "repeat-a": 0.0,
+      "repeat-b": 0.0,
+      "repeat-c": 0.0
+    },
+    "renderRoundTripMedianMs": 1.6741879999999583,
+    "renderRoundTripP95Ms": 5.849781249998729
   },
   "errors": [],
   "blockedRequests": [],
   "cspViolations": [],
   "capture": {
-    "frames": 0,
+    "frames": 360,
     "fps": 30,
-    "durationSeconds": null,
+    "durationSeconds": 12,
     "width": 960,
     "height": 540,
-    "complete": false,
+    "complete": true,
     "isolation": "Separate offline Chromium process, service workers and downloads disabled, CSP, all post-bootstrap network blocked. Organizer measures screenshot pixels; candidate reports are ignored.",
-    "sourceHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "frameEvidenceHash": "2d265f93f95ba7f06db98dd41586b00ac5e568f856fbf241df54d746fb0b7727"
+    "sourceHash": "70fee822af53b53b0a1d139beb349b42944c0e608bc68a48a2eda033bbd2ff44",
+    "frameEvidenceHash": "95ed86974c29d46157bcbdf5b713df14629bc93026f5bdcea66e765a611795d7"
   },
   "contactSheet": [
     {
       "time": 0,
-      "frame": "initial.png"
+      "frame": "0000.png"
+    },
+    {
+      "time": 1,
+      "frame": "0030.png"
+    },
+    {
+      "time": 2,
+      "frame": "0060.png"
+    },
+    {
+      "time": 3,
+      "frame": "0090.png"
+    },
+    {
+      "time": 4,
+      "frame": "0120.png"
+    },
+    {
+      "time": 5,
+      "frame": "0150.png"
+    },
+    {
+      "time": 6,
+      "frame": "0180.png"
+    },
+    {
+      "time": 7,
+      "frame": "0210.png"
+    },
+    {
+      "time": 8,
+      "frame": "0240.png"
+    },
+    {
+      "time": 9,
+      "frame": "0270.png"
+    },
+    {
+      "time": 10.5,
+      "frame": "0315.png"
+    },
+    {
+      "time": 11.966666666666667,
+      "frame": "0359.png"
     }
   ],
   "evidenceHashes": {
-    "capture.json": "2d265f93f95ba7f06db98dd41586b00ac5e568f856fbf241df54d746fb0b7727",
-    "poster.png": "8961570704c6af4c68d1584b2ccba52401c8fa3ac666fea6ecd5586138f9531f",
-    "contact-sheet.jpg": "a834799d4bce88303bc73a7f6768518bf1d3ac96b4b2b2112b49ca4c8fa480dd"
+    "capture.json": "95ed86974c29d46157bcbdf5b713df14629bc93026f5bdcea66e765a611795d7",
+    "poster.png": "89022bd4ce6120a629aecc9911d5c50690bb68266cc57c306ea237161ded2602",
+    "contact-sheet.jpg": "c2b95d1cb8ccfabddd203b2af53c5e69ae55d87c8aed725e15f8f624ab1f954e",
+    "animation.mp4": "1a517829600b6d4b93eb92a2a73db1e5383f5b027a40214a6b8db5d3db795f53"
   }
 }

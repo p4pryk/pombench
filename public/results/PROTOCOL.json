@@ -1,6 +1,6 @@
 {
-  "id": "pom-motion-v3",
-  "title": "The Pomeranian and the bone",
+  "id": "pombench-v4",
+  "title": "The puddle, the Pomeranian and the bone",
   "durationSeconds": 12,
   "width": 960,
   "height": 540,
@@ -45,7 +45,7 @@
     10.5,
     11.966666666666667
   ],
-  "visualScoring": "Qualitative film inspection; no automatic aesthetic points or local review form",
+  "visualScoring": "Qualitative film inspection; seven visual criteria, no automatic aesthetic points or model self-reported score",
   "infrastructureFailure": "Unavailable, never a fabricated rendering failure or zero aesthetic score",
   "capture": "Offline isolated Chromium; actual viewport screenshots, not model telemetry; deterministic offline capture encoded at 30 fps",
   "outputLimitPolicy": "32768 requested; GPT-4o and GPT-4o mini provider maximum 16384",
@@ -53,6 +53,7 @@
   "visualCriteria": [
     "Pomeranian identity & anatomy",
     "Grounded running and reverse gait",
+    "Puddle clearance, landing & water reflection",
     "Doghouse entry & occlusion",
     "Bone grip & object permanence",
     "Coherent front-facing turn",
@@ -60,7 +61,7 @@
   ],
   "subject": "Pomeranian",
   "loopRequired": false,
-  "analysisScript": "scripts/analyze-pomeranian.py",
+  "analysisScript": "scripts/analyze-pomeranian-v4.py",
   "captureScript": "scripts/capture.mjs",
   "posterSampleIndex": 9
 }

@@ -2,41 +2,42 @@
   "modelId": "gemini-4-argon",
   "modelVersion": "gemini-4-argon",
   "source": "Actual Vertex AI API usage",
-  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
-  "sourceHash": "b385064fbfdded277a968c1d1a69e9335ad178d0edf1f9fc48c7b76f5da4d285",
-  "requestHash": "2c93a11814b5c5504ba527cf43acda0607ec8cc3c606a5259077b38eecb561c9",
-  "responseHash": "d51a632a01f7c58a16efe422ca718fe42264c48433a2574e460fb87b6c9564c5",
+  "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+  "sourceHash": "14ecf65cad12a7a6914264aca95df7d2bfee245abb1e93e279aeaa4f7c0a774e",
+  "requestHash": "7e909a2fb678307a5cd5abca2d42356f90f799136f9540fecdb4ad98f1f6bf09",
+  "responseHash": "04840b7c0dd524e009fef2bdcc06323b8a26cdf0008b12d1584985a7442b51eb",
+  "streamHash": null,
   "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
-  "submission": 1,
   "tools": [],
   "usageComplete": true,
+  "submission": 1,
   "rawUsage": {
-    "promptTokenCount": 1689,
-    "candidatesTokenCount": 28874,
-    "totalTokenCount": 30563,
+    "promptTokenCount": 2144,
+    "candidatesTokenCount": 26530,
+    "totalTokenCount": 28674,
     "trafficType": "ON_DEMAND",
     "promptTokensDetails": [
       {
         "modality": "TEXT",
-        "tokenCount": 1689
+        "tokenCount": 2144
       }
     ],
     "candidatesTokensDetails": [
       {
         "modality": "TEXT",
-        "tokenCount": 28874
+        "tokenCount": 26530
       }
     ]
   },
   "usage": {
-    "input_tokens": 1689,
+    "input_tokens": 2144,
     "cached_input_tokens": 0,
     "cache_write_input_tokens": 0,
-    "output_tokens": 28874,
+    "output_tokens": 26530,
     "reasoning_output_tokens": 0,
-    "visible_output_tokens": 28874,
-    "total_tokens": 30563
+    "visible_output_tokens": 26530,
+    "total_tokens": 28674
   },
   "visualScore": null,
-  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+  "visualReview": "Inspect the recorded film against all seven visual criteria. Technical execution does not prove puddle clearance, realism or narrative success."
 }

@@ -1,122 +1,45 @@
 {
-  "status": "captured",
+  "status": "render-error",
   "technicalChecks": {
-    "contract": true,
-    "renders": true,
-    "visible": true,
-    "motion": true,
-    "deterministic": true,
+    "contract": false,
+    "renders": false,
+    "visible": false,
+    "motion": false,
+    "deterministic": false,
     "offline": true
   },
-  "technicalPassed": 6,
+  "technicalPassed": 1,
   "technicalTotal": 6,
   "visualScore": null,
-  "visualReview": "Not reviewed. Technical checks do not verify anatomy, foot contact, bone contact or doghouse occlusion or task compliance.",
+  "visualReview": "Not reviewed. Technical checks do not verify anatomy, foot contact, bone contact, doghouse occlusion, puddle clearance, weight-bearing landing, water reflection or task compliance.",
   "metrics": {
     "sampleColorStd": [
-      52.92399597167969,
-      52.90321731567383,
-      53.44406509399414,
-      51.5384635925293,
-      51.51287841796875,
-      51.5688362121582,
-      51.5274772644043,
-      51.51329040527344,
-      52.37388229370117,
-      52.516387939453125,
-      52.3481559753418,
-      52.35152816772461
-    ],
-    "changedPixelFractions": [
-      0.0030227623456790123,
-      0.0958082561728395,
-      0.08031057098765432,
-      0.03755401234567901,
-      0.017646604938271606,
-      0.010250771604938272,
-      0.033678626543209876,
-      0.056957947530864195,
-      0.052827932098765434,
-      0.053605324074074076,
-      0.008969907407407407
-    ],
-    "finalBoundaryStepRmse": 0.8169390559196472,
-    "repeatPixelRmse": {
-      "repeat-a": 0.0,
-      "repeat-b": 0.0,
-      "repeat-c": 0.0
-    },
-    "renderRoundTripMedianMs": 0.9251250000015716,
-    "renderRoundTripP95Ms": 2.0018461499980984
+      0.0
+    ]
   },
   "errors": [],
   "blockedRequests": [],
   "cspViolations": [],
   "capture": {
-    "frames": 360,
+    "frames": 0,
     "fps": 30,
-    "durationSeconds": 12,
+    "durationSeconds": null,
     "width": 960,
     "height": 540,
-    "complete": true,
+    "complete": false,
     "isolation": "Separate offline Chromium process, service workers and downloads disabled, CSP, all post-bootstrap network blocked. Organizer measures screenshot pixels; candidate reports are ignored.",
-    "sourceHash": "ca96746831638707a793d3fdd8c5b99c42a83b304a7b6ea455a7a9bbdde04045",
-    "frameEvidenceHash": "3e9bc52fe1a1ce29e328669917abdd502cb67511d84a0eac4696b26fe3ebe953"
+    "sourceHash": "dd2da8cff642c39d9fae588757c2a352fb2c60ad5cefe58f9991c6c585e65178",
+    "frameEvidenceHash": "e5a3c4835701a1deeb40ad72e9ae4dd8489e0f264a781698521bed88e9cb128a"
   },
   "contactSheet": [
     {
       "time": 0,
-      "frame": "0000.png"
-    },
-    {
-      "time": 1,
-      "frame": "0030.png"
-    },
-    {
-      "time": 2,
-      "frame": "0060.png"
-    },
-    {
-      "time": 3,
-      "frame": "0090.png"
-    },
-    {
-      "time": 4,
-      "frame": "0120.png"
-    },
-    {
-      "time": 5,
-      "frame": "0150.png"
-    },
-    {
-      "time": 6,
-      "frame": "0180.png"
-    },
-    {
-      "time": 7,
-      "frame": "0210.png"
-    },
-    {
-      "time": 8,
-      "frame": "0240.png"
-    },
-    {
-      "time": 9,
-      "frame": "0270.png"
-    },
-    {
-      "time": 10.5,
-      "frame": "0315.png"
-    },
-    {
-      "time": 11.966666666666667,
-      "frame": "0359.png"
+      "frame": "initial.png"
     }
   ],
   "evidenceHashes": {
-    "capture.json": "3e9bc52fe1a1ce29e328669917abdd502cb67511d84a0eac4696b26fe3ebe953",
-    "poster.png": "67cdc818077db48e70467e6f53c89175b48a81cf9850596f88a75f68b9937e9b",
-    "contact-sheet.jpg": "39d233431aef8e906c96fa07740099e3ba0dad3c3efd2d891cb5fe7e3998dbf4",
-    "animation.mp4": "69c5fddcff673ca1defb31a7ee23840941c0aedacedcba2d79b5ffebc08cd235"
+    "capture.json": "e5a3c4835701a1deeb40ad72e9ae4dd8489e0f264a781698521bed88e9cb128a",
+    "poster.png": "ab8e8df20a9954fd2b59bdac0d78be2a1b5ecd27c6b9679f6fb0d264d8f04a92",
+    "contact-sheet.jpg": "d0e908a5612b966eeb60cdb3626c135ff0be9dd7e8c496bc078a51c95a050ddc"
   }
 }

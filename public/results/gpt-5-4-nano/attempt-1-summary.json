@@ -1,24 +1,21 @@
 {
   "status": "render-error",
   "technicalChecks": {
-    "contract": false,
+    "contract": true,
     "renders": false,
     "visible": false,
     "motion": false,
     "deterministic": false,
     "offline": true
   },
-  "technicalPassed": 1,
+  "technicalPassed": 2,
   "technicalTotal": 6,
   "visualScore": null,
-  "visualReview": "Not reviewed. Technical checks do not verify anatomy, foot contact, bone contact or doghouse occlusion or task compliance.",
-  "metrics": {
-    "sampleColorStd": [
-      0.7947795987129211
-    ]
-  },
+  "visualReview": "Not reviewed. Technical checks do not verify anatomy, foot contact, bone contact, doghouse occlusion, puddle clearance, weight-bearing landing, water reflection or task compliance.",
+  "metrics": {},
   "errors": [
-    "Unexpected token '+'"
+    "Maximum call stack size exceeded",
+    "page.evaluate: RangeError: Maximum call stack size exceeded\n    at clamp (http://127.0.0.1:55425/:19:15)\n    at poseAt (http://127.0.0.1:55425/:678:9)\n    at poseAt (http://127.0.0.1:55425/:778:14)\n    at poseAt (http://127.0.0.1:55425/:778:14)\n    at poseAt (http://127.0.0.1:55425/:778:14)\n    at poseAt (http://127.0.0.1:55425/:778:14)\n    at poseAt (http://127.0.0.1:55425/:778:14)\n    at poseAt (http://127.0.0.1:55425/:778:14)\n    at poseAt (http://127.0.0.1:55425/:778:14)\n    at poseAt (http://127.0.0.1:55425/:778:14)"
   ],
   "blockedRequests": [],
   "cspViolations": [],
@@ -30,18 +27,11 @@
     "height": 540,
     "complete": false,
     "isolation": "Separate offline Chromium process, service workers and downloads disabled, CSP, all post-bootstrap network blocked. Organizer measures screenshot pixels; candidate reports are ignored.",
-    "sourceHash": "5303664dd5c7609fdb5ec497672cbefce0f2369b478f5b6bfa561b0137701fa3",
-    "frameEvidenceHash": "4edc6098b432931cdf9fb64dd21f2df2de29155a742d89facb2b5ad1375d678c"
+    "sourceHash": "1b6285f01e3f5af5c5baeac8ecd6fce63c83b3d774a4c2b387106ddfa070d236",
+    "frameEvidenceHash": "81063f2e61d00e9d0dabfca5d14a9746f5248b9a0d86e5cb5206ed0d757c9dfc"
   },
-  "contactSheet": [
-    {
-      "time": 0,
-      "frame": "initial.png"
-    }
-  ],
+  "contactSheet": [],
   "evidenceHashes": {
-    "capture.json": "4edc6098b432931cdf9fb64dd21f2df2de29155a742d89facb2b5ad1375d678c",
-    "poster.png": "70dc103306993bdb4254740b0cacc3e40213661a0acb6918f8c6325551e8c732",
-    "contact-sheet.jpg": "0fb781840b38699e98ac74db8e0b08042f864183e463efcf3849b5d12b520ec7"
+    "capture.json": "81063f2e61d00e9d0dabfca5d14a9746f5248b9a0d86e5cb5206ed0d757c9dfc"
   }
 }

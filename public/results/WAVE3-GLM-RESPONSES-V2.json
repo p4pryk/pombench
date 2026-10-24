@@ -1,5 +1,0 @@
-{
-  "at": "2026-10-22T13:37:32.073723+00:00",
-  "scriptHash": "7061fc494c39c8368069254d78faa5d9cfc602d471436fce83acc43ca82b65e6",
-  "policy": "Remove the unsupported duplicate chat-only reasoning_effort emitted by a legacy adapter. Retain correct Responses reasoning.effort=low and all other parameters. Previous HTTP 400 validation is not a creative response, no usage fabricated. Request now matches successful probe schema."
-}

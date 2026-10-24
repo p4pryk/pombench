@@ -1,14 +1,36 @@
 {
   "modelId": "claude-haiku-4-5",
-  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
-  "sourceHash": "f02bc1d5f95b67f8350b58b979c1ccd13617f47033eaf6fdf7a0873406cf84f5",
-  "responseHash": "43ed4f712e8926a17a2c86e283406492b17346bb1b962b4957c33acb072f5d20",
-  "requestHash": "55243043224d3bb2c942605689993028b9430d6ccb0fe92f20267ef379276e8f",
-  "streamHash": "ed27efb8fb5b34a5b4326dd9e0f8312fa276fdbd49cd4cc7dad442dd25a54a3c",
+  "modelVersion": "2",
+  "source": "Actual Foundry API usage",
+  "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+  "sourceHash": "f516747e6f9d9b4a64cac52cf1c9048df489248674534c2608953f8c45cb1249",
+  "requestHash": "3a27f07765e16263292bbdb3385a828506b628ad2e73023cc749326860edd20f",
+  "responseHash": "46f3695c6f11f8742268a1254aa80a177f268ab38c95402c1d30f5a838883fdd",
+  "streamHash": "5a398b9a3d335f5b1b0a2caf0e7ae657b3832e14f295ef70b9c6aba56e161808",
   "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
-  "submission": 1,
   "tools": [],
   "usageComplete": true,
+  "submission": 1,
+  "rawUsage": {
+    "input_tokens": 2278,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 0,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 7233,
+    "service_tier": "standard",
+    "inference_geo": "not_available",
+    "speed": "standard"
+  },
+  "usage": {
+    "input_tokens": 2278,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 7233,
+    "total_tokens": 9511
+  },
   "visualScore": null,
-  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+  "visualReview": "Inspect the recorded film against all seven visual criteria. Technical execution does not prove puddle clearance, realism or narrative success."
 }

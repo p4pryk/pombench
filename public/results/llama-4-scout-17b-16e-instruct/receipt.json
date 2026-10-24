@@ -1,14 +1,28 @@
 {
   "modelId": "Llama-4-Scout-17B-16E-Instruct",
-  "promptHash": "833599ee41f4a40fe84a3e0fcbb8922e8bc4a8f56d15ed9c547f21d380ef0e65",
-  "sourceHash": "66fa0ec317f983a7dd388c11e7a726eaeef40120e041a73efdb97281c75051f8",
-  "responseHash": "bda560329faa164d13405293abfd204bd4bf52f8976ede2b3883d52542b66ac8",
-  "requestHash": "8503aaafb8ef78379a25763243d9a9d5810862e77fc163ccd6e53146d7dbf5f4",
-  "streamHash": "9448f3dcb780eff76f8c0ba3717810ee36ec7db46cb20dc59e828498714e77c7",
+  "modelVersion": "1",
+  "source": "Actual Foundry API usage",
+  "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+  "sourceHash": "5fa7c1bdcafdc15c2077ce3019ffb00867fcc810a3238d72e17f62ad5940e146",
+  "requestHash": "ab691acfc6591d8b0c81c922e8679de25900b4f24a587457f5c52b5e343bc3a4",
+  "responseHash": "c71378660e8bc8ca68de26f4deb1f1569cb68654fe2a9c84c6b439935f388ec4",
+  "streamHash": "6bda8ed5e0be2d79a18c4f176c17be59709f0b90f04f3124e37dd0455f8f7334",
   "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
-  "submission": 1,
   "tools": [],
   "usageComplete": true,
+  "submission": 1,
+  "rawUsage": {
+    "prompt_tokens": 2040,
+    "total_tokens": 2736,
+    "completion_tokens": 696
+  },
+  "usage": {
+    "input_tokens": 2040,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 696,
+    "total_tokens": 2736
+  },
   "visualScore": null,
-  "visualReview": "No automatic aesthetic rating. Inspect the recorded film."
+  "visualReview": "Inspect the recorded film against all seven visual criteria. Technical execution does not prove puddle clearance, realism or narrative success."
 }

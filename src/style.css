@@ -13,3 +13,6 @@
 
 /* PomBench wordmark */
 .brand{font-size:21px;letter-spacing:-.035em}.brand b{font-weight:650;color:#687b58}@media(max-width:600px){.brand{font-size:18px}}
+
+.method-head{padding:48px 0 24px}.method-head>p{font-size:17px;color:#687565;line-height:1.6}.method-head+.method-grid p,.method-head~.method-grid p,.method-head~.panel p,.method-head~.panel li{font-size:14px;color:#687565}.method-head~.panel{margin-bottom:26px}
+@media(max-width:600px){.method-head{padding:30px 0 18px}.method-head>p{font-size:15px}.method-head+.method-grid p,.method-head~.method-grid p,.method-head~.panel p,.method-head~.panel li{font-size:13px}}
