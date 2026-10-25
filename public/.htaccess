@@ -2,24 +2,170 @@
 DirectoryIndex index.html
 ErrorDocument 404 /404.html
 Options -Indexes
+AddDefaultCharset utf-8
+AddCharset utf-8 .html .md .txt .json .xml .svg
+AddType text/markdown .md
+AddType image/webp .webp
+AddType image/avif .avif
+AddType image/x-icon .ico
+AddType video/mp4 .mp4
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
+  # HTTPS and non-www first, one hop, no port in the Location.
   RewriteCond %{HTTPS} !=on
   RewriteRule ^ https://pombench.com%{REQUEST_URI} [R=301,L,NE]
-  RewriteRule ^models/([^/]+)/?$ /animations/$1/ [R=301,L,NE]
   RewriteCond %{HTTP_HOST} ^www\.pombench\.com$ [NC]
   RewriteRule ^ https://pombench.com%{REQUEST_URI} [R=301,L,NE]
+
+  # /index.html duplicates -> the folder URL (/, /compare/, /method/, /animations/<slug>/).
+  RewriteCond %{THE_REQUEST} \s/+([^\s?]*/)?index\.html[\s?] [NC]
+  RewriteRule ^(.*/)?index\.html$ https://pombench.com/$1 [R=301,L,NC]
+
+  # /animations/ has no index of its own.
+  RewriteRule ^animations/?$ https://pombench.com/ [R=301,L]
+
+# --- Model page slug migration: old /animations/ or legacy /models/ URL (any case, dot or dash) -> new lowercase-dash URL ---
+RewriteCond %{REQUEST_URI} !^/animations/claude-haiku-4-5/$
+RewriteRule ^(?:animations|models)/claude[.-]haiku[.-]4[.-]5/?$ https://pombench.com/animations/claude-haiku-4-5/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/claude-haiku-5-5/$
+RewriteRule ^(?:animations|models)/claude[.-]haiku[.-]5[.-]5/?$ https://pombench.com/animations/claude-haiku-5-5/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/claude-opus-4-8/$
+RewriteRule ^(?:animations|models)/claude[.-]opus[.-]4[.-]8/?$ https://pombench.com/animations/claude-opus-4-8/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/claude-opus-5/$
+RewriteRule ^(?:animations|models)/claude[.-]opus[.-]5/?$ https://pombench.com/animations/claude-opus-5/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/claude-opus-5-5/$
+RewriteRule ^(?:animations|models)/claude[.-]opus[.-]5[.-]5/?$ https://pombench.com/animations/claude-opus-5-5/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/claude-sonnet-5/$
+RewriteRule ^(?:animations|models)/claude[.-]sonnet[.-]5/?$ https://pombench.com/animations/claude-sonnet-5/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/claude-sonnet-5-5/$
+RewriteRule ^(?:animations|models)/claude[.-]sonnet[.-]5[.-]5/?$ https://pombench.com/animations/claude-sonnet-5-5/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/codestral-2501/$
+RewriteRule ^(?:animations|models)/Codestral[.-]2501/?$ https://pombench.com/animations/codestral-2501/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/deepseek-v4-pro/$
+RewriteRule ^(?:animations|models)/DeepSeek[.-]V4[.-]Pro/?$ https://pombench.com/animations/deepseek-v4-pro/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/deepseek-v4-1-flash/$
+RewriteRule ^(?:animations|models)/DeepSeek[.-]V4[.-]1[.-]Flash/?$ https://pombench.com/animations/deepseek-v4-1-flash/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/gpt-4-1-mini/$
+RewriteRule ^(?:animations|models)/gpt[.-]4[.-]1[.-]mini/?$ https://pombench.com/animations/gpt-4-1-mini/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/gpt-4-1-nano/$
+RewriteRule ^(?:animations|models)/gpt[.-]4[.-]1[.-]nano/?$ https://pombench.com/animations/gpt-4-1-nano/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/gpt-4o-mini/$
+RewriteRule ^(?:animations|models)/gpt[.-]4o[.-]mini/?$ https://pombench.com/animations/gpt-4o-mini/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/gpt-5-mini/$
+RewriteRule ^(?:animations|models)/gpt[.-]5[.-]mini/?$ https://pombench.com/animations/gpt-5-mini/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/gpt-5-nano/$
+RewriteRule ^(?:animations|models)/gpt[.-]5[.-]nano/?$ https://pombench.com/animations/gpt-5-nano/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/gpt-5-3-codex/$
+RewriteRule ^(?:animations|models)/gpt[.-]5[.-]3[.-]codex/?$ https://pombench.com/animations/gpt-5-3-codex/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/gpt-5-4/$
+RewriteRule ^(?:animations|models)/gpt[.-]5[.-]4/?$ https://pombench.com/animations/gpt-5-4/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/gpt-5-4-mini/$
+RewriteRule ^(?:animations|models)/gpt[.-]5[.-]4[.-]mini/?$ https://pombench.com/animations/gpt-5-4-mini/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/gpt-5-4-nano/$
+RewriteRule ^(?:animations|models)/gpt[.-]5[.-]4[.-]nano/?$ https://pombench.com/animations/gpt-5-4-nano/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/gpt-5-5/$
+RewriteRule ^(?:animations|models)/gpt[.-]5[.-]5/?$ https://pombench.com/animations/gpt-5-5/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/gpt-5-6-luna/$
+RewriteRule ^(?:animations|models)/gpt[.-]5[.-]6[.-]luna/?$ https://pombench.com/animations/gpt-5-6-luna/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/gpt-5-6-sol/$
+RewriteRule ^(?:animations|models)/gpt[.-]5[.-]6[.-]sol/?$ https://pombench.com/animations/gpt-5-6-sol/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/gpt-5-6-terra/$
+RewriteRule ^(?:animations|models)/gpt[.-]5[.-]6[.-]terra/?$ https://pombench.com/animations/gpt-5-6-terra/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/gpt-6-astra/$
+RewriteRule ^(?:animations|models)/gpt[.-]6[.-]astra/?$ https://pombench.com/animations/gpt-6-astra/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/gpt-6-luna/$
+RewriteRule ^(?:animations|models)/gpt[.-]6[.-]luna/?$ https://pombench.com/animations/gpt-6-luna/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/gpt-6-sol/$
+RewriteRule ^(?:animations|models)/gpt[.-]6[.-]sol/?$ https://pombench.com/animations/gpt-6-sol/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/gpt-6-1-sol/$
+RewriteRule ^(?:animations|models)/gpt[.-]6[.-]1[.-]sol/?$ https://pombench.com/animations/gpt-6-1-sol/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/gpt-oss-120b/$
+RewriteRule ^(?:animations|models)/gpt[.-]oss[.-]120b/?$ https://pombench.com/animations/gpt-oss-120b/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/gemini-3-1-pro-preview/$
+RewriteRule ^(?:animations|models)/gemini[.-]3[.-]1[.-]pro[.-]preview/?$ https://pombench.com/animations/gemini-3-1-pro-preview/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/gemini-3-5-flash-lite/$
+RewriteRule ^(?:animations|models)/gemini[.-]3[.-]5[.-]flash[.-]lite/?$ https://pombench.com/animations/gemini-3-5-flash-lite/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/gemini-3-8-flash/$
+RewriteRule ^(?:animations|models)/gemini[.-]3[.-]8[.-]flash/?$ https://pombench.com/animations/gemini-3-8-flash/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/gemini-4-argon/$
+RewriteRule ^(?:animations|models)/gemini[.-]4[.-]argon/?$ https://pombench.com/animations/gemini-4-argon/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/grok-4-7/$
+RewriteRule ^(?:animations|models)/grok[.-]4[.-]7/?$ https://pombench.com/animations/grok-4-7/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/kimi-k3/$
+RewriteRule ^(?:animations|models)/FW[.-]Kimi[.-]K3/?$ https://pombench.com/animations/kimi-k3/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/llama-4-maverick/$
+RewriteRule ^(?:animations|models)/Llama[.-]4[.-]Maverick[.-]17B[.-]128E[.-]Instruct[.-]FP8/?$ https://pombench.com/animations/llama-4-maverick/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/llama-4-scout/$
+RewriteRule ^(?:animations|models)/Llama[.-]4[.-]Scout[.-]17B[.-]16E[.-]Instruct/?$ https://pombench.com/animations/llama-4-scout/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/mai-thinking-1/$
+RewriteRule ^(?:animations|models)/MAI[.-]Thinking[.-]1/?$ https://pombench.com/animations/mai-thinking-1/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/mistral-large-3/$
+RewriteRule ^(?:animations|models)/Mistral[.-]Large[.-]3/?$ https://pombench.com/animations/mistral-large-3/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/mistral-medium-3-5/$
+RewriteRule ^(?:animations|models)/mistral[.-]medium[.-]3[.-]5/?$ https://pombench.com/animations/mistral-medium-3-5/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/kimi-k3-1-pro/$
+RewriteRule ^(?:animations|models)/kimi[.-]k3[.-]1[.-]pro/?$ https://pombench.com/animations/kimi-k3-1-pro/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/muse-wonder/$
+RewriteRule ^(?:animations|models)/muse[.-]wonder/?$ https://pombench.com/animations/muse-wonder/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/kimi-k3/$
+RewriteRule ^(?:animations|models)/kimi[.-]k3/?$ https://pombench.com/animations/kimi-k3/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/llama-4-maverick/$
+RewriteRule ^(?:animations|models)/llama[.-]4[.-]maverick/?$ https://pombench.com/animations/llama-4-maverick/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/llama-4-scout/$
+RewriteRule ^(?:animations|models)/llama[.-]4[.-]scout/?$ https://pombench.com/animations/llama-4-scout/ [R=301,NC,L]
+
+# Models added 2026-10-25. Same one-hop case/dot/prefix coverage as the rules above.
+RewriteCond %{REQUEST_URI} !^/animations/claude-fable-5-1/$
+RewriteRule ^(?:animations|models)/claude[.-]fable[.-]5[.-]1/?$ https://pombench.com/animations/claude-fable-5-1/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/glm-5-3/$
+RewriteRule ^(?:animations|models)/(?:FW[.-])?GLM[.-]5[.-]3/?$ https://pombench.com/animations/glm-5-3/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/qwen3-8-max/$
+RewriteRule ^(?:animations|models)/qwen3[.-]8[.-]max(?:[.-]0902)?/?$ https://pombench.com/animations/qwen3-8-max/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/mistral-large-4/$
+RewriteRule ^(?:animations|models)/mistral[.-]large[.-]4/?$ https://pombench.com/animations/mistral-large-4/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/xiaomi-mimo-v2-6-pro/$
+RewriteRule ^(?:animations|models)/xiaomi[.-]mimo[.-]v2[.-]6[.-]pro/?$ https://pombench.com/animations/xiaomi-mimo-v2-6-pro/ [R=301,NC,L]
+
+  # Any leftover legacy /models/<id>/ (absolute target, so mod_dir cannot append :443).
+  RewriteRule ^models/([^/]+)/?$ https://pombench.com/animations/$1/ [R=301,L,NE]
+
+  # Add the trailing slash ourselves. mod_dir would redirect to https://pombench.com:443/...
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^(.+[^/])$ https://pombench.com/$1/ [R=301,L]
 </IfModule>
+
 # Apache configuration for the standalone PomBench website.
 <IfModule mod_headers.c>
   Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; connect-src 'self'; frame-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
   Header always set X-Content-Type-Options "nosniff"
   Header always set Referrer-Policy "no-referrer"
   Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+  Header always set Strict-Transport-Security "max-age=31536000"
+  <FilesMatch "\.html$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+  <FilesMatch "^index-[A-Za-z0-9_-]{6,}\.(js|css)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  <FilesMatch "\.(png|jpe?g|webp|avif|svg|ico)$">
+    Header set Cache-Control "public, max-age=604800"
+  </FilesMatch>
+  <FilesMatch "\.mp4$">
+    Header set Cache-Control "public, max-age=2592000"
+  </FilesMatch>
+  <FilesMatch "^(index|models)\.json$">
+    Header set Cache-Control "public, max-age=300"
+  </FilesMatch>
+  <FilesMatch "^sitemap\.xml$">
+    Header set Cache-Control "public, max-age=3600"
+  </FilesMatch>
 </IfModule>
-<IfModule mod_mime.c>
-  AddType video/mp4 .mp4
-  AddType image/webp .webp
+<IfModule mod_expires.c>
+  ExpiresActive Off
+</IfModule>
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css text/plain text/markdown text/xml application/xml application/json application/javascript text/javascript image/svg+xml
 </IfModule>
 <FilesMatch "(?:source|prompt)\.txt$">
   ForceType text/plain
