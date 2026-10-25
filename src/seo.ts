@@ -4,8 +4,10 @@ import {newestFirst, publishedModels} from './catalog.ts';
 export const siteOrigin = 'https://pombench.com';
 /** First public publication of this benchmark. Later catalog updates use Catalog.publishedAt. */
 export const FIRST_PUBLISHED_AT = '2026-10-24T17:33:46.803982+00:00';
-/** Models added or recaptured in the 25 Oct 2026 release. Their pages use the catalog timestamp. */
-export const EXTENSION_IDS = new Set(['claude-fable-5-1', 'FW-GLM-5.3', 'qwen3.8-max', 'mistral-large-4', 'xiaomi-mimo-v2.6-pro']);
+/** Models added or recaptured on 25 Oct 2026. Their pages use the catalog timestamp. */
+export const EXTENSION_IDS = new Set(['claude-fable-5-1', 'FW-GLM-5.3', 'qwen3.8-max', 'mistral-large-4', 'xiaomi-mimo-v2.6-pro', 'glm-5.3-flash']);
+/** Newest benchmark additions. They lead "Latest models tested" even when the API release date is older. */
+const LATEST_WAVE_IDS = ['glm-5.3-flash'];
 
 const SLUG_OVERRIDES: Record<string, string> = {
   'FW-Kimi-K3': 'kimi-k3',
@@ -48,6 +50,8 @@ const HAND_RIVALS: Record<string, string[]> = {
   'Gemini 3.5 Flash-Lite': ['Gemini 3.8 Flash', 'Gemini 4 Argon', 'Claude Opus 5'],
   'Gemini 3.8 Flash': ['Gemini 4 Argon', 'Gemini 3.5 Flash-Lite', 'GPT-6 Astra'],
   'Gemini 4 Argon': ['Gemini 3.8 Flash', 'Claude Opus 5.5', 'GPT-6.1 Sol'],
+  'GLM 5.3': ['GLM 5.3 Flash', 'MAI-Thinking-1', 'Claude Fable 5.1'],
+  'GLM 5.3 Flash': ['GLM 5.3', 'DeepSeek V4.1 Flash', 'Gemini 3.8 Flash'],
   'Grok 4.7': ['GPT-6.1 Sol', 'Claude Opus 5.5', 'Gemini 4 Argon'],
   'Kimi K3': ['Kimi K3.1 Pro', 'Claude Sonnet 5', 'GPT-5.6 Sol'],
   'Llama 4 Maverick': ['Llama 4 Scout', 'Muse Wonder', 'GPT-4.1 Mini'],
@@ -70,8 +74,8 @@ function normalizedSlug(id: string) {
 export function modelSlug(id: string) {
   if (SLUG_OVERRIDES[id]) return SLUG_OVERRIDES[id];
   const normalized = normalizedSlug(id);
-  // GLM 5.3-Flash is not in the catalog yet. Whatever run id arrives, keep the
-  // page on glm-5-3-flash so it does not collide with glm-5-3 or keep an FW- prefix.
+  // Published id is glm-5.3-flash. Also accept an FW- prefixed alias so the page
+  // stays on glm-5-3-flash and does not collide with glm-5-3.
   if (/^(?:fw-)?glm-5-3-flash$/.test(normalized)) return 'glm-5-3-flash';
   return normalized;
 }
@@ -163,7 +167,10 @@ export function rivalsFor(m: Model, models: Model[]) {
   return computedRivals(m, models);
 }
 export function latestModels(models: Model[], excludeId?: string, count = 4) {
-  return [...models].filter(m => m.id !== excludeId).sort(newestFirst).slice(0, count);
+  const pool = models.filter(m => m.id !== excludeId);
+  const lead = LATEST_WAVE_IDS.map(id => pool.find(m => m.id === id)).filter((m): m is Model => !!m);
+  const rest = pool.filter(m => !lead.some(item => item.id === m.id)).sort(newestFirst);
+  return [...lead, ...rest].slice(0, Math.max(count, lead.length));
 }
 const readyOf = (c: Catalog) => publishedModels(c.models);
 
