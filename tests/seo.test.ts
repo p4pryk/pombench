@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {pageSeo,modelDescription,modelEditorial,modelPath,renderSeoDocument,routeFromPath,routePath,legacyRoute,siteMap,siteOrigin,modelSlug,modelByKey,modelTitle,modelTimestamp,FIRST_PUBLISHED_AT} from '../src/seo';
+import {pageSeo,modelDescription,modelEditorial,modelPath,renderSeoDocument,routeFromPath,routePath,legacyRoute,siteMap,siteOrigin,modelSlug,modelByKey,modelTitle,modelTimestamp,FIRST_PUBLISHED_AT,BROWSE_HEADING} from '../src/seo';
 import type {Catalog} from '../src/types';
 const c=JSON.parse(fs.readFileSync('public/results/index.json','utf8')) as Catalog,m=c.models.find(m=>m.video)!,argon=c.models.find(m=>m.id==='gemini-4-argon')!,dotted=c.models.find(model=>model.id==='kimi-k3.1-pro')!;
 test('clean routes and legacy bookmarks resolve to one canonical model address',()=>{
@@ -21,4 +21,27 @@ test('static pages expose unique metadata, visible content and real VideoObjects
 });
 test('video sitemap includes playable model pages and excludes private and unavailable records',()=>{
  const xml=siteMap(c);assert.match(xml,/xmlns:video=/);for(const model of c.models){if(model.video&&model.poster)assert.ok(xml.includes(siteOrigin+modelPath(model)));else assert.equal(xml.includes(siteOrigin+modelPath(model)),false)}assert.equal((xml.match(/<video:video>/g)??[]).length,c.models.filter(x=>x.video&&x.poster).length);assert.doesNotMatch(xml,/#model|\/runs\/|localhost|\.azure\.com/);assert.ok(xml.includes('<lastmod>'));assert.ok(xml.includes('<video:family_friendly>yes</video:family_friendly>'));assert.ok(xml.includes(siteOrigin+'/animations/glm-5-3/'));assert.ok(xml.includes(siteOrigin+'/animations/xiaomi-mimo-v2-6-pro/'));
+});
+test('homepage and method copy do not bake in a model count',()=>{
+ const home=pageSeo(c,'gallery');
+ assert.equal(home.title,'AI Coding Benchmark: Every Model, One Test | PomBench');
+ assert.ok(home.title.length<=65);assert.ok(home.description.length<=160);
+ assert.match(home.description,/AI coding benchmark/);assert.doesNotMatch(home.title,/\d/);
+ assert.doesNotMatch(home.description,/\d+\s+(models|LLMs)/i);assert.doesNotMatch(home.imageAlt,/\d+\s+LLMs/);
+ assert.match(home.imageAlt,/AI coding benchmark/);
+ const template=fs.readFileSync('index.html','utf8'),gallery=renderSeoDocument(template,c,'gallery'),method=renderSeoDocument(template,c,'method');
+ assert.match(gallery,/one little dog, every model/);assert.doesNotMatch(gallery,/one little dog, \d+ models/);
+ assert.match(gallery,new RegExp(BROWSE_HEADING));assert.doesNotMatch(gallery,/Browse all \d+/);assert.doesNotMatch(method,/Browse all \d+/);
+ assert.match(modelEditorial(m,c),/All models/);assert.doesNotMatch(modelEditorial(m,c),/All \d+ models/);
+ const list=home.structuredData['@graph'].find((x:any)=>x['@type']==='ItemList') as {numberOfItems:number};
+ assert.equal(list.numberOfItems,c.models.filter(model=>model.status==='captured'&&model.video&&model.poster).length);
+ const client=fs.readFileSync('src/main.ts','utf8');
+ assert.doesNotMatch(client,/Browse all \$\{/);assert.doesNotMatch(client,/count-bubble/);
+ assert.doesNotMatch(client,/\$\{publishedModels\([^)]*\)\.length\} (published model animations|completed animations)/);
+});
+test('a future GLM 5.3-Flash id gets its own slug and no page until the catalog includes it',()=>{
+ assert.equal(modelSlug('FW-GLM-5.3'),'glm-5-3');
+ for(const id of ['FW-GLM-5.3-Flash','GLM-5.3-Flash','glm-5.3-flash','FW.GLM.5.3.Flash'])assert.equal(modelSlug(id),'glm-5-3-flash');
+ assert.equal(modelByKey(c.models,'glm-5-3-flash'),undefined);assert.equal(pageSeo(c,'model/FW-GLM-5.3-Flash').valid,false);
+ const title=modelTitle('GLM 5.3-Flash');assert.ok(title.length<=65);assert.match(title,/^GLM 5\.3-Flash Benchmark:/);assert.doesNotMatch(title,/\d+\s+models/);
 });
