@@ -471,6 +471,18 @@
       "source": "https://openrouter.ai/xiaomi/mimo-v2.6-pro",
       "surface": "OpenRouter, pinned Xiaomi upstream",
       "note": "Known inference cost is terminal OpenRouter usage.cost; listed rates retained for reconciliation."
+    },
+    "glm-5.3-flash": {
+      "input": 0.15,
+      "output": 0.5,
+      "cached": 0.03,
+      "write": 0,
+      "currency": "USD",
+      "unit": "per million tokens",
+      "checkedAt": "2026-10-25",
+      "source": "https://openrouter.ai/z-ai/glm-5.3-flash",
+      "surface": "OpenRouter, pinned Fireworks upstream",
+      "note": "Actual known inference cost is taken from OpenRouter usage.cost; rates are retained for reconciliation. No tools or search calls."
     }
   },
   "unverified": {

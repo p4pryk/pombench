@@ -1,0 +1,50 @@
+{
+  "modelId": "z-ai/glm-5.3-flash",
+  "modelVersion": "z-ai/glm-5.3-flash-20260826",
+  "returnedModel": "z-ai/glm-5.3-flash",
+  "upstreamProvider": "Fireworks",
+  "source": "Actual OpenRouter API usage",
+  "usage": {
+    "input_tokens": 2059,
+    "output_tokens": 22545,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "total_tokens": 24604,
+    "reasoning_output_tokens": 15065
+  },
+  "rawUsage": {
+    "prompt_tokens": 2059,
+    "completion_tokens": 22545,
+    "total_tokens": 24604,
+    "cost": 0.01158135,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 0.01158135,
+      "upstream_inference_prompt_cost": 0.00030885,
+      "upstream_inference_completions_cost": 0.0112725
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 15065,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  },
+  "reportedCostUsd": 0.01158135,
+  "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+  "sourceHash": "c1a8ad19342434cc4233a0895cb80eead069aaf2644c118bb1d724af794667fb",
+  "requestHash": "53c2a51436750d674684555c1fbe0d3a7f8d9c41407b0acdf88320c544bb04b1",
+  "responseHash": "077cc6401ea96633d897d1fa01645779be1f0c8b13d2f06262c57ffad56459fb",
+  "streamHash": "9554a79b513f15f1a872c2ff61567a49dab44d85c7031bc158f99308918de2f9",
+  "sourceExtraction": "Trim outer whitespace and unwrap one surrounding HTML fence only; no source changes",
+  "tools": [],
+  "submission": 1,
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "Inspect the recorded film; browser execution does not grade realism, anatomy, reflection or narrative success."
+}

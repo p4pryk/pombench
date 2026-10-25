@@ -235,6 +235,10 @@
     "xiaomi-mimo-v2.6-pro": {
       "date": "2026-09-21",
       "source": "https://openrouter.ai/xiaomi/mimo-v2.6-pro"
+    },
+    "glm-5.3-flash": {
+      "date": "2026-08-26",
+      "source": "https://openrouter.ai/z-ai/glm-5.3-flash"
     }
   }
 }
