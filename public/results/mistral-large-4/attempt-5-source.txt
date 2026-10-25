@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>PomBench</title>
+<style>
+html,body{margin:0;padding:0;background:#000;overflow:hidden}
+#stage{display:block;width:960px;height:540px}
+</style>
+</head>
+<body>
+<canvas id="stage" width="960" height="540"></canvas>
+<script>
+(function(){
+"use strict";
+var cv=document.getElementById('stage'),ctx=cv.getContext('2d');
+var W=960,H=540;
+
+// ---------- deterministic helpers ----------
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+var rnd=mulberry32(1234);
+function hash(n){var x=Math.sin(n*127.1+311.7)*43758.5453;return x-Math.floor(x)}
+function sstep(a,b,x){x=Math.max(0,Math.min(1,(x-a)/(b-a)));return x*x*(3-2*x)}
+function lerp(a,b,t){return a+(b-a)*t}
+function clamp(x,a,b){return Math.max(a,Math.min(b,x))}
+function easeInOut(t){return t*t*(3-2*t)}
+function bez(p0,p1,p2,p3,t){var u=1-t;return u*u*u*p0+3*u*u*t*p1+3*u*t*t*p2+t*t*t*p3}
+
+// palette
+var SKY1=[176,205,228],SKY2=[214,232,244];
+var GRASS1=[96,138,74],GRASS2=[70,108,58],GRASS3=[122,158,92];
+var DIRT=[150,116,82];
+var HOUSE=[168,92,58],HOUSE_D=[120,62,38],ROOF=[96,52,34];
+var FUR=[214,132,52],FUR_L=[238,178,96],FUR_D=[158,88,34],CREAM=[244,224,190];
+var BONE=[232,222,196],BONE_D=[190,178,150];
+
+// scene layout (ground plane, y is ground contact)
+var HORIZ=300;           // horizon
+var GROUND_Y=430;       // near ground line
+var HOUSE_X=690, HOUSE_Y=250, HOUSE_W=190, HOUSE_H=180; // doghouse
+var DOOR_X=HOUSE_X+55, DOOR_Y=HOUSE_Y+70, DOOR_W=80, DOOR_H=110;
+var BONE_X=DOOR_X+DOOR_W/2, BONE_Y=DOOR_Y+DOOR_H-8;   // bone inside
+var PUDDLE_CX=430, PUDDLE_CY=392, PUDDLE_RX=120, PUDDLE_RY=26; // shallow puddle
+var DOG_START_X=120, DOG_START_Y=398;
+
+// camera: slight 3/4, stable
+function groundY(x){ return lerp(430, 330, (x)/W); } // perspective-ish ground
+
+// ---------- fur texture (deterministic) ----------
+var furPat=ctx.createPattern?null:null;
+function furNoise(x,y,scale){ return hash(Math.floor(x*scale)+Math.floor(y*scale)*57.3); }
+
+// draw fur blob with directional strokes
+function furBlob(x,y,rx,ry,rot,base,light,dark,n,seed,dir){
+  ctx.save();ctx.translate(x,y);ctx.rotate(rot);
+  // base volume
+  var g=ctx.createRadialGradient(-rx*0.3,-ry*0.3,rx*0.2,rx*0.3,ry*0.3,rx*1.1);
+  g.addColorStop(0,light);g.addColorStop(0.55,base);g.addColorStop(1,dark);
+  ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2);ctx.fill();
+  // directional fur strokes
+  ctx.strokeStyle='rgba(255,235,200,0.35)';ctx.lineWidth=1;
+  for(var i=0;i<n;i++){
+    var a=hash(seed+i*3.7)*Math.PI*2;
+    var rr=(0.35+hash(seed+i*7.1)*0.6);
+    var x0=Math.cos(a)*rx*rr*0.9, y0=Math.sin(a)*ry*rr*0.9;
+    var len=rx*(0.25+hash(seed+i*5.3)*0.35);
+    var dx=Math.cos(dir)*len, dy=Math.sin(dir)*len*0.4;
+    ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x0+dx,y0+dy);ctx.stroke();
+  }
+  ctx.strokeStyle='rgba(120,60,20,0.30)';
+  for(var i=0;i<n*0.7;i++){
+    var a=hash(seed+100+i*3.1)*Math.PI*2;
+    var rr=(0.3+hash(seed+50+i*7.7)*0.65);
+    var x0=Math.cos(a)*rx*rr, y0=Math.sin(a)*ry*rr;
+    var len=rx*(0.2+hash(seed+90+i*5.1)*0.3);
+    var dx=Math.cos(dir+0.5)*len, dy=Math.sin(dir+0.5)*len*0.4;
+    ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x0+dx,y0+dy);ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ---------- Pomeranian rig ----------
+// pose parameters computed per frame: body pos, angle, leg angles, head, tail, jaw, bone
+function drawDog(P, flip){
+  // P: {x,y,scale,bodyRot,gait,legs:[fl,fr,hl,hr],head:{x,y,rot,jaw},tail:{curl,swish},coat,enter,back}
+  // flip: -1 to mirror (for facing viewer at end we use rot instead)
+  ctx.save();
+  ctx.translate(P.x,P.y);
+  ctx.scale(P.scale*(flip||1),P.scale);
+  ctx.rotate(P.bodyRot);
+
+  var fur=FUR,furL=FUR_L,furD=FUR_D,cream=CREAM;
+  var legC=furD, pawC=[120,70,40];
+
+  // ---- hind legs (draw far first) ----
+  function leg(x0,y0,len1,len2,ang,foot,far){
+    // ang: thigh angle from vertical (rad), knee bend
+    ctx.save();ctx.translate(x0,y0);
+    var col=far?shade(furD,0.8):furD;
+    // thigh
+    ctx.rotate(ang);
+    ctx.fillStyle=col;
+    roundRect(-5,-2,10,len1,5);ctx.fill();
+    // shin
+    ctx.translate(0,len1);ctx.rotate(foot);
+    ctx.fillStyle=far?shade(pawC,0.8):pawC;
+    roundRect(-4,0,8,len2,4);ctx.fill();
+    // paw
+    ctx.translate(0,len2);
+    ctx.fillStyle=far?shade(pawC,0.85):pawC;
+    ctx.beginPath();ctx.ellipse(2,2,7,4,0,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  }
+  function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+
+  // far legs (darker)
+  leg(-16,6,26,22,P.legs[2],P.legs[2]*0.5+0.2,true);
+  leg(14,8,24,20,P.legs[0],P.legs[0]*0.5+0.2,true);
+
+  // ---- tail (curled plume over back) ----
+  ctx.save();ctx.translate(-34,-16);
+  var tc=P.tail.curl, ts=P.tail.swish;
+  ctx.rotate(-1.1+ts*0.15);
+  // tail base to curl
+  var tg=ctx.createLinearGradient(0,0,0,-30);
+  tg.addColorStop(0,fur);tg.addColorStop(1,furL);
+  ctx.strokeStyle=tg;ctx.lineWidth=13;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(0,0);ctx.bezierCurveTo(-14,-10,-20,-26,-8,-34);ctx.stroke();
+  // plume curl
+  furBlob(-6,-36,16,13,-0.4+tc*0.3,fur,furL,furD,26,7.7,-1.2);
+  ctx.restore();
+
+  // ---- body ----
+  furBlob(0,0,34,22,0,fur,furL,furD,40,3.3,0.2);
+  // chest ruff (cream)
+  furBlob(20,-4,16,18,-0.3,cream,CREAM,[210,190,150],30,11.1,0.4);
+  // belly cream
+  furBlob(4,12,22,9,0.1,cream,[240,222,186],[200,180,140],18,5.5,0);
+
+  // ---- near legs ----
+  leg(-14,8,28,24,P.legs[3],P.legs[3]*0.5+0.2,false);
+  leg(16,10,26,22,P.legs[1],P.legs[1]*0.5+0.2,false);
+
+  // ---- head ----
+  var hx=P.head.x, hy=P.head.y, hr=P.head.rot;
+  ctx.save();ctx.translate(hx,hy);ctx.rotate(hr);
+  // neck ruff big
+  furBlob(-6,2,20,20,0,fur,furL,furD,34,9.3,0.3);
+  furBlob(-4,4,15,15,0,cream,CREAM,[214,194,156],24,13.7,0.5);
+  // skull
+  var sg=ctx.createLinearGradient(-8,-10,8,10);
+  sg.addColorStop(0,furL);sg.addColorStop(1,fur);
+  ctx.fillStyle=sg;ctx.beginPath();ctx.ellipse(4,-2,13,11,0,0,Math.PI*2);ctx.fill();
+  // muzzle (short pointed)
+  ctx.fillStyle=furL;
+  ctx.beginPath();ctx.ellipse(15,2,9,6,0.15,0,Math.PI*2);ctx.fill();
+  // nose
+  ctx.fillStyle=[40,28,22];
+  ctx.beginPath();ctx.ellipse(22,1,3.4,2.6,0.15,0,Math.PI*2);ctx.fill();
+  // mouth / jaw open
+  var j=P.head.jaw;
+  ctx.fillStyle=[90,40,34];
+  ctx.beginPath();
+  ctx.moveTo(14,4);ctx.lineTo(23,5+j*6);ctx.lineTo(13,7+j*2);
+  ctx.closePath();ctx.fill();
+  // eye
+  ctx.fillStyle=[25,18,16];
+  ctx.beginPath();ctx.ellipse(6,-4,2.6,3,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.7)';
+  ctx.beginPath();ctx.arc(5,-5,0.9,0,Math.PI*2);ctx.fill();
+  // ears (small upright triangles)
+  ctx.fillStyle=fur;
+  ctx.beginPath();ctx.moveTo(-2,-10);ctx.lineTo(-6,-24);ctx.lineTo(4,-13);ctx.closePath();ctx.fill();
+  ctx.fillStyle=furD;
+  ctx.beginPath();ctx.moveTo(6,-10);ctx.lineTo(10,-23);ctx.lineTo(14,-11);ctx.closePath();ctx.fill();
+  // ear fur
+  ctx.strokeStyle='rgba(255,230,190,0.4)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(-1,-12);ctx.lineTo(-4,-21);ctx.stroke();
+  ctx.restore();
+
+  // ---- bone in mouth (drawn with head, rigid) ----
+  if(P.bone){
+    ctx.save();ctx.translate(hx,hy);ctx.rotate(hr);
+    ctx.translate(20,6+P.head.jaw*5);
+    ctx.rotate(P.boneRot);
+    drawBone(0,0,1);
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+function shade(c,f){return 'rgb('+Math.round(c[0]*f)+','+Math.round(c[1]*f)+','+Math.round(c[2]*f)+')'}
+function drawBone(x,y,s){
+  ctx.save();ctx.translate(x,y);ctx.scale(s,s);
+  ctx.fillStyle=BONE;ctx.strokeStyle=BONE_D;ctx.lineWidth=1.2;
+  // shaft
+  roundRectB(-16,-3,32,6,3);ctx.fill();ctx.stroke();
+  // knobs
+  [[-18,-4],[-18,4],[18,-4],[18,4]].forEach(function(p){
+    ctx.beginPath();ctx.arc(p[0],p[1],4.2,0,Math.PI*2);ctx.fill();ctx.stroke();
+  });
+  ctx.fillStyle='rgba(255,255,255,0.5)';
+  ctx.beginPath();ctx.ellipse(-4,-1.4,10,1.2,0,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+}
+function roundRectB(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+
+// ---------- scene drawing ----------
+function drawSky(){
+  var g=ctx.createLinearGradient(0,0,0,HORIZ);
+  g.addColorStop(0,'rgb('+SKY1[0]+','+SKY1[1]+','+SKY1[2]+')');
+  g.addColorStop(1,'rgb('+SKY2[0]+','+SKY2[1]+','+SKY2[2]+')');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,HORIZ);
+  // soft sun
+  var sg=ctx.createRadialGradient(180,90,10,180,90,160);
+  sg.addColorStop(0,'rgba(255,250,220,0.9)');sg.addColorStop(1,'rgba(255,250,220,0)');
+  ctx.fillStyle=sg;ctx.fillRect(0,0,W,HORIZ);
+}
+function drawGround(){
+  var g=ctx.createLinearGradient(0,HORIZ,0,H);
+  g.addColorStop(0,'rgb('+GRASS1[0]+','+GRASS1[1]+','+GRASS1[2]+')');
+  g.addColorStop(1,'rgb('+GRASS2[0]+','+GRASS2[1]+','+GRASS2[2]+')');
+  ctx.fillStyle=g;ctx.fillRect(0,HORIZ,W,H-HORIZ);
+  // dirt path to door
+  ctx.fillStyle='rgb('+DIRT[0]+','+DIRT[1]+','+DIRT[2]+')';
+  ctx.beginPath();
+  ctx.moveTo(DOOR_X+10,DOOR_Y+DOOR_H);
+  ctx.lineTo(DOOR_X+DOOR_W-10,DOOR_Y+DOOR_H);
+  ctx.lineTo(560,540);ctx.lineTo(300,540);
+  ctx.closePath();ctx.fill();
+  // grass texture
+  ctx.strokeStyle='rgba(40,70,30,0.35)';ctx.lineWidth=1;
+  for(var i=0;i<260;i++){
+    var x=rnd()*W, y=HORIZ+8+rnd()*(H-HORIZ-8);
+    var l=3+rnd()*7;
+    ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+(rnd()-0.5)*4,y-l);ctx.stroke();
+  }
+  ctx.strokeStyle='rgba(150,190,110,0.25)';
+  for(var i=0;i<200;i++){
+    var x=rnd()*W, y=HORIZ+8+rnd()*(H-HORIZ-8);
+    var l=2+rnd()*5;
+    ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+(rnd()-0.5)*4,y-l);ctx.stroke();
+  }
+}
+
+function drawPuddle(){
+  // water surface
+  var g=ctx.createLinearGradient(0,PUDDLE_CY-PUDDLE_RY,0,PUDDLE_CY+PUDDLE_RY);
+  g.addColorStop(0,'rgb(150,190,210)');
+  g.addColorStop(0.5,'rgb(110,160,190)');
+  g.addColorStop(1,'rgb(80,130,165)');
+  ctx.save();
+  ctx.beginPath();ctx.ellipse(PUDDLE_CX,PUDDLE_CY,PUDDLE_RX,PUDDLE_RY,0,0,Math.PI*2);
+  ctx.fillStyle=g;ctx.fill();
+  // rim / wet edge
+  ctx.strokeStyle='rgba(90,120,90,0.6)';ctx.lineWidth=3;
+  ctx.beginPath();ctx.ellipse(PUDDLE_CX,PUDDLE_CY,PUDDLE_RX+3,PUDDLE_RY+3,0,0,Math.PI*2);ctx.stroke();
+  ctx.strokeStyle='rgba(200,230,240,0.5)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.ellipse(PUDDLE_CX,PUDDLE_CY,PUDDLE_RX-6,PUDDLE_RY-5,0,0,Math.PI*2);ctx.stroke();
+  ctx.restore();
+}
+
+function drawDoghouse(){
+  // shadow
+  ctx.fillStyle='rgba(30,40,20,0.30)';
+  ctx.beginPath();ctx.ellipse(HOUSE_X+HOUSE_W/2+20,HOUSE_Y+HOUSE_H+6,HOUSE_W*0.62,14,0,0,Math.PI*2);ctx.fill();
+  // side wall (depth)
+  ctx.fillStyle=shade(HOUSE,0.8);
+  ctx.beginPath();
+  ctx.moveTo(HOUSE_X,HOUSE_Y);ctx.lineTo(HOUSE_X+22,HOUSE_Y-18);ctx.lineTo(HOUSE_X+22,HOUSE_Y+HOUSE_H-18);ctx.lineTo(HOUSE_X,HOUSE_Y+HOUSE_H);
+  ctx.closePath();ctx.fill();
+  // front wall
+  ctx.fillStyle='rgb('+HOUSE[0]+','+HOUSE[1]+','+HOUSE[2]+')';
+  ctx.fillRect(HOUSE_X+22,HOUSE_Y,HOUSE_W-22,HOUSE_H);
+  // planks
+  ctx.strokeStyle=shade(HOUSE,0.75);ctx.lineWidth=1.5;
+  for(var x=HOUSE_X+34;x<HOUSE_X+HOUSE_W;x+=16){ctx.beginPath();ctx.moveTo(x,HOUSE_Y+2);ctx.lineTo(x,HOUSE_Y+HOUSE_H-2);ctx.stroke();}
+  // roof
+  ctx.fillStyle='rgb('+ROOF[0]+','+ROOF[1]+','+ROOF[2]+')';
+  ctx.beginPath();
+  ctx.moveTo(HOUSE_X+8,HOUSE_Y+4);ctx.lineTo(HOUSE_X+HOUSE_W/2+10,HOUSE_Y-52);ctx.lineTo(HOUSE_X+HOUSE_W+6,HOUSE_Y+4);
+  ctx.closePath();ctx.fill();
+  ctx.fillStyle=shade(ROOF,0.8);
+  ctx.beginPath();
+  ctx.moveTo(HOUSE_X+8,HOUSE_Y+4);ctx.lineTo(HOUSE_X+HOUSE_W+6,HOUSE_Y+4);ctx.lineTo(HOUSE_X+HOUSE_W+22,HOUSE_Y-14);ctx.lineTo(HOUSE_X+22,HOUSE_Y-14);
+  ctx.closePath();ctx.fill();
+  // roof shingles lines
+  ctx.strokeStyle=shade(ROOF,0.6);ctx.lineWidth=1;
+  for(var i=1;i<5;i++){var t=i/5;var x1=lerp(HOUSE_X+8,HOUSE_X+HOUSE_W/2+10,t),y1=lerp(HOUSE_Y+4,HOUSE_Y-52,t);
+    var x2=lerp(HOUSE_X+HOUSE_W+6,HOUSE_X+HOUSE_W/2+10,t),y2=y1;
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
+  // interior (dark) visible through doorway
+  ctx.fillStyle='rgb(38,24,16)';
+  ctx.fillRect(DOOR_X,DOOR_Y,DOOR_W,DOOR_H);
+  // interior floor shadow gradient
+  var ig=ctx.createLinearGradient(0,DOOR_Y,0,DOOR_Y+DOOR_H);
+  ig.addColorStop(0,'rgb(60,40,26)');ig.addColorStop(1,'rgb(20,12,8)');
+  ctx.fillStyle=ig;ctx.fillRect(DOOR_X,DOOR_Y,DOOR_W,DOOR_H);
+  // door frame
+  ctx.strokeStyle=shade(HOUSE,0.6);ctx.lineWidth=5;
+  ctx.strokeRect(DOOR_X-2.5,DOOR_Y-2.5,DOOR_W+5,DOOR_H+5);
+  // threshold
+  ctx.fillStyle=shade(HOUSE,0.7);
+  ctx.fillRect(DOOR_X-4,DOOR_Y+DOOR_H-4,DOOR_W+8,6);
+}
+
+function drawBoneRest(){
+  // bone resting inside doorway
+  drawBone(BONE_X,BONE_Y,1.1);
+  // contact shadow
+  ctx.fillStyle='rgba(0,0,0,0.35)';
+  ctx.beginPath();ctx.ellipse(BONE_X,BONE_Y+4,20,4,0,0,Math.PI*2);ctx.fill();
+}
+
+// ---------- contact shadow for dog ----------
+function drawDogShadow(P){
+  ctx.fillStyle='rgba(25,35,15,0.30)';
+  var w=46*P.scale, h=10*P.scale;
+  ctx.beginPath();ctx.ellipse(P.x,P.y+4,w,h,0,0,Math.PI*2);ctx.fill();
+}
+
+// ---------- reflection of dog in puddle ----------
+function drawDogReflection(P){
+  ctx.save();
+  // clip to puddle
+  ctx.beginPath();ctx.ellipse(PUDDLE_CX,PUDDLE_CY,PUDDLE_RX-2,PUDDLE_RY-2,0,0,Math.PI*2);
+  ctx.clip();
+  // reflect: dog above puddle -> mirrored below waterline
+  var waterY=PUDDLE_CY;
+  ctx.translate(0, waterY*2);
+  ctx.scale(1,-1);
+  // squash vertically a bit and fade
+  ctx.globalAlpha=0.35;
+  // only draw if dog is near puddle horizontally
+  drawDog(P,1);
+  ctx.globalAlpha=1;
+  ctx.restore();
+  // water sheen over reflection
+  var g=ctx.createLinearGradient(0,PUDDLE_CY-PUDDLE_RY,0,PUDDLE_CY+PUDDLE_RY);
+  g.addColorStop(0,'rgba(255,255,255,0.25)');
+  g.addColorStop(0.5,'rgba(255,255,255,0.05)');
+  g.addColorStop(1,'rgba(255,255,255,0.15)');
+  ctx.save();
+  ctx.beginPath();ctx.ellipse(PUDDLE_CX,PUDDLE_CY,PUDDLE_RX,PUDDLE_RY,0,0,Math.PI*2);
+  ctx.fillStyle=g;ctx.fill();
+  ctx.restore();
+}
+
+// ---------- pose solver ----------
+function solvePose(t){
+  // returns P object
+  var P={x:0,y:0,scale:1,bodyRot:0,legs:[0,0,0,0],head:{x:30,y:-22,rot:0,jaw:0},tail:{curl:1,swish:0},bone:false,boneRot:0.35,phase:'idle'};
+  var runX0=120, runX1=560; // approach
+  var doorCx=DOOR_X+DOOR_W/2;
+
+  // gait helper: trot
+  function trot(ph,speed){
+    // returns 4 leg angles [fl,fr,hl,hr] (fr & hl in phase, fl & hr in phase)
+    var a=ph*Math.PI*2;
+    var fr=Math.sin(a)*0.9*speed;
+    var fl=Math.sin(a+Math.PI)*0.9*speed;
+    var hl=Math.sin(a+Math.PI)*0.8*speed;
+    var hr=Math.sin(a)*0.8*speed;
+    return [fl,fr,hl,hr];
+  }
+
+  if(t<1){
+    // establish: dog stands, notices bone (head turn toward house)
+    var tt=t;
+    P.x=lerp(120,150,tt); P.y=groundY(P.x)+8;
+    P.scale=1.0;
+    P.legs=[0.1,0.1,0.1,0.1];
+    P.head.x=30+Math.sin(tt*2)*2; P.head.y=-22;
+    P.head.rot=-0.15-0.25*Math.sin(tt*1.5); // look toward house (right)
+    P.tail.curl=1; P.tail.swish=Math.sin(tt*3)*0.3;
+    P.phase='idle';
+  } else if(t<3){
+    // run toward doghouse, with puddle jump
+    var u=(t-1)/2; // 0..1
+    // anticipation + jump arc between x 330 and 520
+    var jumpStart=0.35, jumpEnd=0.72;
+    var x;
+    if(u<jumpStart){ x=lerp(150,330,sstep(0,jumpStart,u)); }
+    else if(u<jumpEnd){
+      var ju=(u-jumpStart)/(jumpEnd-jumpStart);
+      // arc over puddle
+      x=lerp(330,540,ju);
+    } else { x=lerp(540,600,sstep(jumpEnd,1,u)); }
+    P.x=x; P.y=groundY(x)+8;
+    P.scale=1.0;
+    var speed=1;
+    var ph=u*6.0;
+    P.legs=trot(ph,speed);
+    // jump: all paws off ground, tuck then extend
+    if(u>jumpStart-0.08 && u<jumpEnd+0.06){
+      var jw=0;
+      if(u<jumpEnd) jw=sstep(jumpStart-0.08,jumpEnd,u); else jw=1-sstep(jumpEnd,jumpEnd+0.06,u);
+      var arc=Math.sin(jw*Math.PI); // 0..1..0
+      P.y-=arc*46; // jump height
+      // tuck legs during flight
+      var tuck=arc;
+      P.legs=[ -0.9-0.5*tuck, 0.9+0.4*tuck, 0.8+0.5*tuck, -0.8-0.4*tuck ];
+      // body pitch: nose up on takeoff, down on landing
+      P.bodyRot=-0.18*Math.sin(jw*Math.PI*1.2);
+      // anticipation: lower body before jump
+      if(u<jumpStart){ var an=sstep(jumpStart-0.12,jumpStart,u); P.y+=an*6; P.bodyRot+=an*0.12; }
+      // landing compression after
+      if(u>jumpEnd){ var lc=sstep(jumpEnd,jumpEnd+0.05,u); P.legs=[0.3,0.3,-0.4,-0.4]; P.bodyRot+=lc*0.1; }
+    }
+    P.head.x=30; P.head.y=-22-2*Math.sin(ph*Math.PI*2);
+    P.head.rot=-0.05;
+    P.tail.curl=1+0.15*Math.sin(ph*Math.PI*2);
+    P.tail.swish=Math.sin(ph*2)*0.5;
+    P.phase='run';
+  } else if(t<4.5){
+    // enter doorway head/forequarters first
+    var u=(t-3)/1.5;
+    P.x=lerp(600,doorCx-6,sstep(0,0.85,u));
+    P.y=groundY(P.x)+8;
+    P.scale=1.0;
+    var ph=u*4;
+    P.legs=trot(ph,0.6);
+    P.head.x=34; P.head.y=-24;
+    P.head.rot=-0.05;
+    P.tail.curl=1; P.tail.swish=Math.sin(t*4)*0.3;
+    P.phase='enter';
+    P.enter=sstep(0,1,u); // how far inside
+  } else if(t<6){
+    // inside: lower head, open mouth, grip bone
+    var u=(t-4.5)/1.5;
+    P.x=doorCx-6; P.y=groundY(P.x)+8;
+    P.scale=1.0;
+    P.legs=[0.1,0.1,0.1,0.1];
+    // head lowers toward bone
+    var low=sstep(0.2,0.7,u);
+    P.head.x=lerp(34,26,low);
+    P.head.y=lerp(-24,-6,low);
+    P.head.rot=lerp(-0.05,0.55,low); // point down
+    P.head.jaw=sstep(0.5,0.9,u)*0.9; // open mouth
+    P.tail.curl=1; P.tail.swish=Math.sin(t*3)*0.2;
+    P.phase='grab';
+    P.bone=sstep(0.75,1,u)>0; // bone in mouth once gripped
+    P.boneRot=0.35;
+    P.enter=1;
+  } else if(t<8){
+    // back out with bone
+    var u=(t-6)/2;
+    P.x=lerp(doorCx-6,560,sstep(0,0.9,u));
+    P.y=groundY(P.x)+8;
+    P.scale=1.0;
+    var ph=u*3;
+    // reverse gait: legs push backward
+    P.legs=[Math.sin(ph*Math.PI*2)*0.6,Math.sin(ph*Math.PI*2+Math.PI)*0.6,Math.sin(ph*Math.PI*2+Math.PI)*0.5,Math.sin(ph*Math.PI*2)*0.5];
+    P.head.x=32; P.head.y=-22;
+    P.head.rot=-0.05;
+    P.head.jaw=0.55; // holding bone
+    P.tail.curl=1; P.tail.swish=Math.sin(t*3)*0.4;
+    P.phase='back';
+    P.bone=true; P.boneRot=0.35;
+    P.enter=1-sstep(0,0.5,u);
+  } else if(t<10){
+    // turn to face viewer
+    var u=(t-8)/2;
+    P.x=lerp(560,470,sstep(0,0.8,u));
+    P.y=groundY(P.x)+8;
+    P.scale=1.0;
+    // pivot: body rotates from side (0) to front (facing viewer => we fake with scaleX shrink + head frontal)
+    var turn=sstep(0.15,0.95,u);
+    P.turn=turn; // 0 side, 1 front
+    P.legs=[0.15,0.15,0.15,0.15];
+    P.head.x=lerp(32,0,turn);
+    P.head.y=lerp(-22,-26,turn);
+    P.head.rot=lerp(-0.05,-0.0,turn);
+    P.head.jaw=0.55;
+    P.tail.curl=1; P.tail.swish=Math.sin(t*2)*0.3;
+    P.phase='turn';
+    P.bone=true; P.boneRot=lerp(0.35,-0.2,turn);
+  } else {
+    // final front-facing presentation 10-12
+    var u=clamp((t-10)/2,0,1);
+    P.x=470; P.y=groundY(P.x)+8;
+    P.scale=1.05;
+    P.turn=1;
+    P.legs=[0.12,0.12,0.12,0.12];
+    P.head.x=0; P.head.y=-26+Math.sin(t*2.2)*0.8; // breathing
+    P.head.rot=0;
+    P.head.jaw=0.55+Math.sin(t*2.2)*0.03;
+    P.tail.curl=1+Math.sin(t*1.3)*0.06;
+    P.tail.swish=Math.sin(t*1.3)*0.25;
+    P.phase='front';
+    P.bone=true; P.boneRot=-0.2;
+    // subtle chest breath scale
+    P.breath=Math.sin(t*2.2)*0.02;
+  }
+  return P;
+}
+
+// ---------- front-facing dog variant ----------
+function drawDogFront(P){
+  // symmetric front view Pomeranian
+  ctx.save();ctx.translate(P.x,P.y);ctx.scale(P.scale,P.scale);
+  var fur=FUR,furL=FUR_L,furD=FUR_D,cream=CREAM;
+  var b=P.breath||0;
+  // shadow
+  // far legs
+  ctx.fillStyle=shade(furD,0.85);
+  ctx.beginPath();ctx.ellipse(-16,6,8,16,0.15,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(16,6,8,16,-0.15,0,Math.PI*2);ctx.fill();
+  // paws far
+  ctx.fillStyle=shade([120,70,40],0.85);
+  ctx.beginPath();ctx.ellipse(-18,22,8,4,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(18,22,8,4,0,0,Math.PI*2);ctx.fill();
+  // tail curl visible behind/above (both sides hint)
+  ctx.save();ctx.translate(0,-30);
+  furBlob(0,-6,20,14,0,fur,furL,furD,26,7.7,0);
+  ctx.restore();
+  // body (chest) big ruff
+  furBlob(0,0,30,26+b*40,0,fur,furL,furD,44,3.3,0);
+  furBlob(0,4,22,20,0,cream,CREAM,[210,190,150],34,11.1,0);
+  // near legs
+  ctx.fillStyle=furD;
+  ctx.beginPath();ctx.ellipse(-14,8,9,18,0.1,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(14,8,9,18,-0.1,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=[120,70,40];
+  ctx.beginPath();ctx.ellipse(-15,24,9,4.5,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(15,24,9,4.5,0,0,Math.PI*2);ctx.fill();
+  // head frontal
+  var hy=-26+ (P.head.y+26);
+  ctx.save();ctx.translate(0,hy);
+  // big neck ruff
+  furBlob(0,4,26,24,0,fur,furL,furD,40,9.3,0);
+  furBlob(0,6,19,18,0,cream,CREAM,[214,194,156],30,13.7,0);
+  // skull
+  var sg=ctx.createLinearGradient(-12,-12,12,12);
+  sg.addColorStop(0,furL);sg.addColorStop(1,fur);
+  ctx.fillStyle=sg;ctx.beginPath();ctx.ellipse(0,-2,16,14,0,0,Math.PI*2);ctx.fill();
+  // muzzle
+  ctx.fillStyle=furL;
+  ctx.beginPath();ctx.ellipse(0,6,10,7,0,0,Math.PI*2);ctx.fill();
+  // nose
+  ctx.fillStyle=[40,28,22];
+  ctx.beginPath();ctx.ellipse(0,3,4,3,0,0,Math.PI*2);ctx.fill();
+  // mouth with bone
+  var j=P.head.jaw;
+  ctx.fillStyle=[90,40,34];
+  ctx.beginPath();ctx.moveTo(-7,8);ctx.lineTo(0,10+j*5);ctx.lineTo(7,8);ctx.closePath();ctx.fill();
+  // eyes
+  ctx.fillStyle=[25,18,16];
+  ctx.beginPath();ctx.ellipse(-6,-5,3,3.6,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(6,-5,3,3.6,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.75)';
+  ctx.beginPath();ctx.arc(-7,-6.4,1,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(5,-6.4,1,0,Math.PI*2);ctx.fill();
+  // ears
+  ctx.fillStyle=fur;
+  ctx.beginPath();ctx.moveTo(-10,-10);ctx.lineTo(-14,-28);ctx.lineTo(-2,-14);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(10,-10);ctx.lineTo(14,-28);ctx.lineTo(2,-14);ctx.closePath();ctx.fill();
+  ctx.fillStyle=[150,90,40];
+  ctx.beginPath();ctx.moveTo(-9,-12);ctx.lineTo(-11,-22);ctx.lineTo(-5,-14);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(9,-12);ctx.lineTo(11,-22);ctx.lineTo(5,-14);ctx.closePath();ctx.fill();
+  // bone in mouth, frontal
+  ctx.save();ctx.translate(0,10+j*5);ctx.rotate(P.boneRot);
+  drawBone(0,0,1.05);
+  ctx.restore();
+  ctx.restore();
+  ctx.restore();
+}
+
+// ---------- main render ----------
+function renderFrame(t){
+  if(t<0)t=0; if(t>=12)t=12;
+  ctx.clearRect(0,0,W,H);
+  drawSky();
+  drawGround();
+  // distant fence
+  ctx.strokeStyle='rgba(120,100,70,0.5)';ctx.lineWidth=3;
+  for(var x=0;x<W;x+=60){ctx.beginPath();ctx.moveTo(x,HORIZ-30);ctx.lineTo(x,HORIZ-6);ctx.stroke();}
+  ctx.strokeStyle='rgba(120,100,70,0.4)';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(0,HORIZ-24);ctx.lineTo(W,HORIZ-24);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,HORIZ-12);ctx.lineTo(W,HORIZ-12);ctx.stroke();
+
+  drawPuddle();
+
+  var P=solvePose(t);
+
+  // reflection of dog in puddle (only when near puddle x-range)
+  var nearPuddle = Math.abs(P.x-PUDDLE_CX)<PUDDLE_RX+80 && P.y<PUDDLE_CY+10;
+  if(nearPuddle && P.phase!=='enter' && P.phase!=='grab'){
+    drawDogReflection(P);
+    // redraw puddle sheen edge over reflection
+    ctx.save();
+    ctx.beginPath();ctx.ellipse(PUDDLE_CX,PUDDLE_CY,PUDDLE_RX,PUDDLE_RY,0,0,Math.PI*2);
+    ctx.strokeStyle='rgba(200,230,240,0.4)';ctx.lineWidth=1;ctx.stroke();
+    ctx.restore();
+  }
+
+  // doghouse (behind dog when dog in front, but doorway occludes dog when entering)
+  // We draw house, then dog, then doorway frame overlay for occlusion
+  drawDoghouse();
+
+  // bone resting (only if not yet grabbed)
+  var grabbed = t>=5.25; // bone leaves rest at grip
+  if(!grabbed){ drawBoneRest(); }
+
+  // dog shadow
+  drawDogShadow(P);
+
+  // draw dog (side view) unless turning/front
+  var turnAmt = P.turn||0;
+  if(turnAmt<0.98){
+    // blend side->front: use side view with slight scaleX compression as turning
+    var P2=Object.assign({},P);
+    P2.scaleX=1-turnAmt*0.35;
+    ctx.save();ctx.translate(P.x,P.y);ctx.scale(P.scale*(P2.scaleX||1),P.scale);
+    // re-draw dog manually with this transform: easiest is to wrap drawDog
+    ctx.restore();
+    // drawDog already translates; emulate scaleX by temporary: draw into wrapper
+    drawDogScaled(P, P2.scaleX||1);
+  } else {
+    drawDogFront(P);
+  }
+
+  // doorway occlusion overlay: when dog entering/inside, redraw door frame + interior over dog front part
+  if(P.phase==='enter'||P.phase==='grab'||(P.phase==='back'&&P.enter>0)){
+    // redraw interior + frame to occlude dog's front half inside doorway
+    ctx.fillStyle='rgb(30,18,12)';
+    ctx.fillRect(DOOR_X,DOOR_Y,DOOR_W,DOOR_H);
+    var ig=ctx.createLinearGradient(0,DOOR_Y,0,DOOR_Y+DOOR_H);
+    ig.addColorStop(0,'rgb(60,40,26)');ig.addColorStop(1,'rgb(20,12,8)');
+    ctx.fillStyle=ig;ctx.fillRect(DOOR_X,DOOR_Y,DOOR_W,DOOR_H);
+    // if grabbing/backing, show dog head + bone inside via clip
+    if(P.phase==='grab'||P.phase==='back'){
+      ctx.save();
+      ctx.beginPath();ctx.rect(DOOR_X,DOOR_Y,DOOR_W,DOOR_H);ctx.clip();
+      // draw just head+forequarters of dog inside
+      drawDogHeadInside(P);
+      ctx.restore();
+    }
+    // frame
+    ctx.strokeStyle=shade(HOUSE,0.6);ctx.lineWidth=5;
+    ctx.strokeRect(DOOR_X-2.5,DOOR_Y-2.5,DOOR_W+5,DOOR_H+5);
+    ctx.fillStyle=shade(HOUSE,0.7);
+    ctx.fillRect(DOOR_X-4,DOOR_Y+DOOR_H-4,DOOR_W+8,6);
+    // bone inside if not grabbed
+    if(!grabbed){ drawBoneRest(); }
+  }
+
+  // foreground grass tufts
+  ctx.strokeStyle='rgba(50,90,40,0.5)';ctx.lineWidth=2;
+  for(var i=0;i<40;i++){
+    var x=rnd()*W, y=H-4-rnd()*30;
+    ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+(rnd()-0.5)*6,y-8-rnd()*10);ctx.stroke();
+  }
+}
+
+function drawDogScaled(P,sx){
+  // replicate drawDog but with extra scaleX
+  ctx.save();
+  ctx.translate(P.x,P.y);
+  ctx.scale(P.scale*sx,P.scale);
+  ctx.rotate(P.bodyRot);
+  drawDogBody(P);
+  ctx.restore();
+}
+
+// split drawDog into body-only (no translate) for reuse
+function drawDog(P,flip){ drawDogScaledFull(P,1,flip); }
+function drawDogScaledFull(P,sx,flip){
+  ctx.save();
+  ctx.translate(P.x,P.y);
+  ctx.scale(P.scale*sx*(flip||1),P.scale);
+  ctx.rotate(P.bodyRot);
+  drawDogBody(P);
+  ctx.restore();
+}
+function drawDogBody(P){
+  var fur=FUR,furL=FUR_L,furD=FUR_D,cream=CREAM;
+  function leg(x0,y0,len1,len2,ang,foot,far){
+    ctx.save();ctx.translate(x0,y0);
+    var col=far?shade(furD,0.8):furD;
+    ctx.rotate(ang);
+    ctx.fillStyle=col;
+    rr(-5,-2,10,len1,5);ctx.fill();
+    ctx.translate(0,len1);ctx.rotate(foot);
+    ctx.fillStyle=far?shade([120,70,40],0.8):[120,70,40];
+    rr(-4,0,8,len2,4);ctx.fill();
+    ctx.translate(0,len2);
+    ctx.fillStyle=far?shade([120,70,40],0.85):[120,70,40];
+    ctx.beginPath();ctx.ellipse(2,2,7,4,0,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  }
+  function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+  // far legs
+  leg(-16,6,26,22,P.legs[2],P.legs[2]*0.5+0.2,true);
+  leg(14,8,24,20,P.legs[0],P.legs[0]*0.5+0.2,true);
+  // tail
+  ctx.save();ctx.translate(-34,-16);
+  var tc=P.tail.curl, ts=P.tail.swish;
+  ctx.rotate(-1.1+ts*0.15);
+  var tg=ctx.createLinearGradient(0,0,0,-30);
+  tg.addColorStop(0,FUR);tg.addColorStop(1,FUR_L);
+  ctx.strokeStyle=tg;ctx.lineWidth=13;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(0,0);ctx.bezierCurveTo(-14,-10,-20,-26,-8,-34);ctx.stroke();
+  furBlob(-6,-36,16,13,-0.4+tc*0.3,FUR,FUR_L,FUR_D,26,7.7,-1.2);
+  ctx.restore();
+  // body
+  furBlob(0,0,34,22,0,FUR,FUR_L,FUR_D,40,3.3,0.2);
+  furBlob(20,-4,16,18,-0.3,CREAM,CREAM,[210,190,150],30,11.1,0.4);
+  furBlob(4,12,22,9,0.1,CREAM,[240,222,186],[200,180,140],18,5.5,0);
+  // near legs
+  leg(-14,8,28,24,P.legs[3],P.legs[3]*0.5+0.2,false);
+  leg(16,10,26,22,P.legs[1],P.legs[1]*0.5+0.2,false);
+  // head
+  var hx=P.head.x, hy=P.head.y, hr=P.head.rot;
+  ctx.save();ctx.translate(hx,hy);ctx.rotate(hr);
+  furBlob(-6,2,20,20,0,FUR,FUR_L,FUR_D,34,9.3,0.3);
+  furBlob(-4,4,15,15,0,CREAM,CREAM,[214,194,156],24,13.7,0.5);
+  var sg=ctx.createLinearGradient(-8,-10,8,10);
+  sg.addColorStop(0,FUR_L);sg.addColorStop(1,FUR);
+  ctx.fillStyle=sg;ctx.beginPath();ctx.ellipse(4,-2,13,11,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=FUR_L;
+  ctx.beginPath();ctx.ellipse(15,2,9,6,0.15,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=[40,28,22];
+  ctx.beginPath();ctx.ellipse(22,1,3.4,2.6,0.15,0,Math.PI*2);ctx.fill();
+  var j=P.head.jaw;
+  ctx.fillStyle=[90,40,34];
+  ctx.beginPath();
+  ctx.moveTo(14,4);ctx.lineTo(23,5+j*6);ctx.lineTo(13,7+j*2);
+  ctx.closePath();ctx.fill();
+  ctx.fillStyle=[25,18,16];
+  ctx.beginPath();ctx.ellipse(6,-4,2.6,3,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.7)';
+  ctx.beginPath();ctx.arc(5,-5,0.9,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=FUR;
+  ctx.beginPath();ctx.moveTo(-2,-10);ctx.lineTo(-6,-24);ctx.lineTo(4,-13);ctx.closePath();ctx.fill();
+  ctx.fillStyle=FUR_D;
+  ctx.beginPath();ctx.moveTo(6,-10);ctx.lineTo(10,-23);ctx.lineTo(14,-11);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='rgba(255,230,190,0.4)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(-1,-12);ctx.lineTo(-4,-21);ctx.stroke();
+  ctx.restore();
+  // bone
+  if(P.bone){
+    ctx.save();ctx.translate(hx,hy);ctx.rotate(hr);
+    ctx.translate(20,6+P.head.jaw*5);
+    ctx.rotate(P.boneRot);
+    drawBone(0,0,1);
+    ctx.restore();
+  }
+}
+
+function drawDogHeadInside(P){
+  // draw head + forequarters visible inside doorway (clipped)
+  ctx.save();
+  ctx.translate(P.x,P.y);
+  ctx.scale(P.scale,P.scale);
+  ctx.rotate(P.bodyRot);
+  // partial body (front)
+  furBlob(10,-6,26,20,0,FUR,FUR_L,FUR_D,30,3.3,0.2);
+  furBlob(24,-6,14,16,-0.3,CREAM,CREAM,[210,190,150],24,11.1,0.4);
+  // head
+  var hx=P.head.x, hy=P.head.y, hr=P.head.rot;
+  ctx.save();ctx.translate(hx,hy);ctx.rotate(hr);
+  furBlob(-6,2,20,20,0,FUR,FUR_L,FUR_D,34,9.3,0.3);
+  furBlob(-4,4,15,15,0,CREAM,CREAM,[214,194,156],24,13.7,0.5);
+  var sg=ctx.createLinearGradient(-8,-10,8,10);
+  sg.addColorStop(0,FUR_L);sg.addColorStop(1,FUR);
+  ctx.fillStyle=sg;ctx.beginPath();ctx.ellipse(4,-2,13,11,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=FUR_L;
+  ctx.beginPath();ctx.ellipse(15,2,9,6,0.15,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=[40,28,22];
+  ctx.beginPath();ctx.ellipse(22,1,3.4,2.6,0.15,0,Math.PI*2);ctx.fill();
+  var j=P.head.jaw;
+  ctx.fillStyle=[90,40,34];
+  ctx.beginPath();
+  ctx.moveTo(14,4);ctx.lineTo(23,5+j*6);ctx.lineTo(13,7+j*2);
+  ctx.closePath();ctx.fill();
+  ctx.fillStyle=[25,18,16];
+  ctx.beginPath();ctx.ellipse(6,-4,2.6,3,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.7)';
+  ctx.beginPath();ctx.arc(5,-5,0.9,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=FUR;
+  ctx.beginPath();ctx.moveTo(-2,-10);ctx.lineTo(-6,-24);ctx.lineTo(4,-13);ctx.closePath();ctx.fill();
+  ctx.fillStyle=FUR_D;
+  ctx.beginPath();ctx.moveTo(6,-10);ctx.lineTo(10,-23);ctx.lineTo(14,-11);ctx.closePath();ctx.fill();
+  ctx.restore();
+  if(P.bone){
+    ctx.save();ctx.translate(hx,hy);ctx.rotate(hr);
+    ctx.translate(20,6+P.head.jaw*5);
+    ctx.rotate(P.boneRot);
+    drawBone(0,0,1);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+// expose
+window.renderFrame=renderFrame;
+renderFrame(0);
+})();
+</script>
+</body>
+</html>

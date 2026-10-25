@@ -1,45 +1,122 @@
 {
-  "status": "render-error",
+  "status": "captured",
   "technicalChecks": {
-    "contract": false,
-    "renders": false,
-    "visible": false,
-    "motion": false,
-    "deterministic": false,
+    "contract": true,
+    "renders": true,
+    "visible": true,
+    "motion": true,
+    "deterministic": true,
     "offline": true
   },
-  "technicalPassed": 1,
+  "technicalPassed": 6,
   "technicalTotal": 6,
   "visualScore": null,
   "visualReview": "Not reviewed. Technical checks do not verify anatomy, foot contact, bone contact, doghouse occlusion, puddle clearance, weight-bearing landing, water reflection or task compliance.",
   "metrics": {
     "sampleColorStd": [
-      0.0
-    ]
+      60.56349563598633,
+      60.52587890625,
+      60.50617599487305,
+      59.65272903442383,
+      58.841060638427734,
+      58.7813606262207,
+      58.8814697265625,
+      59.82861328125,
+      60.55903625488281,
+      60.58250045776367,
+      60.5144157409668,
+      60.51398849487305
+    ],
+    "changedPixelFractions": [
+      0.015287422839506173,
+      0.031066743827160494,
+      0.03139660493827161,
+      0.021614583333333333,
+      0.015185185185185185,
+      0.012974537037037038,
+      0.023406635802469135,
+      0.0250366512345679,
+      0.01964699074074074,
+      0.018414351851851852,
+      0.004828317901234568
+    ],
+    "finalBoundaryStepRmse": 0.1448933482170105,
+    "repeatPixelRmse": {
+      "repeat-a": 0.0,
+      "repeat-b": 0.0,
+      "repeat-c": 0.0
+    },
+    "renderRoundTripMedianMs": 2.029791999999361,
+    "renderRoundTripP95Ms": 9.234864900000883
   },
   "errors": [],
   "blockedRequests": [],
   "cspViolations": [],
   "capture": {
-    "frames": 0,
+    "frames": 360,
     "fps": 30,
-    "durationSeconds": null,
+    "durationSeconds": 12,
     "width": 960,
     "height": 540,
-    "complete": false,
+    "complete": true,
     "isolation": "Separate offline Chromium process, service workers and downloads disabled, CSP, all post-bootstrap network blocked. Organizer measures screenshot pixels; candidate reports are ignored.",
-    "sourceHash": "dd2da8cff642c39d9fae588757c2a352fb2c60ad5cefe58f9991c6c585e65178",
-    "frameEvidenceHash": "e5a3c4835701a1deeb40ad72e9ae4dd8489e0f264a781698521bed88e9cb128a"
+    "sourceHash": "1779adec35dfb7de9bd1a3fa8d89ab067575d44e338901e5e82a3756d0028560",
+    "frameEvidenceHash": "3cf416b7d8eb89340f92fd234d1635b8e3fb8b72fd8ee00ef50b09dcbeb2ab07"
   },
   "contactSheet": [
     {
       "time": 0,
-      "frame": "initial.png"
+      "frame": "0000.png"
+    },
+    {
+      "time": 1,
+      "frame": "0030.png"
+    },
+    {
+      "time": 2,
+      "frame": "0060.png"
+    },
+    {
+      "time": 3,
+      "frame": "0090.png"
+    },
+    {
+      "time": 4,
+      "frame": "0120.png"
+    },
+    {
+      "time": 5,
+      "frame": "0150.png"
+    },
+    {
+      "time": 6,
+      "frame": "0180.png"
+    },
+    {
+      "time": 7,
+      "frame": "0210.png"
+    },
+    {
+      "time": 8,
+      "frame": "0240.png"
+    },
+    {
+      "time": 9,
+      "frame": "0270.png"
+    },
+    {
+      "time": 10.5,
+      "frame": "0315.png"
+    },
+    {
+      "time": 11.966666666666667,
+      "frame": "0359.png"
     }
   ],
   "evidenceHashes": {
-    "capture.json": "e5a3c4835701a1deeb40ad72e9ae4dd8489e0f264a781698521bed88e9cb128a",
-    "poster.png": "ab8e8df20a9954fd2b59bdac0d78be2a1b5ecd27c6b9679f6fb0d264d8f04a92",
-    "contact-sheet.jpg": "d0e908a5612b966eeb60cdb3626c135ff0be9dd7e8c496bc078a51c95a050ddc"
+    "capture.json": "3cf416b7d8eb89340f92fd234d1635b8e3fb8b72fd8ee00ef50b09dcbeb2ab07",
+    "poster.png": "e6784b21aa2bc685898a1df441c2f3685f51cf458a79259b44c6908a9ea1b8e9",
+    "contact-sheet.jpg": "c43cc8a3d3e2e136a9564c28758c98b2a470a6bc813478fcd170d78a7b447ee8",
+    "animation.mp4": "6cb7ce3dc968d10c469332fa30e0bb1c82ceb8329ddd1f7ffe54c3741f928944"
   }
 }

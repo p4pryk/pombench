@@ -1,0 +1,6 @@
+{
+  "sourceHash": "febfbd0b11e0691b5e0891271f0caa194c2eb207b2c5724f1b1d6bece74994f8",
+  "status": "framing-failed",
+  "note": "The final recorded film still has a very small dog near the lower edge, and an oversized foreground bone obscures much of the action. The model received visibility feedback, but the framing remains limited. This is the original final model output.",
+  "reviewedAt": "2026-10-25T07:36:23.553492+00:00"
+}

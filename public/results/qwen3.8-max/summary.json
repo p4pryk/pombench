@@ -1,0 +1,122 @@
+{
+  "status": "captured",
+  "technicalChecks": {
+    "contract": true,
+    "renders": true,
+    "visible": true,
+    "motion": true,
+    "deterministic": true,
+    "offline": true
+  },
+  "technicalPassed": 6,
+  "technicalTotal": 6,
+  "visualScore": null,
+  "visualReview": "Not reviewed. Technical checks do not verify anatomy, foot contact, bone contact, doghouse occlusion, puddle clearance, weight-bearing landing, water reflection or task compliance.",
+  "metrics": {
+    "sampleColorStd": [
+      59.871917724609375,
+      59.87287521362305,
+      59.87187576293945,
+      59.874267578125,
+      59.87223434448242,
+      59.82427978515625,
+      59.825008392333984,
+      59.82524108886719,
+      59.81889343261719,
+      59.81195068359375,
+      59.82696533203125,
+      59.82844924926758
+    ],
+    "changedPixelFractions": [
+      0.00048225308641975306,
+      0.008912037037037038,
+      0.008950617283950617,
+      0.008948688271604938,
+      0.00738425925925926,
+      0.0029128086419753087,
+      0.009440586419753087,
+      0.009212962962962963,
+      0.007183641975308642,
+      0.007065972222222223,
+      0.00040123456790123454
+    ],
+    "finalBoundaryStepRmse": 0.05903458595275879,
+    "repeatPixelRmse": {
+      "repeat-a": 0.0,
+      "repeat-b": 0.0,
+      "repeat-c": 0.0
+    },
+    "renderRoundTripMedianMs": 0.9706044999998085,
+    "renderRoundTripP95Ms": 2.603916049999817
+  },
+  "errors": [],
+  "blockedRequests": [],
+  "cspViolations": [],
+  "capture": {
+    "frames": 360,
+    "fps": 30,
+    "durationSeconds": 12,
+    "width": 960,
+    "height": 540,
+    "complete": true,
+    "isolation": "Separate offline Chromium process, service workers and downloads disabled, CSP, all post-bootstrap network blocked. Organizer measures screenshot pixels; candidate reports are ignored.",
+    "sourceHash": "ff6a5e2d1cb8ad4cd6047dca3070bc73c1db643b207b3d42a54734c112d3c0ac",
+    "frameEvidenceHash": "85db412b008b0a53586f3bdbed3cfed560a47b2ef3ad2cb9c0ecd29c52aadd35"
+  },
+  "contactSheet": [
+    {
+      "time": 0,
+      "frame": "0000.png"
+    },
+    {
+      "time": 1,
+      "frame": "0030.png"
+    },
+    {
+      "time": 2,
+      "frame": "0060.png"
+    },
+    {
+      "time": 3,
+      "frame": "0090.png"
+    },
+    {
+      "time": 4,
+      "frame": "0120.png"
+    },
+    {
+      "time": 5,
+      "frame": "0150.png"
+    },
+    {
+      "time": 6,
+      "frame": "0180.png"
+    },
+    {
+      "time": 7,
+      "frame": "0210.png"
+    },
+    {
+      "time": 8,
+      "frame": "0240.png"
+    },
+    {
+      "time": 9,
+      "frame": "0270.png"
+    },
+    {
+      "time": 10.5,
+      "frame": "0315.png"
+    },
+    {
+      "time": 11.966666666666667,
+      "frame": "0359.png"
+    }
+  ],
+  "evidenceHashes": {
+    "capture.json": "85db412b008b0a53586f3bdbed3cfed560a47b2ef3ad2cb9c0ecd29c52aadd35",
+    "poster.png": "a009a663cf21c04c864ab80506c274873175149e4165e0826c5f114d6987c24c",
+    "contact-sheet.jpg": "6f2be52ec00ad3a9e89ac3fff78b101c2c3b6fca9197be677539e5ad1a697ef9",
+    "animation.mp4": "d9fcc792165cf21aa25ae91df98af5262d14a435ef52b685ffb5494c68b30010"
+  }
+}

@@ -1,0 +1,187 @@
+{
+  "id": "pombench-extension-20261025",
+  "publishedAt": "2026-10-25T07:41:47.868693+00:00",
+  "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+  "protocolHash": "ef8b6d80c1038255181e60d9856157bffb1318239c4073f5668e09696981c68b",
+  "models": [
+    {
+      "id": "FW-GLM-5.3",
+      "published": true,
+      "apiModel": "z-ai/glm-5.3",
+      "route": "openrouter-api",
+      "version": "z-ai/glm-5.3-20260816",
+      "maxOutputTokens": 65536,
+      "upstreamProvider": "Z.AI",
+      "responseSettings": [
+        {
+          "number": 1,
+          "maxOutputTokens": 32768,
+          "reasoningEffort": "low"
+        },
+        {
+          "number": 2,
+          "maxOutputTokens": 32768,
+          "reasoningEffort": "low"
+        },
+        {
+          "number": 3,
+          "maxOutputTokens": 65536,
+          "reasoningEffort": "low"
+        },
+        {
+          "number": 4,
+          "maxOutputTokens": 65536,
+          "reasoningEffort": "low"
+        }
+      ],
+      "newCompletedResponses": 4,
+      "priorCompletedResponses": 0,
+      "priorUnknownUsageRequests": 2,
+      "newKnownCostUsd": 0.70531272
+    },
+    {
+      "id": "qwen3.8-max",
+      "published": true,
+      "apiModel": "qwen/qwen3.8-max-0902",
+      "route": "openrouter-api",
+      "version": "qwen/qwen3.8-max-20260902",
+      "maxOutputTokens": 32768,
+      "upstreamProvider": "Alibaba",
+      "responseSettings": [
+        {
+          "number": 1,
+          "maxOutputTokens": 32768,
+          "reasoningEffort": "low"
+        },
+        {
+          "number": 2,
+          "maxOutputTokens": 32768,
+          "reasoningEffort": "low"
+        }
+      ],
+      "newCompletedResponses": 2,
+      "priorCompletedResponses": 0,
+      "priorUnknownUsageRequests": 0,
+      "newKnownCostUsd": 0.231448
+    },
+    {
+      "id": "mistral-large-4",
+      "published": true,
+      "apiModel": "mistralai/mistral-large-4-0",
+      "route": "openrouter-api",
+      "version": "mistralai/mistral-large-4-0-20261006",
+      "maxOutputTokens": 32768,
+      "upstreamProvider": "Mistral",
+      "responseSettings": [
+        {
+          "number": 1,
+          "maxOutputTokens": 32768,
+          "reasoningEffort": "low"
+        },
+        {
+          "number": 2,
+          "maxOutputTokens": 32768,
+          "reasoningEffort": "low"
+        },
+        {
+          "number": 3,
+          "maxOutputTokens": 65536,
+          "reasoningEffort": "low"
+        },
+        {
+          "number": 4,
+          "maxOutputTokens": 65536,
+          "reasoningEffort": "low"
+        },
+        {
+          "number": 5,
+          "maxOutputTokens": 32768,
+          "reasoningEffort": "none"
+        },
+        {
+          "number": 6,
+          "maxOutputTokens": 32768,
+          "reasoningEffort": "none"
+        }
+      ],
+      "newCompletedResponses": 6,
+      "priorCompletedResponses": 0,
+      "priorUnknownUsageRequests": 0,
+      "newKnownCostUsd": 0.75781248
+    },
+    {
+      "id": "xiaomi-mimo-v2.6-pro",
+      "published": true,
+      "apiModel": "xiaomi/mimo-v2.6-pro",
+      "route": "openrouter-api",
+      "version": "xiaomi/mimo-v2.6-pro-20260921",
+      "maxOutputTokens": 32768,
+      "upstreamProvider": "Xiaomi",
+      "responseSettings": [
+        {
+          "number": 1,
+          "maxOutputTokens": 32768,
+          "reasoningEffort": "Provider native"
+        },
+        {
+          "number": 2,
+          "maxOutputTokens": 32768,
+          "reasoningEffort": "Provider native"
+        },
+        {
+          "number": 3,
+          "maxOutputTokens": 32768,
+          "reasoningEffort": "Disabled optional reasoning"
+        },
+        {
+          "number": 4,
+          "maxOutputTokens": 32768,
+          "reasoningEffort": "Disabled optional reasoning"
+        },
+        {
+          "number": 5,
+          "maxOutputTokens": 32768,
+          "reasoningEffort": "Disabled optional reasoning"
+        }
+      ],
+      "newCompletedResponses": 5,
+      "priorCompletedResponses": 0,
+      "priorUnknownUsageRequests": 0,
+      "newKnownCostUsd": 0.12073247279999999
+    },
+    {
+      "id": "claude-fable-5-1",
+      "published": true,
+      "apiModel": "claude-fable-5-1",
+      "route": "foundry-api",
+      "version": "1",
+      "maxOutputTokens": 65536,
+      "upstreamProvider": null,
+      "responseSettings": [
+        {
+          "number": 1,
+          "maxOutputTokens": 32768,
+          "reasoningEffort": "low"
+        },
+        {
+          "number": 2,
+          "maxOutputTokens": 32768,
+          "reasoningEffort": "low"
+        },
+        {
+          "number": 3,
+          "maxOutputTokens": 65536,
+          "reasoningEffort": "low"
+        }
+      ],
+      "newCompletedResponses": 1,
+      "priorCompletedResponses": 2,
+      "priorUnknownUsageRequests": 0,
+      "newKnownCostUsd": 2.77098
+    }
+  ],
+  "policy": "User-authorized additions and completion rescue. All initial prompts are byte-identical to V4. Execution repairs retain the final response, never best-of. All previous completed failed responses remain retained and included in totals. GLM uses OpenRouter; earlier interrupted usage remains unknown. Exact per-response request settings are retained in the result data.",
+  "routingPolicy": "OpenRouter is the API intermediary. Each request fixes one named model and one exact upstream endpoint slug with fallbacks disabled; no model router, automatic model selection, Highspeed duplicate or substitute is allowed. Actual upstream name, returned model and canonical catalog version are retained.",
+  "manualSourceEdits": false,
+  "selection": "Final response, no best-of"
+}

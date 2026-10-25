@@ -1,0 +1,37 @@
+{
+  "status": "render-error",
+  "technicalChecks": {
+    "contract": false,
+    "renders": false,
+    "visible": false,
+    "motion": false,
+    "deterministic": false,
+    "offline": true
+  },
+  "technicalPassed": 1,
+  "technicalTotal": 6,
+  "visualScore": null,
+  "visualReview": "Not reviewed. Technical checks do not verify anatomy, foot contact, bone contact, doghouse occlusion, puddle clearance, weight-bearing landing, water reflection or task compliance.",
+  "metrics": {},
+  "errors": [
+    "Failed to execute 'createRadialGradient' on 'CanvasRenderingContext2D': The r0 provided is less than 0.",
+    "page.evaluate: IndexSizeError: Failed to execute 'createRadialGradient' on 'CanvasRenderingContext2D': The r0 provided is less than 0.\n    at drawHedges (http://127.0.0.1:59227/:141:18)\n    at buildBackground (http://127.0.0.1:59227/:323:3)\n    at renderFrame (http://127.0.0.1:59227/:1115:25)\n    at eval (eval at evaluate (:370:30), <anonymous>:1:25)\n    at UtilityScript.evaluate (<anonymous>:372:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)"
+  ],
+  "blockedRequests": [],
+  "cspViolations": [],
+  "capture": {
+    "frames": 0,
+    "fps": 30,
+    "durationSeconds": null,
+    "width": 960,
+    "height": 540,
+    "complete": false,
+    "isolation": "Separate offline Chromium process, service workers and downloads disabled, CSP, all post-bootstrap network blocked. Organizer measures screenshot pixels; candidate reports are ignored.",
+    "sourceHash": "941fb997e436c45a38e7c5d1815aa2c2e8c7444c310aee63b1e766ba61bdabe6",
+    "frameEvidenceHash": "8553c8a8bad0cf395c3b89dda8395d1d583655e9cfb4dbaa5c5924ff6f6aaffc"
+  },
+  "contactSheet": [],
+  "evidenceHashes": {
+    "capture.json": "8553c8a8bad0cf395c3b89dda8395d1d583655e9cfb4dbaa5c5924ff6f6aaffc"
+  }
+}

@@ -56,8 +56,8 @@ rendering approach. Each recording covers twelve seconds of animation.
 New results join the same gallery as the collection grows.
 
 There is no automatic beauty score: you can judge realism, movement, and
-storytelling for yourself. Recorded token usage and known API costs provide context;
-model settings and completion budgets can differ. The site's [methodology page](https://pombench.com/method/)
+storytelling for yourself. Recorded token usage and known API costs include
+completed generation and repair responses. The site's [methodology page](https://pombench.com/method/)
 explains how the results are produced and what the comparison can tell you.
 
 **Same little Pomeranian. A different perspective from every model.**

@@ -1,0 +1,51 @@
+{
+  "modelId": "z-ai/glm-5.3",
+  "modelVersion": "z-ai/glm-5.3-20260816",
+  "returnedModel": "z-ai/glm-5.3",
+  "upstreamProvider": "Z.AI",
+  "source": "Actual OpenRouter API usage",
+  "usage": {
+    "input_tokens": 2219,
+    "output_tokens": 28129,
+    "cached_input_tokens": 2176,
+    "cache_write_input_tokens": 0,
+    "total_tokens": 30348,
+    "reasoning_output_tokens": 21335
+  },
+  "rawUsage": {
+    "prompt_tokens": 2219,
+    "completion_tokens": 28129,
+    "total_tokens": 30348,
+    "cost": 0.12439356,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 2176,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 0.12439356,
+      "upstream_inference_prompt_cost": 0.00062596,
+      "upstream_inference_completions_cost": 0.1237676
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 21335,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  },
+  "reportedCostUsd": 0.12439356,
+  "stopReason": "stop",
+  "promptHash": "098e9d874c10ca9dbb6dc0e335c4f4da534047cd1fc82be348f17f1a4331c65f",
+  "sourceHash": "40661a0e2e66bfe731e2fd63b5bf5fab192bd479e5664034175cf2c6772971e2",
+  "requestHash": "832c5034610880d479378c5d09769b87dabfa2f6fbf37f054082d1405cc4c325",
+  "responseHash": "c91bfa2e5bdb9d41e80fb4525e68ce4606f54f9de15729038b735b58a3afbd70",
+  "streamHash": "a40211bd949bc6e098da3b6d044c9e4f5f3ef9ab9b14a22c33a0227081a8c35d",
+  "sourceExtraction": "Trim outer whitespace and unwrap one surrounding HTML fence only; no source changes",
+  "tools": [],
+  "submission": 2,
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "Inspect the actual film; successful execution does not grade realism or narrative quality."
+}

@@ -1,0 +1,37 @@
+{
+  "status": "render-error",
+  "technicalChecks": {
+    "contract": true,
+    "renders": false,
+    "visible": false,
+    "motion": false,
+    "deterministic": false,
+    "offline": true
+  },
+  "technicalPassed": 2,
+  "technicalTotal": 6,
+  "visualScore": null,
+  "visualReview": "Not reviewed. Technical checks do not verify anatomy, foot contact, bone contact, doghouse occlusion, puddle clearance, weight-bearing landing, water reflection or task compliance.",
+  "metrics": {},
+  "errors": [
+    "Failed to execute 'addColorStop' on 'CanvasGradient': The value provided ('214,132,52') could not be parsed as a color.",
+    "page.evaluate: SyntaxError: Failed to execute 'addColorStop' on 'CanvasGradient': The value provided ('214,132,52') could not be parsed as a color.\n    at drawDogBody (http://127.0.0.1:58345/:702:6)\n    at drawDogScaled (http://127.0.0.1:58345/:663:3)\n    at renderFrame (http://127.0.0.1:58345/:619:5)\n    at eval (eval at evaluate (:370:30), <anonymous>:1:25)\n    at UtilityScript.evaluate (<anonymous>:372:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)"
+  ],
+  "blockedRequests": [],
+  "cspViolations": [],
+  "capture": {
+    "frames": 0,
+    "fps": 30,
+    "durationSeconds": null,
+    "width": 960,
+    "height": 540,
+    "complete": false,
+    "isolation": "Separate offline Chromium process, service workers and downloads disabled, CSP, all post-bootstrap network blocked. Organizer measures screenshot pixels; candidate reports are ignored.",
+    "sourceHash": "75b02dfa26e6c309b2ec52bd279324b1dc16e76234091cbf3648128fb3bfeb23",
+    "frameEvidenceHash": "e78d17e86d86f0b74d299544a6d6dcedd9583aad6563a1f8d2dfa40c95b2b700"
+  },
+  "contactSheet": [],
+  "evidenceHashes": {
+    "capture.json": "e78d17e86d86f0b74d299544a6d6dcedd9583aad6563a1f8d2dfa40c95b2b700"
+  }
+}

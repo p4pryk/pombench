@@ -1,0 +1,51 @@
+{
+  "modelId": "xiaomi/mimo-v2.6-pro",
+  "modelVersion": "xiaomi/mimo-v2.6-pro-20260921",
+  "returnedModel": "xiaomi/mimo-v2.6-pro",
+  "upstreamProvider": "Xiaomi",
+  "source": "Actual OpenRouter API usage",
+  "usage": {
+    "input_tokens": 19947,
+    "output_tokens": 17165,
+    "cached_input_tokens": 2176,
+    "cache_write_input_tokens": 0,
+    "total_tokens": 37112,
+    "reasoning_output_tokens": 0
+  },
+  "rawUsage": {
+    "prompt_tokens": 19947,
+    "completion_tokens": 17165,
+    "total_tokens": 37112,
+    "cost": 0.0226717686,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 2176,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 0.0226717686,
+      "upstream_inference_prompt_cost": 0.0077382186,
+      "upstream_inference_completions_cost": 0.01493355
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  },
+  "reportedCostUsd": 0.0226717686,
+  "stopReason": "stop",
+  "promptHash": "0a9f054fa30ef3e4bad86d035cfd8cb4e694d6ac00d8abf1eb6f32cf27149165",
+  "sourceHash": "febfbd0b11e0691b5e0891271f0caa194c2eb207b2c5724f1b1d6bece74994f8",
+  "requestHash": "31fb43644e754512621c3580b650dbb66439ad6a4d64b452ff64a86ca2ea0398",
+  "responseHash": "7f9e2ff228c786c7b13e3af1ba2a15bf2b624a49b05e8efe8976cb5774620832",
+  "streamHash": "40520b90afe41fe9b39ede45725c2ad7bbfc026a2f345bb482485a81f68a6261",
+  "sourceExtraction": "Trim outer whitespace and unwrap one surrounding HTML fence only; no source changes",
+  "tools": [],
+  "submission": 1,
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "Inspect the actual film; successful execution does not grade realism or narrative quality."
+}

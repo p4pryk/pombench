@@ -1,0 +1,1209 @@
+# PomBench — The puddle, the Pomeranian and the bone (v4)
+
+Create the most realistic, sophisticated 12-second animal animation you can
+implement with native browser graphics. ONE miniature Pomeranian dog runs across
+a backyard, jumps over ONE shallow puddle on the way into its doghouse, retrieves
+ONE bone, backs out with it, then turns
+its head and body toward the viewer, proudly holding the bone in its mouth.
+Finish with that readable frontal pose. This is a short narrative, NOT a loop.
+
+Aim for believable animal anatomy, material, weight and purposeful action, rather
+than a cartoon, flat icon, toy, infographic or slideshow. Choose the composition,
+camera, yard design, lighting, palette and implementation yourself. Canvas 2D,
+2.5D or WebGL are allowed: realism of the final pixels and movement is the target.
+No scene template or reference artwork is provided.
+
+## Recognisable miniature Pomeranian
+Show one small, compact dog with a thick orange / cream double coat, a pronounced
+neck ruff, short pointed muzzle, small upright triangular ears, dark expressive
+eyes, four anatomically articulated legs with small paws, and a full plumed tail
+curled over the back. Preserve its identity, proportions, fur volume and skeleton
+through side, rear, three-quarter and frontal views. It must read as a Pomeranian,
+not a generic fox, wolf, large spitz or a round silhouette with stick legs.
+
+## One continuous action, in this order
+- 0–1 s: establish the backyard, dog, doghouse doorway and bone inside. The dog
+  notices its goal. Establish the shallow puddle on the approach as an obstacle.
+  Keep the bone discoverable without labels, arrows or text.
+- 1–3 s: the dog runs toward the doghouse. Show a coherent four-legged gait,
+  paw contacts, weight transfer, head stabilisation and coat / tail follow-through.
+  During this approach it anticipates, takes off, clears the puddle completely,
+  lands on dry ground and continues toward the doorway without a cut or reset.
+- 3–4.5 s: the dog actually enters through the doorway, head and forequarters
+  first. The doorway and walls must occlude the body correctly. The rear and
+  curled tail can remain visible; no passing through solid walls or roof.
+- 4.5–6 s: it lowers its head, opens its mouth and grips the bone. The bone leaves
+  its original resting position once. Show enough of the interaction through the
+  doorway to understand the grab; do not conceal the retrieval with a cut.
+- 6–8 s: it backs out through the doorway with the bone held between its jaws.
+  Its paws support the reverse motion. The bone moves rigidly with the mouth,
+  with plausible orientation and occlusion; no floating, duplication or teleport.
+- 8–10 s: the dog turns smoothly to face the viewer, stepping / pivoting its paws
+  and rotating its body, head, ears and curled tail coherently. The bone stays in
+  its jaws. Reveal real changing volume rather than flipping a flat drawing.
+- 10–12 s: settle into a clear front-facing presentation, looking toward the
+  camera with the bone visible. Maintain this final pose with subtle breathing,
+  ear / coat response and restrained tail movement. No return to the house,
+  camera cut, sudden reset, fade to black or end card.
+
+## New challenge: clear the puddle and land naturally
+Add ONE shallow, still puddle across the dog’s approach to the doorway. Its size,
+shape and position are your choice, but it must be a visible obstacle that the
+small dog can realistically clear. Keep the leap and landing fully inside the
+frame; scene composition and visual style remain entirely your decision.
+
+- Show readable anticipation: shorten the final running stride, lower the body,
+  load the hind legs, then push off from the near dry bank.
+- All four paws leave the ground. The dog’s centre of mass follows a smooth
+  arcing trajectory while the legs tuck and extend coherently. The coat and tail
+  respond to the jump without detaching, changing breed or stretching the body.
+- Clear the far edge with the whole body and paws. Land on dry ground: forepaws
+  make contact before or with the hind paws, joints compress to absorb weight,
+  then the dog resumes supported forward motion and enters the house.
+- Render a reflection of the actual dog only inside the puddle’s water surface.
+  The reflected pose, position and orientation must follow the dog consistently
+  during approach and flight, with correct masking at the water boundary. This
+  is a reflection of the same animal, not a second dog or an unrelated shadow.
+- Keep the puddle in place throughout the film. No teleport across the obstacle,
+  walking through the water, instantaneous pose swap or hiding the landing behind
+  the doghouse. Preserve the original bone retrieval and final front-facing pose.
+
+The additional visual criterion is **puddle clearance, weight-bearing landing
+and coherent water reflection**. These are judged from the recorded animation,
+not from a model’s claims, variable names or a claimed physics simulation.
+
+## Realism and scene coherence
+- Paws remain planted during stance. Shoulders, hips, spine and head respond to
+  locomotion, braking, reverse steps and the final turn. Bend joints plausibly;
+  avoid skating, detached limbs, mechanical oscillation and elastic cartoon motion.
+- Build fur from underlying body volume, coherent shading and directional texture.
+  Avoid thick outlines, flat orange fill, plastic highlights or giant cartoon eyes.
+- The doghouse has readable depth, a real doorway and a darker interior. Keep it
+  large enough for the dog to enter. Use consistent occlusion at its threshold.
+- Maintain exactly one bone. Its resting contact, mouth grip, movement and depth
+  order must stay consistent. The retrieval and final face are central to the task.
+- Use coherent light and shadows, contact shadows that follow paws and body,
+  a grounded yard surface, and useful depth. Keep the scene sufficiently lit to
+  inspect the interaction. Decoration cannot substitute for the animal action.
+- Use a continuous stable camera, preferably a readable three-quarter view where
+  the doorway, approach, reverse motion and final front-facing dog remain visible.
+  Do not let the doghouse or foreground conceal most of the important action.
+- Prioritise a complete functioning animal and object interaction over excessive
+  decorative effects or a huge unfinished renderer. Finish the executable scene.
+
+## Exact delivery contract
+Return ONE complete HTML document, and nothing else. No explanation or Markdown.
+Use one visible <canvas id="stage" width="960" height="540"></canvas> for the
+entire visible output. Body margin is zero; stage size is exactly 960×540 CSS
+pixels. Draw all output on that canvas. Use inline native browser JavaScript and
+styles, Canvas 2D or WebGL. No libraries, imports, network, fetch, external fonts,
+audio, embedded photographs, pre-rendered videos, base64 images, iframes, external
+assets, user input, CSS animation, timers or your own requestAnimationFrame loop.
+
+Expose synchronous window.renderFrame(timeSeconds). Any call must completely
+and immediately draw that frame, depending only on the supplied time and fixed
+constants. The recorder seeks out of order. Clear / redraw the whole canvas on
+every call. All noise, particles and fur variation must be deterministic.
+For t < 0 use the opening state; for t >= 12 hold the exact state at t=12.
+Do NOT reduce time modulo 12: this film does not loop or return to its opening.
+Call renderFrame(0) once at startup. The recorder drives animation playback.
+Keep HTML below 180,000 UTF-8 bytes. Do not add scoring or benchmark telemetry.
+
+## Equal completion opportunity and evidence
+Every model receives these exact initial prompt bytes and no tools. Up to 32,768
+output tokens are requested, including any internal reasoning and the entire HTML.
+The provider's lower output ceiling applies where necessary (16,384 for GPT-4o
+variants). Low reasoning effort is used where supported; optional Haiku thinking
+is disabled. Other models use their supported low-effort or native configuration.
+Keep planning concise and reserve enough budget to return the complete document.
+
+If the source is empty or fails to execute, each model has ONE conditional repair
+opportunity with its own source and the actual recorder diagnostics. Return a full
+corrected document if that opportunity is used. There are at most two completed
+creative responses per model. There is no aesthetic feedback, human code repair,
+or best-of selection; the final completed response is retained, and all known
+request usage is included. Transport failures are recorded separately and may
+receive one infrastructure retry with unchanged request settings.
+
+An independent offline browser captures real 960×540 pixels at 30 fps for twelve
+seconds, including the final boundary and repeat samples sought out of order.
+It checks execution, visible output, movement, repeatability and offline operation.
+It does not infer dog anatomy, jump clearance, water reflections, bone contact or narrative success from source-code
+keywords or changed pixels. No loop-closure requirement applies to this task.
+
+The visual result is inspected for Pomeranian identity and natural anatomy;
+grounded running; anticipation, puddle clearance, weight-bearing landing and
+water reflection; entry and reverse gait; correct doghouse occlusion; a single
+bone actually gripped and carried; a coherent turn toward the viewer; fur, light,
+contact and readable final framing. Deliver the actual animation, not claims that
+these requirements have been satisfied. There is no self-reported score.
+
+
+## Conditional execution repair
+Your first scene could not produce a complete recording. This opportunity is
+available to every model with empty code, truncation or execution failure.
+Preserve the Pomeranian, puddle jump, bone retrieval and final frontal pose.
+Return ONE complete corrected HTML document, not a patch or explanation.
+No tools or aesthetic feedback. Ensure synchronous renderFrame(t) works at all
+times, including out-of-order calls; define every helper and variable.
+
+Previous source (verbatim data):
+<previous-source>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PomBench</title>
+<style>
+  html,body{margin:0;padding:0;background:#2b2f33;overflow:hidden;}
+  #stage{width:960px;height:540px;display:block;}
+</style>
+</head>
+<body>
+<canvas id="stage" width="960" height="540"></canvas>
+<script>
+"use strict";
+/* ============================================================
+   PomBench : backyard, puddle, doghouse, Pomeranian, bone
+   Canvas 2D, 2.5D scene, procedural rendering.
+   Deterministic noise, no time-based state.
+   ============================================================ */
+
+const W=960,H=540;
+const CV=document.getElementById('stage');
+const G=CV.getContext('2d');
+
+/* ---------- deterministic noise ---------- */
+function hash1(n){ n=Math.sin(n*127.1+311.7)*43758.5453123; return n-Math.floor(n); }
+function vnoise(x,y){
+  const xi=Math.floor(x), yi=Math.floor(y);
+  const xf=x-xi, yf=y-yi;
+  const u=xf*xf*(3-2*xf), v=yf*yf*(3-2*yf);
+  const a=hash1(xi*57.13+yi*131.7), b=hash1((xi+1)*57.13+yi*131.7);
+  const c=hash1(xi*57.13+(yi+1)*131.7), d=hash1((xi+1)*57.13+(yi+1)*131.7);
+  return (a*(1-u)+b*u)*(1-v)+(c*(1-u)+d*u)*v;
+}
+
+/* ---------- math helpers ---------- */
+const TAU=Math.PI*2;
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+function lerp(a,b,t){ return a+(b-a)*t; }
+function smooth(t){ t=clamp(t,0,1); return t*t*(3-2*t); }
+function smoothstep(a,b,x){ return smooth((x-a)/(b-a)); }
+function seg(t,a,b){ return clamp((t-a)/(b-a),0,1); }
+
+/* ---------- colour helpers ---------- */
+function mixc(c1,c2,t){
+  return [lerp(c1[0],c2[0],t),lerp(c1[1],c2[1],t),lerp(c1[2],c2[2],t)];
+}
+function css(c,a){ return 'rgba('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+','+(a===undefined?1:a)+')'; }
+function shade(c,f){ return [c[0]*f,c[1]*f,c[2]*f]; }
+
+/* ============================================================
+   WORLD -> SCREEN projection
+   ============================================================ */
+const CAM_H=2.05, FOV=1.02, ZOFF=3.9;
+function proj(x,z,y){
+  const dz=z+ZOFF;
+  const s=(H*0.5)/Math.tan(FOV*0.5);
+  return {
+    x: W*0.5 + x*(s/dz),
+    y: H*0.62 - (y-CAM_H)*(s/dz),
+    k: s/dz
+  };
+}
+
+/* ============================================================
+   STATIC SCENE (background / yard / fence / house)
+   ============================================================ */
+const HOUSE={x:-3.62, z:-3.05, hw:1.52, hd:1.25, wallH:1.30, roofApex:2.22, doorW:0.78, doorH:0.92};
+
+/* pre-rendered static backdrop */
+const BG=document.createElement('canvas'); BG.width=W; BG.height=H;
+const BGX=BG.getContext('2d');
+
+function drawSkyTexture(){
+  const g=BGX.createLinearGradient(0,0,0,H*0.55);
+  g.addColorStop(0,'#7fb6df');
+  g.addColorStop(0.55,'#a9d2e8');
+  g.addColorStop(1,'#cfe6ef');
+  BGX.fillStyle=g; BGX.fillRect(0,0,W,H*0.56);
+  for(let i=0;i<7;i++){
+    const cx=60+hash1(i*3.7)*860, cy=40+hash1(i*7.1)*130;
+    const rx=70+hash1(i*11.3)*90, ry=16+hash1(i*13.7)*16;
+    const gg=BGX.createRadialGradient(cx,cy,2,cx,cy,rx);
+    gg.addColorStop(0,'rgba(255,255,255,0.85)');
+    gg.addColorStop(1,'rgba(255,255,255,0)');
+    BGX.fillStyle=gg;
+    BGX.save(); BGX.translate(cx,cy); BGX.scale(1,ry/rx); BGX.beginPath();
+    BGX.arc(0,0,rx,0,TAU); BGX.fill(); BGX.restore();
+  }
+}
+
+function drawFence(){
+  const zf=-6.2;
+  const p0=proj(-22,zf,0), p1=proj(22,zf,0);
+  const top=proj(-22,zf,1.55), top1=proj(22,zf,1.55);
+  BGX.save();
+  BGX.beginPath();
+  BGX.moveTo(p0.x,p0.y); BGX.lineTo(p1.x,p1.y); BGX.lineTo(top1.x,top1.y); BGX.lineTo(top.x,top.y);
+  BGX.closePath(); BGX.clip();
+  const gg=BGX.createLinearGradient(0,top.y,0,p0.y);
+  gg.addColorStop(0,'#b09272'); gg.addColorStop(1,'#8b7057');
+  BGX.fillStyle=gg; BGX.fillRect(0,top.y,W,p0.y-top.y+4);
+  for(let x=-22;x<=22;x+=0.62){
+    const a=proj(x,zf,0), b=proj(x,zf,1.55);
+    BGX.strokeStyle='rgba(70,52,36,0.30)'; BGX.lineWidth=Math.max(1,2.6*a.k*0.12);
+    BGX.beginPath(); BGX.moveTo(a.x,a.y); BGX.lineTo(b.x,b.y); BGX.stroke();
+    const a2=proj(x+0.31,zf,0), b2=proj(x+0.31,zf,1.55);
+    BGX.strokeStyle='rgba(212,186,150,0.22)'; BGX.lineWidth=Math.max(1,2.2*a2.k*0.12);
+    BGX.beginPath(); BGX.moveTo(a2.x,a2.y); BGX.lineTo(b2.x,b2.y); BGX.stroke();
+  }
+  for(const hy of [0.42,1.06]){
+    const a=proj(-22,zf,hy), b=proj(22,zf,hy);
+    BGX.fillStyle='rgba(84,62,44,0.32)'; BGX.fillRect(a.x,a.y-3,b.x-a.x,6);
+    BGX.fillStyle='rgba(210,184,150,0.18)'; BGX.fillRect(a.x,a.y-3,b.x-a.x,2);
+  }
+  BGX.restore();
+  const c0=proj(-22,zf,1.55), c1=proj(22,zf,1.55);
+  BGX.fillStyle='#9c8062'; BGX.fillRect(c0.x,c0.y-3,c1.x-c0.x,5);
+}
+
+function drawHedges(){
+  const seeds=[[-13,-5.2,1.25],[-9,-5.4,1.0],[-5.2,-5.3,1.35],[2.4,-5.4,1.15],[6.2,-5.3,1.4],[10.5,-5.2,1.2],[14,-5.3,1.05],[-16.5,-5.1,1.1]];
+  for(let i=0;i<seeds.length;i++){
+    const bx=seeds[i][0], bz=seeds[i][1], br=seeds[i][2];
+    const p=proj(bx,bz,0.62);
+    const rx=Math.max(4,br*p.k*1.5), ry=Math.max(3,br*p.k*1.15);
+    const gg=BGX.createRadialGradient(p.x-rx*0.3,p.y-ry*0.4,Math.max(1,rx*0.12),p.x,p.y,Math.max(2,rx));
+    gg.addColorStop(0,'#5f8a44'); gg.addColorStop(0.6,'#3f6b2e'); gg.addColorStop(1,'#2c4c21');
+    BGX.fillStyle=gg;
+    BGX.save(); BGX.translate(p.x,p.y); BGX.scale(1,ry/rx);
+    for(let j=0;j<7;j++){
+      const ang=j/7*TAU;
+      BGX.beginPath(); BGX.arc(Math.cos(ang)*rx*0.42,Math.sin(ang)*rx*0.34,Math.max(1,rx*0.55),0,TAU); BGX.fill();
+    }
+    BGX.restore();
+  }
+}
+
+function drawGround(){
+  const top=proj(-24,-6.2,0), bot=proj(24,6,0);
+  const gg=BGX.createLinearGradient(0,top.y,0,bot.y);
+  gg.addColorStop(0,'#77a85c');
+  gg.addColorStop(0.42,'#6c9c52');
+  gg.addColorStop(1,'#5b8c46');
+  BGX.fillStyle=gg;
+  BGX.fillRect(0,top.y-2,W,bot.y-top.y+4);
+  BGX.save();
+  BGX.beginPath();
+  const pathPts=[];
+  for(let z=3.4;z>=-3.0;z-=0.25){
+    const x1=HOUSE.x-1.05-0.35*Math.sin(z*0.7), x2=HOUSE.x+1.05+0.35*Math.sin(z*0.7+1.3);
+    pathPts.push(proj(x1,z,0));
+    pathPts.push(proj(x2,z,0));
+  }
+  BGX.moveTo(pathPts[0].x,pathPts[0].y);
+  for(let i=0;i<pathPts.length;i+=2) BGX.lineTo(pathPts[i].x,pathPts[i].y);
+  for(let i=pathPts.length-1;i>=0;i-=2) BGX.lineTo(pathPts[i].x,pathPts[i].y);
+  BGX.closePath();
+  BGX.clip();
+  const dg=BGX.createLinearGradient(0,top.y,0,bot.y);
+  dg.addColorStop(0,'#8c8054'); dg.addColorStop(1,'#7d7248');
+  BGX.fillStyle=dg;
+  BGX.fillRect(0,top.y-2,W,bot.y-top.y+4);
+  BGX.restore();
+  for(let i=0;i<5200;i++){
+    const rx=hash1(i*1.13), rz=hash1(i*2.71+0.31);
+    const wx=(rx*2-1)*13.5, wz=-6.0+rz*9.4;
+    const p=proj(wx,wz,0.0);
+    if(p.y<top.y-2) continue;
+    const h=1.2+hash1(i*3.77)*3.2*p.k*0.32;
+    const bright=hash1(i*5.11);
+    BGX.strokeStyle='rgba('+(88+bright*70|0)+','+(132+bright*72|0)+','+(64+bright*42|0)+','+(0.14+bright*0.22).toFixed(2)+')';
+    BGX.lineWidth=Math.max(0.6,p.k*0.022);
+    BGX.beginPath(); BGX.moveTo(p.x,p.y); BGX.lineTo(p.x+(bright-0.5)*2.4,p.y-h); BGX.stroke();
+  }
+  for(let i=0;i<160;i++){
+    const rx=hash1(i*7.31+2.2), rz=hash1(i*11.13+4.4);
+    const wx=(rx*2-1)*13.5, wz=-5.8+rz*9.2;
+    const p=proj(wx,wz,0.005);
+    if(p.y<top.y) continue;
+    const r=Math.max(0.7,p.k*0.028*(0.6+hash1(i*13.1)));
+    BGX.fillStyle='rgba(150,142,124,'+(0.16+hash1(i*17.3)*0.22).toFixed(2)+')';
+    BGX.beginPath(); BGX.ellipse(p.x,p.y,r,r*0.55,0,0,TAU); BGX.fill();
+  }
+}
+
+function drawHouse(){
+  const Hx=HOUSE.x, Hz=HOUSE.z, hw=HOUSE.hw, hd=HOUSE.hd;
+  const hH=HOUSE.wallH, apex=HOUSE.roofApex;
+  const sh=proj(Hx,Hz+hd*0.55,0);
+  const shg=BGX.createRadialGradient(sh.x,sh.y,2,sh.x,sh.y,Math.max(4,hw*sh.k*2.2));
+  shg.addColorStop(0,'rgba(40,36,24,0.42)'); shg.addColorStop(1,'rgba(40,36,24,0)');
+  BGX.fillStyle=shg;
+  BGX.save(); BGX.translate(sh.x,sh.y); BGX.scale(1,0.32); BGX.beginPath();
+  BGX.arc(0,0,Math.max(4,hw*sh.k*2.2),0,TAU); BGX.fill(); BGX.restore();
+
+  const s0=proj(Hx+hw,Hz-hd,0), s1=proj(Hx+hw,Hz+hd,0);
+  const s0t=proj(Hx+hw,Hz-hd,hH), s1t=proj(Hx+hw,Hz+hd,hH);
+  const sg=BGX.createLinearGradient(s0.x,s0.y,s1.x,s1.y);
+  sg.addColorStop(0,'#a97f57'); sg.addColorStop(1,'#8d6743');
+  BGX.fillStyle=sg;
+  BGX.beginPath(); BGX.moveTo(s0.x,s0.y); BGX.lineTo(s1.x,s1.y); BGX.lineTo(s1t.x,s1t.y); BGX.lineTo(s0t.x,s0t.y); BGX.closePath(); BGX.fill();
+  BGX.save(); BGX.beginPath();
+  BGX.moveTo(s0.x,s0.y); BGX.lineTo(s1.x,s1.y); BGX.lineTo(s1t.x,s1t.y); BGX.lineTo(s0t.x,s0t.y); BGX.closePath(); BGX.clip();
+  for(let z=Hz-hd;z<=Hz+hd;z+=0.34){
+    const a=proj(Hx+hw,z,0), b=proj(Hx+hw,z,hH);
+    BGX.strokeStyle='rgba(72,48,28,0.26)'; BGX.lineWidth=1.6;
+    BGX.beginPath(); BGX.moveTo(a.x,a.y); BGX.lineTo(b.x,b.y); BGX.stroke();
+    const a2=proj(Hx+hw,z+0.04,0), b2=proj(Hx+hw,z+0.04,hH);
+    BGX.strokeStyle='rgba(226,196,158,0.13)'; BGX.lineWidth=1.4;
+    BGX.beginPath(); BGX.moveTo(a2.x,a2.y); BGX.lineTo(b2.x,b2.y); BGX.stroke();
+  }
+  BGX.restore();
+
+  const f0=proj(Hx-hw,Hz+hd,0), f1=proj(Hx+hw,Hz+hd,0);
+  const f0t=proj(Hx-hw,Hz+hd,hH), f1t=proj(Hx+hw,Hz+hd,hH);
+  const fg=BGX.createLinearGradient(f0.x,f0t.y,f1.x,f1.y);
+  fg.addColorStop(0,'#c08f60'); fg.addColorStop(0.6,'#b0804f'); fg.addColorStop(1,'#946b42');
+  BGX.fillStyle=fg;
+  BGX.beginPath(); BGX.moveTo(f0.x,f0.y); BGX.lineTo(f1.x,f1.y); BGX.lineTo(f1t.x,f1t.y); BGX.lineTo(f0t.x,f0t.y); BGX.closePath(); BGX.fill();
+  BGX.save(); BGX.beginPath();
+  BGX.moveTo(f0.x,f0.y); BGX.lineTo(f1.x,f1.y); BGX.lineTo(f1t.x,f1t.y); BGX.lineTo(f0t.x,f0t.y); BGX.closePath(); BGX.clip();
+  for(let x=Hx-hw;x<=Hx+hw;x+=0.30){
+    const a=proj(x,Hz+hd,0), b=proj(x,Hz+hd,hH);
+    BGX.strokeStyle='rgba(80,52,30,0.22)'; BGX.lineWidth=1.6;
+    BGX.beginPath(); BGX.moveTo(a.x,a.y); BGX.lineTo(b.x,b.y); BGX.stroke();
+    const a2=proj(x+0.035,Hz+hd,0), b2=proj(x+0.035,Hz+hd,hH);
+    BGX.strokeStyle='rgba(238,208,168,0.12)'; BGX.lineWidth=1.4;
+    BGX.beginPath(); BGX.moveTo(a2.x,a2.y); BGX.lineTo(b2.x,b2.y); BGX.stroke();
+  }
+  BGX.restore();
+
+  const dL=Hx-HOUSE.doorW/2, dR=Hx+HOUSE.doorW/2, dH=HOUSE.doorH;
+  const dl=proj(dL,Hz+hd,0), dr=proj(dR,Hz+hd,0);
+  const dlt=proj(dL,Hz+hd,dH), drt=proj(dR,Hz+hd,dH);
+  const ig=BGX.createLinearGradient(0,dlt.y,0,dl.y);
+  ig.addColorStop(0,'#2a2119'); ig.addColorStop(1,'#120d09');
+  BGX.fillStyle=ig;
+  BGX.beginPath(); BGX.moveTo(dl.x,dl.y); BGX.lineTo(dr.x,dr.y); BGX.lineTo(drt.x,drt.y); BGX.lineTo(dlt.x,dlt.y); BGX.closePath(); BGX.fill();
+  const inf=proj(Hx,Hz-hd,0);
+  BGX.fillStyle='rgba(88,68,48,0.55)';
+  BGX.beginPath(); BGX.moveTo(dl.x,dl.y); BGX.lineTo(dr.x,dr.y); BGX.lineTo(inf.x+8,inf.y); BGX.lineTo(inf.x-8,inf.y); BGX.closePath(); BGX.fill();
+  BGX.strokeStyle='#6f4d2e'; BGX.lineWidth=Math.max(3,6*dl.k*0.28);
+  BGX.beginPath(); BGX.moveTo(dl.x,dl.y); BGX.lineTo(dlt.x,dlt.y); BGX.lineTo(drt.x,drt.y); BGX.lineTo(dr.x,dr.y); BGX.stroke();
+  BGX.strokeStyle='rgba(216,178,132,0.45)'; BGX.lineWidth=Math.max(1,2.4*dl.k*0.24);
+  BGX.beginPath(); BGX.moveTo(dl.x+2,dl.y); BGX.lineTo(dlt.x+2,dlt.y); BGX.lineTo(drt.x-2,drt.y); BGX.lineTo(dr.x-2,dr.y); BGX.stroke();
+
+  const peak=proj(Hx,Hz+hd,apex);
+  const peakBack=proj(Hx,Hz-hd,apex);
+  const e0=proj(Hx-hw-0.32,Hz+hd+0.16,hH-0.02);
+  const e1=proj(Hx+hw+0.32,Hz+hd+0.16,hH-0.02);
+  const rg=BGX.createLinearGradient(0,peak.y,0,e0.y);
+  rg.addColorStop(0,'#c05f43'); rg.addColorStop(0.55,'#a94e37'); rg.addColorStop(1,'#8b3f2c');
+  BGX.fillStyle=rg;
+  BGX.beginPath(); BGX.moveTo(peak.x,peak.y); BGX.lineTo(e1.x,e1.y); BGX.lineTo(e0.x,e0.y); BGX.closePath(); BGX.fill();
+  BGX.save(); BGX.beginPath();
+  BGX.moveTo(peak.x,peak.y); BGX.lineTo(e1.x,e1.y); BGX.lineTo(e0.x,e0.y); BGX.closePath(); BGX.clip();
+  for(let i=0;i<11;i++){
+    const tt=i/10;
+    const y=lerp(peak.y,e0.y,tt);
+    BGX.strokeStyle='rgba(88,34,24,'+(0.18+tt*0.22).toFixed(2)+')';
+    BGX.lineWidth=1.8;
+    BGX.beginPath(); BGX.moveTo(lerp(peak.x,e0.x,tt),y); BGX.lineTo(lerp(peak.x,e1.x,tt),y); BGX.stroke();
+  }
+  BGX.restore();
+  const rE0=proj(Hx+hw+0.32,Hz-hd-0.16,hH-0.02);
+  const rg2=BGX.createLinearGradient(peak.x,peak.y,e1.x,e1.y);
+  rg2.addColorStop(0,'#a04d36'); rg2.addColorStop(1,'#7c3726');
+  BGX.fillStyle=rg2;
+  BGX.beginPath(); BGX.moveTo(peakBack.x,peakBack.y); BGX.lineTo(rE0.x,rE0.y); BGX.lineTo(e1.x,e1.y); BGX.lineTo(peak.x,peak.y); BGX.closePath(); BGX.fill();
+  BGX.strokeStyle='rgba(60,24,18,0.5)'; BGX.lineWidth=2.6;
+  BGX.beginPath(); BGX.moveTo(e0.x,e0.y); BGX.lineTo(e1.x,e1.y); BGX.stroke();
+  BGX.beginPath(); BGX.moveTo(e1.x,e1.y); BGX.lineTo(rE0.x,rE0.y); BGX.stroke();
+  BGX.strokeStyle='rgba(214,120,90,0.5)'; BGX.lineWidth=2.2;
+  BGX.beginPath(); BGX.moveTo(peak.x,peak.y-1); BGX.lineTo(peakBack.x,peakBack.y-1); BGX.stroke();
+}
+
+function buildBackground(){
+  BGX.clearRect(0,0,W,H);
+  drawSkyTexture();
+  drawGround();
+  drawFence();
+  drawHedges();
+  drawHouse();
+}
+
+/* ============================================================
+   LIGHTING
+   ============================================================ */
+const LIGHT={ dir:[-0.42,-0.80,0.44] };
+function nz(v){ const l=Math.hypot(v[0],v[1],v[2])||1; return [v[0]/l,v[1]/l,v[2]/l]; }
+const LD=nz(LIGHT.dir);
+
+/* ============================================================
+   DOG : procedural silhouette + volumetric fur shading
+   ============================================================ */
+const COAT={
+  base:[214,138,66],
+  deep:[172,96,42],
+  cream:[242,214,170],
+  light:[252,232,196],
+  dark:[120,66,30]
+};
+
+function furFill(ctx, pts, opts){
+  const o=opts||{};
+  const x0=o.x0||0, y0=o.y0||0, x1=o.x1||0, y1=o.y1||0;
+  const lightX=o.lightX||0, lightY=o.lightY||0;
+  const darkX=o.darkX||0, darkY=o.darkY||0;
+  const hueShift=o.hueShift||0;
+  const furLen=o.furLen===undefined?9:o.furLen;
+  const furAlpha=o.furAlpha===undefined?0.18:o.furAlpha;
+  const furCount=o.furCount===undefined?220:o.furCount;
+  const outlineAlpha=o.outlineAlpha===undefined?0.22:o.outlineAlpha;
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0],pts[0][1]);
+  for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]);
+  ctx.closePath();
+  ctx.clip();
+  const g=ctx.createLinearGradient(lightX,lightY,darkX,darkY);
+  const base=[COAT.base[0]+hueShift,COAT.base[1]+hueShift*0.6,COAT.base[2]+hueShift*0.3];
+  const lightC=[COAT.light[0]+hueShift,COAT.light[1]+hueShift*0.6,COAT.light[2]+hueShift*0.3];
+  const darkC=[COAT.deep[0]+hueShift*0.7,COAT.deep[1]+hueShift*0.5,COAT.deep[2]+hueShift*0.3];
+  g.addColorStop(0,css(lightC));
+  g.addColorStop(0.34,css(base));
+  g.addColorStop(1,css(darkC));
+  ctx.fillStyle=g;
+  ctx.fillRect(Math.min(x0,x1)-40,Math.min(y0,y1)-40,Math.abs(x1-x0)+80,Math.abs(y1-y0)+80);
+  const bx=(x0+x1)*0.5, by=(y0+y1)*0.5;
+  const rad=Math.max(Math.abs(x1-x0),Math.abs(y1-y0))*0.62+8;
+  for(let i=0;i<furCount;i++){
+    const a=hash1(i*3.13+1.7)*TAU;
+    const r=Math.sqrt(hash1(i*7.77+2.9))*rad;
+    const px=bx+Math.cos(a)*r, py=by+Math.sin(a)*r*0.85;
+    const nx=(px-lightX)/(Math.abs(x1-x0)+1), ny=(py-lightY)/(Math.abs(y1-y0)+1);
+    const n=vnoise(px*0.07,py*0.07);
+    const ang=Math.atan2(ny,nx)+ (n-0.5)*1.6 + Math.PI*0.12;
+    const L=furLen*(0.5+hash1(i*11.3)*0.9)*(0.6+n*0.8);
+    const bright=hash1(i*5.9);
+    ctx.strokeStyle='rgba('+
+      (110+bright*150|0)+','+
+      (72+bright*120|0)+','+
+      (38+bright*90|0)+','+
+      (furAlpha*(0.35+bright*0.9)).toFixed(3)+')';
+    ctx.lineWidth=0.7+bright*1.5;
+    ctx.beginPath();
+    ctx.moveTo(px,py);
+    ctx.lineTo(px+Math.cos(ang)*L, py+Math.sin(ang)*L);
+    ctx.stroke();
+  }
+  ctx.restore();
+  if(outlineAlpha>0){
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0],pts[0][1]);
+    for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]);
+    ctx.closePath();
+    ctx.lineWidth=1.2;
+    ctx.strokeStyle='rgba(72,42,22,'+outlineAlpha.toFixed(2)+')';
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function computeDogPose(t){
+  const timeline = {
+    runStart:0.55, runEnd:2.42,
+    jumpStart:2.42, jumpEnd:3.12,
+    enterStart:3.12, enterEnd:4.32,
+    grabStart:4.32, grabEnd:5.55,
+    backStart:5.55, backEnd:7.95,
+    turnStart:7.95, turnEnd:10.15
+  };
+  let x=HOUSE.x+4.55, z=0.62, ang=Math.PI;
+  let pitch=0, bob=0, headPitch=0, tailSway=0;
+  let speedPhase=0;
+
+  if(t<timeline.runStart){
+    const p=seg(t,0,1);
+    x=HOUSE.x+4.55 - p*0.18;
+    z=0.62 + p*0.02;
+    ang=Math.PI;
+    bob=Math.sin(t*2.1)*0.012;
+    headPitch=-0.10*smoothstep(0.05,0.45,t);
+    speedPhase=0.0;
+    tailSway=Math.sin(t*1.7)*0.05;
+  } else if(t<timeline.jumpStart){
+    const p=seg(t,timeline.runStart,timeline.jumpStart);
+    const dist=4.02;
+    x=HOUSE.x+4.55 - 0.18 - p*dist;
+    z=0.64 + Math.sin(p*Math.PI)*0.03;
+    ang=Math.PI;
+    speedPhase=p*6.2;
+    bob=Math.sin(p*12.4)*0.020;
+    pitch=Math.sin(p*12.4+0.7)*0.030;
+    headPitch=-0.13 - Math.sin(p*12.4+1.2)*0.055;
+    tailSway=Math.sin(t*3.2)*0.08;
+  } else if(t<timeline.jumpEnd){
+    const p=seg(t,timeline.jumpStart,timeline.jumpEnd);
+    const dist=1.32;
+    x=HOUSE.x+4.55-0.18-4.02 - p*dist;
+    if(p<0.30){
+      const q=p/0.30;
+      const crouch=Math.sin(q*Math.PI*0.5);
+      bob=-crouch*0.055;
+      pitch=crouch*0.16;
+      headPitch=-0.13 - crouch*0.12;
+      speedPhase=6.2 + q*1.0;
+    } else if(p<0.72){
+      const q=(p-0.30)/0.42;
+      const arc=Math.sin(q*Math.PI);
+      bob=arc*0.44 - 0.035;
+      pitch=-Math.cos(q*Math.PI)*0.11;
+      headPitch=-0.13 + Math.sin(q*Math.PI)*0.09;
+      speedPhase=7.2 + q*3.4;
+    } else {
+      const q=(p-0.72)/0.28;
+      const absorb=Math.sin(q*Math.PI);
+      bob=-absorb*0.085 + q*0.012;
+      pitch=absorb*0.10 - q*0.02;
+      headPitch=-0.13 + absorb*0.10;
+      speedPhase=10.6 + q*2.2;
+    }
+    z=0.66;
+    ang=Math.PI;
+    tailSway=Math.sin(t*4.0)*0.11 + (p>0.3&&p<0.75?0.22:0);
+  } else if(t<timeline.enterEnd){
+    const p=seg(t,timeline.enterStart,timeline.enterEnd);
+    const dist=1.95;
+    x=HOUSE.x+4.55-0.18-4.02-1.32 - p*dist;
+    z=lerp(0.66,-1.95,p);
+    ang=Math.PI + p*0.18;
+    bob=Math.sin(p*9.4)*0.014;
+    pitch=Math.sin(p*9.4+0.9)*0.022;
+    headPitch=-0.13 - p*0.14;
+    speedPhase=12.8 + p*3.2;
+    tailSway=Math.sin(t*3.4)*0.07;
+  } else if(t<timeline.grabEnd){
+    const p=seg(t,timeline.grabStart,timeline.grabEnd);
+    x=HOUSE.x+4.55-0.18-4.02-1.32-1.95;
+    z=-1.95;
+    ang=Math.PI + 0.18;
+    headPitch=lerp(-0.27,-0.02,smooth(p));
+    bob=-0.02*Math.sin(p*Math.PI);
+    pitch=0.02*Math.sin(p*Math.PI);
+    speedPhase=16.0;
+    tailSway=Math.sin(t*2.6)*0.055;
+  } else if(t<timeline.backEnd){
+    const p=seg(t,timeline.backStart,timeline.backEnd);
+    const dist=1.55;
+    x=HOUSE.x+4.55-0.18-4.02-1.32-1.95 + p*dist;
+    z=lerp(-1.95,0.12,smooth(p));
+    ang=Math.PI + 0.18 - p*0.24;
+    bob=Math.sin(p*8.2)*0.016;
+    pitch=-Math.sin(p*8.2+0.8)*0.022;
+    headPitch=-0.02 - Math.sin(p*8.2+1.1)*0.035;
+    speedPhase=16.0 + p*2.6;
+    tailSway=Math.sin(t*3.0)*0.075;
+  } else {
+    const p=seg(t,timeline.turnStart,timeline.turnEnd);
+    const ep=smooth(p);
+    x=lerp(HOUSE.x+4.55-0.18-4.02-1.32-1.95+1.55, HOUSE.x+4.55-0.18-4.02-1.32-1.95+1.72, ep);
+    z=lerp(0.12, 1.30, ep);
+    ang=lerp(Math.PI+0.18-0.24, -Math.PI*0.5, ep);
+    bob=Math.sin(p*6.0)*0.012*(1-ep*0.75);
+    pitch=Math.sin(p*6.0)*0.016*(1-ep*0.7);
+    headPitch=lerp(-0.02,0.02,ep);
+    speedPhase=18.6 + p*2.2;
+    tailSway=Math.sin(t*2.4)*0.06;
+    if(t>11.6){
+      const br=Math.sin((t-11.6)*1.6)*0.006;
+      bob+=br;
+    }
+  }
+
+  return {x:x,z:z,ang:ang,pitch:pitch,bob:bob,headPitch:headPitch,tailSway:tailSway,speedPhase:speedPhase,t:t};
+}
+
+function dogSkeleton(pose){
+  const x=pose.x, z=pose.z, ang=pose.ang, pitch=pose.pitch, bob=pose.bob, headPitch=pose.headPitch, tailSway=pose.tailSway, speedPhase=pose.speedPhase;
+  const c=Math.cos(ang), s=Math.sin(ang);
+  const W3=(lx,ly,lz)=>[x+lx*c - lz*s, z+lx*s + lz*c, ly];
+
+  const bodyC=W3(0,0.44+bob,0);
+  const chest=W3(0.42,0.46+bob+pitch*0.2,0);
+  const hip=W3(-0.42,0.43+bob-pitch*0.2,0);
+  const neckBase=W3(0.60,0.52+bob+pitch*0.4,0);
+  const headBase=W3(0.82,0.62+bob+headPitch*0.22,0);
+  const muzzle=W3(1.02,0.58+bob+headPitch*0.36,0);
+  const nose=W3(1.10,0.565+bob+headPitch*0.42,0);
+
+  const legDefs=[
+    {name:'FL', base:W3(0.34,0.42+bob,0.16), phase:0.0},
+    {name:'FR', base:W3(0.34,0.42+bob,-0.16), phase:Math.PI},
+    {name:'HL', base:W3(-0.42,0.41+bob,0.16), phase:Math.PI*0.9},
+    {name:'HR', base:W3(-0.42,0.41+bob,-0.16), phase:Math.PI*1.9}
+  ];
+  return {x:x,z:z,ang:ang,pitch:pitch,bob:bob,headPitch:headPitch,tailSway:tailSway,speedPhase:speedPhase,pose:pose,
+    bodyC:bodyC,chest:chest,hip:hip,neckBase:neckBase,headBase:headBase,muzzle:muzzle,nose:nose,legDefs:legDefs};
+}
+
+function P(pt){ return proj(pt[0],pt[2],pt[1]); }
+
+function drawLeg(ctx, base, paw, isFront, side, bodyShade){
+  const b=P(base), p=P(paw);
+  const kneeL=[lerp(base[0],paw[0],0.52), lerp(base[1],paw[1],0.42), lerp(base[2],paw[2],0.52)];
+  const kn=P(kneeL);
+  const w=lerp(16,11,b.k*0.09);
+  const g=ctx.createLinearGradient(b.x,b.y,p.x,p.y);
+  g.addColorStop(0,css(shade(COAT.base,bodyShade)));
+  g.addColorStop(0.45,css(shade(COAT.cream,bodyShade*0.98)));
+  g.addColorStop(1,css(shade(COAT.light,bodyShade)));
+  ctx.strokeStyle=g;
+  ctx.lineCap='round';
+  ctx.lineJoin='round';
+  ctx.lineWidth=Math.max(3,w*0.62);
+  ctx.beginPath(); ctx.moveTo(b.x,b.y); ctx.lineTo(kn.x,kn.y); ctx.lineTo(p.x,p.y); ctx.stroke();
+  const pawR=Math.max(2.2,w*0.34);
+  const pg=ctx.createRadialGradient(p.x-2,p.y-2,0.5,p.x,p.y,Math.max(1,pawR*1.5));
+  pg.addColorStop(0,css(COAT.light));
+  pg.addColorStop(1,css(shade(COAT.base,bodyShade*0.92)));
+  ctx.fillStyle=pg;
+  ctx.beginPath(); ctx.ellipse(p.x,p.y,pawR*1.15,pawR*0.72,0,0,TAU); ctx.fill();
+  ctx.strokeStyle='rgba(110,64,30,0.28)'; ctx.lineWidth=0.8;
+  for(let i=0;i<3;i++){
+    const a=(-0.5+i*0.5);
+    ctx.beginPath();
+    ctx.moveTo(p.x+Math.cos(a)*pawR*0.2,p.y+Math.sin(a)*pawR*0.12);
+    ctx.lineTo(p.x+Math.cos(a)*pawR*1.1,p.y+Math.sin(a)*pawR*0.62);
+    ctx.stroke();
+  }
+  return {knee:kn, paw:p};
+}
+
+function renderDog(ctx, pose, opts){
+  const sk=dogSkeleton(pose);
+  const x=sk.x, z=sk.z, ang=sk.ang, pitch=sk.pitch, bob=sk.bob, headPitch=sk.headPitch, tailSway=sk.tailSway, speedPhase=sk.speedPhase;
+  const t=pose.t;
+
+  const gaitSpeed = (t>0.55 && t<3.12) ? 3.05 : (t>=3.12&&t<4.32 ? 0.85 : (t>=5.55&&t<7.95 ? -0.72 : 0.22));
+  const phase = speedPhase;
+
+  const feet=[];
+  for(const L of sk.legDefs){
+    const isFront = L.name[0]==='F';
+    const ph = phase*1.0 + L.phase;
+    let contact;
+    if(Math.abs(gaitSpeed)>0.5) contact = (Math.sin(ph)>0);
+    else contact = true;
+
+    let swingAmt = 0.16;
+    if(Math.abs(gaitSpeed)<0.5) swingAmt=0.02;
+    if(t>=2.42&&t<3.12) swingAmt=0.30;
+    if(t>=5.55&&t<7.95) swingAmt=0.13;
+
+    const lift = contact ? 0 : Math.abs(Math.sin(ph))*swingAmt*1.3;
+    const fwd = Math.cos(ph)*swingAmt;
+
+    const root=L.base;
+    let pawLocal=[ fwd*0.95, 0.0, (isFront? 0.13 : -0.13) + (L.name[1]==='L'?0.02:-0.02) ];
+    if(t>=2.42&&t<3.12){
+      const pp=seg(t,2.42,3.12);
+      if(pp<0.32){ pawLocal[1]+=pp/0.32*0.16; }
+      else if(pp<0.72){ pawLocal[1]+=0.16 + Math.sin((pp-0.32)/0.4*Math.PI)*0.12; pawLocal[0]+=0.16; }
+      else { pawLocal[1]+=(1-(pp-0.72)/0.28)*0.12; }
+    }
+    const c=Math.cos(ang), s=Math.sin(ang);
+    const pawWorld=[ root[0]+pawLocal[0]*c - pawLocal[2]*s, pawLocal[1], root[2]+pawLocal[0]*s + pawLocal[2]*c ];
+    feet.push({L:L, pawWorld:pawWorld, contact:contact, lift:lift});
+  }
+
+  const nearSide = Math.sin(ang) >= 0 ? 'L' : 'R';
+
+  for(const f of feet){
+    if(f.L.name[1]!==nearSide){
+      const b=[f.L.base[0], f.L.base[1], f.L.base[2]];
+      drawLeg(ctx, b, f.pawWorld, f.L.name[0]==='F', f.L.name[1], 0.82);
+    }
+  }
+
+  {
+    const tailBase=[sk.hip[0]-0.16, sk.hip[1]+0.18, sk.hip[2]];
+    const c=Math.cos(ang), s=Math.sin(ang);
+    const localTail=[];
+    for(let i=0;i<=14;i++){
+      const u=i/14;
+      const lx = lerp(-0.12, 0.12, u) + Math.sin(u*Math.PI)*0.08;
+      const ly = lerp(0.18, 0.62, Math.sin(u*Math.PI*0.82)) + Math.sin(u*4+t*2)*0.012 + tailSway*0.16*u;
+      const lz = Math.sin(u*Math.PI*0.9)*0.16*(nearSide==='L'?1:-1) + Math.sin(t*2.2+u*3)*0.014;
+      const wp=[ tailBase[0]+lx*c - lz*s, tailBase[1]+ly, tailBase[2]+lx*s + lz*c ];
+      localTail.push(wp);
+    }
+    for(let i=0;i<localTail.length-1;i++){
+      const a=P(localTail[i]), b=P(localTail[i+1]);
+      const u=i/(localTail.length-1);
+      const wdt=lerp(20,10,u)*0.55;
+      const g=ctx.createLinearGradient(a.x,a.y,b.x,b.y);
+      g.addColorStop(0,css(COAT.cream));
+      g.addColorStop(0.5,css(COAT.base));
+      g.addColorStop(1,css(shade(COAT.deep,0.95)));
+      ctx.strokeStyle=g;
+      ctx.lineCap='round';
+      ctx.lineWidth=Math.max(3,wdt*1.1);
+      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+    }
+    for(let i=0;i<localTail.length-1;i++){
+      const a=P(localTail[i]);
+      const u=i/(localTail.length-1);
+      const len=lerp(14,7,u);
+      for(let k=0;k<5;k++){
+        const ang2=(hash1(i*3.7+k*1.3)-0.5)*2.2 + Math.PI*0.5;
+        ctx.strokeStyle='rgba(248,222,182,'+(0.14+hash1(i*7.1+k)*0.22).toFixed(2)+')';
+        ctx.lineWidth=1.2+hash1(i*11.3+k)*1.6;
+        ctx.beginPath();
+        ctx.moveTo(a.x,a.y);
+        ctx.lineTo(a.x+Math.cos(ang2)*len*(0.5+hash1(i*2.2+k)), a.y+Math.sin(ang2)*len*0.5);
+        ctx.stroke();
+      }
+    }
+  }
+
+  {
+    const bodyPts=[];
+    const segs=18;
+    for(let i=0;i<=segs;i++){
+      const u=i/segs;
+      const px=lerp(-0.55,0.52,u);
+      const py=0.44+bob + Math.sin(u*Math.PI)*0.11 + pitch*px*0.55;
+      const pz=0.26*Math.sin(u*Math.PI)+0.11;
+      const c=Math.cos(ang), s=Math.sin(ang);
+      const wp=[x+px*c - pz*s, py, z+px*s + pz*c];
+      bodyPts.push(P(wp));
+    }
+    for(let i=segs;i>=0;i--){
+      const u=i/segs;
+      const px=lerp(-0.55,0.52,u);
+      const py=0.44+bob + Math.sin(u*Math.PI)*0.11 + pitch*px*0.55;
+      const pz=-(0.26*Math.sin(u*Math.PI)+0.11);
+      const c=Math.cos(ang), s=Math.sin(ang);
+      const wp=[x+px*c - pz*s, py, z+px*s + pz*c];
+      bodyPts.push(P(wp));
+    }
+    const xs=bodyPts.map(p=>p.x), ys=bodyPts.map(p=>p.y);
+    furFill(ctx, bodyPts.map(p=>[p.x,p.y]), {
+      x0:Math.min.apply(null,xs), y0:Math.min.apply(null,ys), x1:Math.max.apply(null,xs), y1:Math.max.apply(null,ys),
+      lightX:Math.min.apply(null,xs)-20, lightY:Math.min.apply(null,ys)-10,
+      darkX:Math.max.apply(null,xs)+10, darkY:Math.max.apply(null,ys)+10,
+      hueShift:0, furLen:8, furAlpha:0.16, furCount:260, outlineAlpha:0.16
+    });
+  }
+
+  {
+    const ruff=[];
+    const segs=12;
+    for(let i=0;i<=segs;i++){
+      const u=i/segs;
+      const px=lerp(0.36,0.86,u);
+      const py=lerp(0.47+bob,0.62+bob+headPitch*0.22,u) + Math.sin(u*Math.PI)*0.11;
+      const pz=(0.30*Math.sin(u*Math.PI*0.85)+0.12)*(u<0.5?1:0.7);
+      const c=Math.cos(ang), s=Math.sin(ang);
+      const wp=[x+px*c - pz*s, py, z+px*s + pz*c];
+      ruff.push(P(wp));
+    }
+    for(let i=segs;i>=0;i--){
+      const u=i/segs;
+      const px=lerp(0.36,0.86,u);
+      const py=lerp(0.47+bob,0.62+bob+headPitch*0.22,u) + Math.sin(u*Math.PI)*0.11;
+      const pz=-(0.30*Math.sin(u*Math.PI*0.85)+0.12)*(u<0.5?1:0.7);
+      const c=Math.cos(ang), s=Math.sin(ang);
+      const wp=[x+px*c - pz*s, py, z+px*s + pz*c];
+      ruff.push(P(wp));
+    }
+    const xs=ruff.map(p=>p.x), ys=ruff.map(p=>p.y);
+    furFill(ctx, ruff.map(p=>[p.x,p.y]), {
+      x0:Math.min.apply(null,xs), y0:Math.min.apply(null,ys), x1:Math.max.apply(null,xs), y1:Math.max.apply(null,ys),
+      lightX:Math.min.apply(null,xs)-16, lightY:Math.min.apply(null,ys)-10,
+      darkX:Math.max.apply(null,xs)+8, darkY:Math.max.apply(null,ys)+8,
+      hueShift:24, furLen:11, furAlpha:0.2, furCount:240, outlineAlpha:0.12
+    });
+  }
+
+  for(const f of feet){
+    if(f.L.name[1]===nearSide){
+      const b=[f.L.base[0], f.L.base[1], f.L.base[2]];
+      drawLeg(ctx, b, f.pawWorld, f.L.name[0]==='F', f.L.name[1], 1.0);
+    }
+  }
+
+  {
+    const c=Math.cos(ang), s=Math.sin(ang);
+    const hp=[];
+    const segs=16;
+    for(let i=0;i<=segs;i++){
+      const u=i/segs;
+      const px=lerp(0.72,1.14,u);
+      const py=lerp(0.60+bob+headPitch*0.22, 0.565+bob+headPitch*0.42, u) + Math.sin(u*Math.PI)*0.11;
+      const pz=(0.155*Math.sin(u*Math.PI*0.82)+0.07)*(1-u*0.3);
+      const wp=[x+px*c - pz*s, py, z+px*s + pz*c];
+      hp.push(P(wp));
+    }
+    for(let i=segs;i>=0;i--){
+      const u=i/segs;
+      const px=lerp(0.72,1.14,u);
+      const py=lerp(0.60+bob+headPitch*0.22, 0.565+bob+headPitch*0.42, u) + Math.sin(u*Math.PI)*0.11;
+      const pz=-(0.155*Math.sin(u*Math.PI*0.82)+0.07)*(1-u*0.3);
+      const wp=[x+px*c - pz*s, py, z+px*s + pz*c];
+      hp.push(P(wp));
+    }
+    const xs=hp.map(p=>p.x), ys=hp.map(p=>p.y);
+    furFill(ctx, hp.map(p=>[p.x,p.y]), {
+      x0:Math.min.apply(null,xs), y0:Math.min.apply(null,ys), x1:Math.max.apply(null,xs), y1:Math.max.apply(null,ys),
+      lightX:Math.min.apply(null,xs)-14, lightY:Math.min.apply(null,ys)-8,
+      darkX:Math.max.apply(null,xs)+8, darkY:Math.max.apply(null,ys)+8,
+      hueShift:18, furLen:7, furAlpha:0.17, furCount:180, outlineAlpha:0.14
+    });
+
+    const m=[];
+    const mseg=10;
+    for(let i=0;i<=mseg;i++){
+      const u=i/mseg;
+      const px=lerp(1.00,1.14,u);
+      const py=lerp(0.575+bob+headPitch*0.36, 0.552+bob+headPitch*0.42, u) + Math.sin(u*Math.PI)*0.045;
+      const pz=(0.088*Math.sin(u*Math.PI*0.75)+0.032)*(1-u*0.32);
+      const wp=[x+px*c - pz*s, py, z+px*s + pz*c];
+      m.push(P(wp));
+    }
+    for(let i=mseg;i>=0;i--){
+      const u=i/mseg;
+      const px=lerp(1.00,1.14,u);
+      const py=lerp(0.575+bob+headPitch*0.36, 0.552+bob+headPitch*0.42, u) + Math.sin(u*Math.PI)*0.045;
+      const pz=-(0.088*Math.sin(u*Math.PI*0.75)+0.032)*(1-u*0.32);
+      const wp=[x+px*c - pz*s, py, z+px*s + pz*c];
+      m.push(P(wp));
+    }
+    const mxs=m.map(p=>p.x), mys=m.map(p=>p.y);
+    furFill(ctx, m.map(p=>[p.x,p.y]), {
+      x0:Math.min.apply(null,mxs), y0:Math.min.apply(null,mys), x1:Math.max.apply(null,mxs), y1:Math.max.apply(null,mys),
+      lightX:Math.min.apply(null,mxs)-8, lightY:Math.min.apply(null,mys)-6,
+      darkX:Math.max.apply(null,mxs)+6, darkY:Math.max.apply(null,mys)+6,
+      hueShift:34, furLen:5, furAlpha:0.16, furCount:110, outlineAlpha:0.12
+    });
+
+    const noseP=P(sk.nose);
+    const nr=Math.max(2.4,noseP.k*0.028);
+    const ng=ctx.createRadialGradient(noseP.x-1,noseP.y-1,0.5,noseP.x,noseP.y,Math.max(1,nr*1.7));
+    ng.addColorStop(0,'#4a2b1c'); ng.addColorStop(1,'#26150d');
+    ctx.fillStyle=ng;
+    ctx.beginPath(); ctx.ellipse(noseP.x,noseP.y,nr*1.15,nr*0.85,0,0,TAU); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.28)';
+    ctx.beginPath(); ctx.ellipse(noseP.x-nr*0.35,noseP.y-nr*0.32,nr*0.32,nr*0.22,0,0,TAU); ctx.fill();
+
+    for(const side of [1,-1]){
+      const ex=1.00, ey=0.645+bob+headPitch*0.30, ez=side*0.105;
+      const wp=[x+ex*c - ez*s, ey, z+ex*s + ez*c];
+      const e=P(wp);
+      const er=Math.max(2.6,e.k*0.032);
+      const sg=ctx.createRadialGradient(e.x,e.y,0.4,e.x,e.y,Math.max(1,er*2.4));
+      sg.addColorStop(0,'rgba(92,52,28,0.30)'); sg.addColorStop(1,'rgba(92,52,28,0)');
+      ctx.fillStyle=sg;
+      ctx.beginPath(); ctx.arc(e.x,e.y,Math.max(1,er*2.4),0,TAU); ctx.fill();
+      const eg=ctx.createRadialGradient(e.x-er*0.35,e.y-er*0.35,0.3,e.x,e.y,Math.max(1,er*1.25));
+      eg.addColorStop(0,'#3a2216'); eg.addColorStop(0.6,'#1c1009'); eg.addColorStop(1,'#0c0705');
+      ctx.fillStyle=eg;
+      ctx.beginPath(); ctx.ellipse(e.x,e.y,er*1.12,er*1.0,0,0,TAU); ctx.fill();
+      ctx.fillStyle='rgba(255,248,232,0.72)';
+      ctx.beginPath(); ctx.ellipse(e.x-er*0.36,e.y-er*0.42,er*0.32,er*0.26,0,0,TAU); ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,0.32)';
+      ctx.beginPath(); ctx.ellipse(e.x+er*0.32,e.y+er*0.34,er*0.22,er*0.16,0,0,TAU); ctx.fill();
+    }
+
+    for(const side of [1,-1]){
+      const baseX=0.82, baseY=0.70+bob+headPitch*0.22, baseZ=side*0.14;
+      const tipX=0.79, tipY=0.92+bob+headPitch*0.16, tipZ=side*0.18;
+      const wb=[x+baseX*c - baseZ*s, baseY, z+baseX*s + baseZ*c];
+      const wt=[x+tipX*c - tipZ*s, tipY, z+tipX*s + tipZ*c];
+      const wb2=[x+(baseX+0.16)*c - baseZ*s, baseY, z+(baseX+0.16)*s + baseZ*c];
+      const p1=P(wb), p2=P(wt), p3=P(wb2);
+      const eg=ctx.createLinearGradient(p1.x,p1.y,p2.x,p2.y);
+      eg.addColorStop(0,css(COAT.base)); eg.addColorStop(1,css(shade(COAT.deep,1.06)));
+      ctx.fillStyle=eg;
+      ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.lineTo(p3.x,p3.y); ctx.closePath(); ctx.fill();
+      ctx.fillStyle='rgba(222,172,140,0.55)';
+      ctx.beginPath();
+      ctx.moveTo(p1.x+(p2.x-p1.x)*0.2,p1.y+(p2.y-p1.y)*0.2);
+      ctx.lineTo(p2.x,p2.y);
+      ctx.lineTo(p3.x+(p2.x-p3.x)*0.18,p3.y+(p2.y-p3.y)*0.18);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+}
+
+/* ============================================================
+   BONE
+   ============================================================ */
+function drawBone(ctx, bx, by, angle, scale){
+  ctx.save();
+  ctx.translate(bx,by);
+  ctx.rotate(angle);
+  ctx.scale(scale,scale);
+  const L=42, r=9;
+  const g=ctx.createLinearGradient(0,-r,0,r);
+  g.addColorStop(0,'#f6e9cf'); g.addColorStop(0.5,'#e8d3ae'); g.addColorStop(1,'#b99b76');
+  ctx.fillStyle=g;
+  ctx.beginPath();
+  ctx.moveTo(-L*0.36,-r*0.72);
+  ctx.lineTo(L*0.36,-r*0.72);
+  ctx.quadraticCurveTo(L*0.42,-r*0.72,L*0.42,-r*0.3);
+  ctx.lineTo(L*0.42,r*0.3);
+  ctx.quadraticCurveTo(L*0.42,r*0.72,L*0.36,r*0.72);
+  ctx.lineTo(-L*0.36,r*0.72);
+  ctx.quadraticCurveTo(-L*0.42,r*0.72,-L*0.42,r*0.3);
+  ctx.lineTo(-L*0.42,-r*0.3);
+  ctx.quadraticCurveTo(-L*0.42,-r*0.72,-L*0.36,-r*0.72);
+  ctx.closePath(); ctx.fill();
+  for(const side of [-1,1]){
+    for(const off of [-1,1]){
+      const cx=side*L*0.47, cy=off*r*0.72;
+      const rg=ctx.createRadialGradient(cx-2,cy-2,0.5,cx,cy,Math.max(1,r*1.15));
+      rg.addColorStop(0,'#fbf0da'); rg.addColorStop(0.6,'#e5cfaa'); rg.addColorStop(1,'#b29272');
+      ctx.fillStyle=rg;
+      ctx.beginPath(); ctx.arc(cx,cy,r*0.98,0,TAU); ctx.fill();
+    }
+  }
+  for(let i=0;i<40;i++){
+    const px=(hash1(i*3.1)-0.5)*L*0.9, py=(hash1(i*7.7)-0.5)*r*1.3;
+    ctx.fillStyle='rgba(150,118,82,'+(0.06+hash1(i*11.3)*0.12).toFixed(2)+')';
+    ctx.beginPath(); ctx.arc(px,py,0.5+hash1(i*5.5)*1.2,0,TAU); ctx.fill();
+  }
+  ctx.restore();
+}
+
+/* ============================================================
+   PUDDLE
+   ============================================================ */
+const PUDDLE={ cx:-0.55, cz:0.72, rx:1.16, rz:0.72 };
+function puddlePath(ctx){
+  ctx.beginPath();
+  const pts=[];
+  const N=48;
+  for(let i=0;i<=N;i++){
+    const a=i/N*TAU;
+    const wob=1+0.16*Math.sin(a*3.0+0.6)+0.09*Math.sin(a*5.0+1.7);
+    const px=PUDDLE.cx+Math.cos(a)*PUDDLE.rx*wob;
+    const pz=PUDDLE.cz+Math.sin(a)*PUDDLE.rz*wob;
+    pts.push(proj(px,pz,0.002));
+  }
+  ctx.moveTo(pts[0].x,pts[0].y);
+  for(let i=1;i<pts.length;i++){
+    const a=pts[i-1], b=pts[i];
+    ctx.quadraticCurveTo(a.x,a.y,(a.x+b.x)/2,(a.y+b.y)/2);
+  }
+  ctx.closePath();
+  return pts;
+}
+
+function drawPuddle(ctx, t, dogPose){
+  ctx.save();
+  puddlePath(ctx);
+  ctx.fillStyle='rgba(88,78,58,0.55)';
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  puddlePath(ctx);
+  ctx.clip();
+  const p0=proj(PUDDLE.cx-PUDDLE.rx,PUDDLE.cz-PUDDLE.rz,0);
+  const p1=proj(PUDDLE.cx+PUDDLE.rx,PUDDLE.cz+PUDDLE.rz,0);
+  const wg=ctx.createLinearGradient(0,p0.y,0,p1.y);
+  wg.addColorStop(0,'#6c8c92');
+  wg.addColorStop(0.4,'#7fa2a6');
+  wg.addColorStop(1,'#93b2b0');
+  ctx.fillStyle=wg;
+  ctx.fillRect(0,p0.y-20,W,p1.y-p0.y+40);
+
+  ctx.fillStyle='rgba(184,214,226,0.35)';
+  ctx.fillRect(0,p0.y-20,W,p1.y-p0.y+40);
+
+  for(let i=0;i<6;i++){
+    const rx=hash1(i*2.2)*PUDDLE.rx*0.9, rz=hash1(i*5.5)*PUDDLE.rz*0.9;
+    const rr=proj(PUDDLE.cx+rx*0.3,PUDDLE.cz+rz*0.3,0);
+    ctx.strokeStyle='rgba(255,255,255,'+(0.06+hash1(i*7.7)*0.09).toFixed(2)+')';
+    ctx.lineWidth=1.2;
+    ctx.beginPath();
+    ctx.ellipse(rr.x,rr.y,20+hash1(i*3.3)*30,7+hash1(i*4.4)*10,0,0,TAU);
+    ctx.stroke();
+  }
+
+  if(dogPose){
+    ctx.save();
+    const axisY=proj(PUDDLE.cx,PUDDLE.cz,0).y;
+    ctx.translate(0,axisY*2);
+    ctx.scale(1,-1);
+    ctx.globalAlpha=0.34;
+    try{ ctx.filter='blur(1.2px)'; }catch(e){}
+    renderDog(ctx, dogPose, {reflection:true});
+    try{ ctx.filter='none'; }catch(e){}
+    ctx.globalAlpha=1;
+    ctx.restore();
+  }
+
+  ctx.fillStyle='rgba(255,255,255,0.10)';
+  ctx.fillRect(0,p0.y-20,W,p1.y-p0.y+40);
+  ctx.restore();
+
+  ctx.save();
+  puddlePath(ctx);
+  ctx.strokeStyle='rgba(220,232,232,0.32)';
+  ctx.lineWidth=1.6;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function houseFrontMask(ctx, dogPose){
+  const Hz=HOUSE.z+HOUSE.hd;
+  const Hx=HOUSE.x, hw=HOUSE.hw, hH=HOUSE.wallH;
+  const f0=proj(Hx-hw,Hz,0), f1=proj(Hx+hw,Hz,0);
+  const f0t=proj(Hx-hw,Hz,hH), f1t=proj(Hx+hw,Hz,hH);
+  const fg=ctx.createLinearGradient(f0.x,f0t.y,f1.x,f1.y);
+  fg.addColorStop(0,'#c08f60'); fg.addColorStop(0.6,'#b0804f'); fg.addColorStop(1,'#946b42');
+  ctx.fillStyle=fg;
+  ctx.beginPath(); ctx.moveTo(f0.x,f0.y); ctx.lineTo(f1.x,f1.y); ctx.lineTo(f1t.x,f1t.y); ctx.lineTo(f0t.x,f0t.y); ctx.closePath(); ctx.fill();
+  ctx.save();
+  ctx.beginPath(); ctx.moveTo(f0.x,f0.y); ctx.lineTo(f1.x,f1.y); ctx.lineTo(f1t.x,f1t.y); ctx.lineTo(f0t.x,f0t.y); ctx.closePath(); ctx.clip();
+  for(let x=Hx-hw;x<=Hx+hw;x+=0.30){
+    const a=proj(x,Hz,0), b=proj(x,Hz,hH);
+    ctx.strokeStyle='rgba(80,52,30,0.22)'; ctx.lineWidth=1.6;
+    ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+    const a2=proj(x+0.035,Hz,0), b2=proj(x+0.035,Hz,hH);
+    ctx.strokeStyle='rgba(238,208,168,0.12)'; ctx.lineWidth=1.4;
+    ctx.beginPath(); ctx.moveTo(a2.x,a2.y); ctx.lineTo(b2.x,b2.y); ctx.stroke();
+  }
+  ctx.restore();
+
+  const dL=Hx-HOUSE.doorW/2, dR=Hx+HOUSE.doorW/2, dH=HOUSE.doorH;
+  const dl=proj(dL,Hz,0), dr=proj(dR,Hz,0);
+  const dlt=proj(dL,Hz,dH), drt=proj(dR,Hz,dH);
+  const ig=ctx.createLinearGradient(0,dlt.y,0,dl.y);
+  ig.addColorStop(0,'#2a2119'); ig.addColorStop(1,'#120d09');
+  ctx.fillStyle=ig;
+  ctx.beginPath(); ctx.moveTo(dl.x,dl.y); ctx.lineTo(dr.x,dr.y); ctx.lineTo(drt.x,drt.y); ctx.lineTo(dlt.x,dlt.y); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='#6f4d2e'; ctx.lineWidth=Math.max(3,6*dl.k*0.28);
+  ctx.beginPath(); ctx.moveTo(dl.x,dl.y); ctx.lineTo(dlt.x,dlt.y); ctx.lineTo(drt.x,drt.y); ctx.lineTo(dr.x,dr.y); ctx.stroke();
+  ctx.strokeStyle='rgba(216,178,132,0.45)'; ctx.lineWidth=Math.max(1,2.4*dl.k*0.24);
+  ctx.beginPath(); ctx.moveTo(dl.x+2,dl.y); ctx.lineTo(dlt.x+2,dlt.y); ctx.lineTo(drt.x-2,drt.y); ctx.lineTo(dr.x-2,dr.y); ctx.stroke();
+}
+
+function boneState(t, dogPose){
+  const insideRest={ x:HOUSE.x+0.05, y:0.045, z:HOUSE.z-HOUSE.hd*0.15, angle:0.22, held:false };
+  if(t<4.32) return insideRest;
+  if(t<5.55){
+    const p=seg(t,4.32,5.55);
+    const e=smooth(p);
+    const c=Math.cos(dogPose.ang), s=Math.sin(dogPose.ang);
+    const mouthLocal=[1.10,0.555+dogPose.bob+dogPose.headPitch*0.42,0];
+    const mouthW=[dogPose.x+mouthLocal[0]*c - mouthLocal[2]*s, mouthLocal[1], dogPose.z+mouthLocal[0]*s + mouthLocal[2]*c];
+    return {
+      x:lerp(insideRest.x,mouthW[0],e),
+      y:lerp(insideRest.y,mouthW[1],e),
+      z:lerp(insideRest.z,mouthW[2],e),
+      angle:lerp(insideRest.angle, dogPose.ang*0.55+0.35, e),
+      held: p>0.22
+    };
+  }
+  const c=Math.cos(dogPose.ang), s=Math.sin(dogPose.ang);
+  const mouthLocal=[1.105,0.552+dogPose.bob+dogPose.headPitch*0.42,0];
+  const mouthW=[dogPose.x+mouthLocal[0]*c - mouthLocal[2]*s, mouthLocal[1], dogPose.z+mouthLocal[0]*s + mouthLocal[2]*c];
+  return {
+    x:mouthW[0], y:mouthW[1], z:mouthW[2],
+    angle: dogPose.ang*0.55+0.35,
+    held:true
+  };
+}
+
+function renderFrame(timeSeconds){
+  let t=timeSeconds;
+  if(!(t===t)) t=0;
+  if(t<0) t=0;
+  if(t>12) t=12;
+
+  if(!renderFrame._bg){ buildBackground(); renderFrame._bg=true; }
+
+  G.clearRect(0,0,W,H);
+  G.drawImage(BG,0,0);
+
+  const dogPose=computeDogPose(t);
+
+  {
+    const sP=proj(dogPose.x,dogPose.z,0);
+    const shadowR=Math.max(18,sP.k*0.62);
+    const sg=G.createRadialGradient(sP.x,sP.y,2,sP.x,sP.y,Math.max(4,shadowR*1.9));
+    sg.addColorStop(0,'rgba(38,32,20,0.42)');
+    sg.addColorStop(0.55,'rgba(38,32,20,0.18)');
+    sg.addColorStop(1,'rgba(38,32,20,0)');
+    G.save();
+    G.translate(sP.x,sP.y+2);
+    G.scale(1,0.34);
+    G.beginPath(); G.arc(0,0,Math.max(4,shadowR*1.9),0,TAU); G.fill();
+    G.restore();
+    const bP=proj(dogPose.x+0.30,dogPose.z,0);
+    const bg2=G.createRadialGradient(bP.x,bP.y,2,bP.x,bP.y,Math.max(4,shadowR*1.5));
+    bg2.addColorStop(0,'rgba(38,32,20,0.16)');
+    bg2.addColorStop(1,'rgba(38,32,20,0)');
+    G.save(); G.translate(bP.x,bP.y+2); G.scale(1,0.30); G.beginPath(); G.arc(0,0,Math.max(4,shadowR*1.5),0,TAU); G.fill(); G.restore();
+  }
+
+  drawPuddle(G, t, dogPose);
+
+  const isInside = (t>=3.12 && t<5.55) || (t>=5.55 && t<6.15);
+  if(isInside){
+    renderDog(G, dogPose, {});
+    houseFrontMask(G, dogPose);
+  } else {
+    renderDog(G, dogPose, {});
+  }
+
+  const bs=boneState(t,dogPose);
+  const bScreen=proj(bs.x,bs.z,bs.y);
+  const bScale=Math.max(0.55,bScreen.k*0.13);
+  drawBone(G, bScreen.x, bScreen.y, bs.angle, bScale);
+
+  const vg=G.createRadialGradient(W*0.5,H*0.42,Math.max(1,H*0.25),W*0.5,H*0.5,Math.max(2,H*0.95));
+  vg.addColorStop(0,'rgba(0,0,0,0)');
+  vg.addColorStop(1,'rgba(24,18,12,0.32)');
+  G.fillStyle=vg;
+  G.fillRect(0,0,W,H);
+
+  const sl=G.createRadialGradient(90,60,10,90,60,320);
+  sl.addColorStop(0,'rgba(255,238,190,0.22)');
+  sl.addColorStop(1,'rgba(255,238,190,0)');
+  G.fillStyle=sl;
+  G.fillRect(0,0,W,H);
+}
+
+window.renderFrame=renderFrame;
+
+renderFrame(0);
+</script>
+</body>
+</html>
+</previous-source>
+
+Actual recorder diagnostics:
+{
+  "framingReview": {
+    "sourceHash": "8f9782d4803cf25c1c27258fa202213c27553c2d1dcabca8944b66f0c8eb3c6b",
+    "status": "framing-failed",
+    "note": "In the actual 12-frame storyboard, the dog is clipped at the lower canvas edge, disappears during several middle moments, and the doghouse and bone are excessively cropped. The complete dog is not visible across the narrative.",
+    "reviewedAt": "2026-10-25T07:32:59.848296+00:00"
+  },
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "errors": [
+    "The recorded scene is outside the visible canvas. Correct the camera/projection/world-to-screen transform so the whole dog, all paws, bone and doghouse doorway remain within the visible 960x540 frame throughout. Avoid a foreground wall or roof blocking the camera. Do not change the narrative or rendering contract. This is visibility feedback, not aesthetic scoring."
+  ]
+}

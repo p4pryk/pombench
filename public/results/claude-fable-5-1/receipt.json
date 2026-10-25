@@ -2,39 +2,40 @@
   "modelId": "claude-fable-5-1",
   "modelVersion": "1",
   "source": "Actual Foundry API usage",
-  "promptHash": "0d6f97c1cbf3f9f01f977152e0274fda223490d84bd3e8a85c66fd4b2f900f43",
-  "sourceHash": "dd2da8cff642c39d9fae588757c2a352fb2c60ad5cefe58f9991c6c585e65178",
-  "requestHash": "5a28176990c64d424f19a51773c75f0562f0b740b8339e4e3854f4c035d54bb9",
-  "responseHash": "f81355b947aa9db9bdc6e57d69106aaaf04530d65d733dea8f43129e2c0a9d61",
-  "streamHash": "ac6ff0da9bc164fe8477a3dbacdeeed5edb86955b10e4ee9aa8facf6cc991b38",
-  "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
-  "tools": [],
-  "usageComplete": true,
-  "submission": 2,
+  "usage": {
+    "input_tokens": 3313,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 54757,
+    "total_tokens": 58070,
+    "reasoning_output_tokens": 42281
+  },
   "rawUsage": {
-    "input_tokens": 3589,
+    "input_tokens": 3313,
     "cache_creation_input_tokens": 0,
     "cache_read_input_tokens": 0,
     "cache_creation": {
       "ephemeral_5m_input_tokens": 0,
       "ephemeral_1h_input_tokens": 0
     },
-    "output_tokens": 32768,
+    "output_tokens": 54757,
     "service_tier": "standard",
     "inference_geo": "global",
     "speed": "standard",
     "output_tokens_details": {
-      "thinking_tokens": 29480
+      "thinking_tokens": 42281
     }
   },
-  "usage": {
-    "input_tokens": 3589,
-    "cached_input_tokens": 0,
-    "cache_write_input_tokens": 0,
-    "output_tokens": 32768,
-    "total_tokens": 36357,
-    "reasoning_output_tokens": 29480
-  },
+  "stopReason": "end_turn",
+  "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+  "sourceHash": "1779adec35dfb7de9bd1a3fa8d89ab067575d44e338901e5e82a3756d0028560",
+  "requestHash": "47f33dbd0551a929840f2804dd90bb15e34700f8a98c64224ac8b7a86ae9d66e",
+  "responseHash": "89a3ee8480760dd4b17ecd024197febe75d44116061c656aeeb7e57f08b14ef7",
+  "streamHash": "ee33f065d95fef71819b00b54ade0bedd393ce4bcf7beea33ddee635bdf43e38",
+  "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
+  "tools": [],
+  "usageComplete": true,
+  "submission": 1,
   "visualScore": null,
-  "visualReview": "Inspect the recorded film against all seven visual criteria. Technical execution does not prove puddle clearance, realism or narrative success."
+  "visualReview": "Inspect the actual film; successful execution does not grade realism or narrative quality."
 }

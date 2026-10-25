@@ -1,0 +1,37 @@
+{
+  "status": "render-error",
+  "technicalChecks": {
+    "contract": true,
+    "renders": false,
+    "visible": false,
+    "motion": false,
+    "deterministic": false,
+    "offline": true
+  },
+  "technicalPassed": 2,
+  "technicalTotal": 6,
+  "visualScore": null,
+  "visualReview": "Not reviewed. Technical checks do not verify anatomy, foot contact, bone contact, doghouse occlusion, puddle clearance, weight-bearing landing, water reflection or task compliance.",
+  "metrics": {},
+  "errors": [
+    "Failed to execute 'bezierCurveTo' on 'CanvasRenderingContext2D': 6 arguments required, but only 4 present.",
+    "page.evaluate: TypeError: Failed to execute 'bezierCurveTo' on 'CanvasRenderingContext2D': 6 arguments required, but only 4 present.\n    at drawTail (http://127.0.0.1:58256/:39:504)\n    at drawDog (http://127.0.0.1:58256/:43:178)\n    at drawPuddle (http://127.0.0.1:58256/:36:265)\n    at renderFrame (http://127.0.0.1:58256/:45:207)\n    at eval (eval at evaluate (:370:30), <anonymous>:1:25)\n    at UtilityScript.evaluate (<anonymous>:372:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)"
+  ],
+  "blockedRequests": [],
+  "cspViolations": [],
+  "capture": {
+    "frames": 0,
+    "fps": 30,
+    "durationSeconds": null,
+    "width": 960,
+    "height": 540,
+    "complete": false,
+    "isolation": "Separate offline Chromium process, service workers and downloads disabled, CSP, all post-bootstrap network blocked. Organizer measures screenshot pixels; candidate reports are ignored.",
+    "sourceHash": "76c34ece1ddc2e37ab493e55c0efcc7dbc9278169fa6466e064a4e145643b088",
+    "frameEvidenceHash": "b23fc9532d5a0f2b3280b53468aa1b48c09674dc065c488e6034f71c6ce4f853"
+  },
+  "contactSheet": [],
+  "evidenceHashes": {
+    "capture.json": "b23fc9532d5a0f2b3280b53468aa1b48c09674dc065c488e6034f71c6ce4f853"
+  }
+}

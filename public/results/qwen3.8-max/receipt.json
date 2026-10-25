@@ -1,0 +1,51 @@
+{
+  "modelId": "qwen/qwen3.8-max-0902",
+  "modelVersion": "qwen/qwen3.8-max-20260902",
+  "returnedModel": "qwen/qwen3.8-max-0902",
+  "upstreamProvider": "Alibaba",
+  "source": "Actual OpenRouter API usage",
+  "usage": {
+    "input_tokens": 2361,
+    "output_tokens": 4889,
+    "cached_input_tokens": 2048,
+    "cache_write_input_tokens": 0,
+    "total_tokens": 7250,
+    "reasoning_output_tokens": 588
+  },
+  "rawUsage": {
+    "prompt_tokens": 2361,
+    "completion_tokens": 4889,
+    "total_tokens": 7250,
+    "cost": 0.030472,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 2048,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 0.030472,
+      "upstream_inference_prompt_cost": 0.001138,
+      "upstream_inference_completions_cost": 0.029334
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 588,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  },
+  "reportedCostUsd": 0.030472,
+  "stopReason": "stop",
+  "promptHash": "098e9d874c10ca9dbb6dc0e335c4f4da534047cd1fc82be348f17f1a4331c65f",
+  "sourceHash": "ff6a5e2d1cb8ad4cd6047dca3070bc73c1db643b207b3d42a54734c112d3c0ac",
+  "requestHash": "be7698b5a70d884f0d97109a2585ced27fd5b948ba0089a26c932af029bc35a4",
+  "responseHash": "317a39efa987b31a1661ac741ddbb96890cbcbea1980b7fbe8383d45dab0482e",
+  "streamHash": "9f092aa8ca0fdbef4b9709f6f22a2d8c5a845039faa335dd122fd4800d49f2f7",
+  "sourceExtraction": "Trim outer whitespace and unwrap one surrounding HTML fence only; no source changes",
+  "tools": [],
+  "submission": 2,
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "Inspect the actual film; successful execution does not grade realism or narrative quality."
+}

@@ -134,8 +134,7 @@
     },
     "claude-fable-5-1": {
       "date": "2026-09-01",
-      "source": "https://platform.claude.com/docs/en/models/fable-5-1/overview",
-      "basis": "Public API release of this named version"
+      "source": "https://platform.claude.com/docs/en/models/fable-5-1/overview"
     },
     "gpt-5.3-codex": {
       "date": "2026-02-24",
@@ -199,8 +198,7 @@
     },
     "FW-GLM-5.3": {
       "date": "2026-08-18",
-      "source": "https://docs.z.ai/release-notes/new-released",
-      "basis": "Publisher dated API/model platform release, excluding earlier announcements."
+      "source": "https://openrouter.ai/z-ai/glm-5.3"
     },
     "gemini-3.1-pro-preview": {
       "date": "2026-02-19",
@@ -225,6 +223,18 @@
     "muse-wonder": {
       "date": "2026-10-12",
       "source": "https://research.meta.ai/blog/muse-wonder"
+    },
+    "qwen3.8-max": {
+      "date": "2026-09-03",
+      "source": "https://openrouter.ai/qwen/qwen3.8-max-0902"
+    },
+    "mistral-large-4": {
+      "date": "2026-10-06",
+      "source": "https://openrouter.ai/mistralai/mistral-large-4-0"
+    },
+    "xiaomi-mimo-v2.6-pro": {
+      "date": "2026-09-21",
+      "source": "https://openrouter.ai/xiaomi/mimo-v2.6-pro"
     }
   }
 }
