@@ -1,0 +1,9 @@
+# PomBench
+
+PomBench is an AI coding benchmark you can watch. Each language model receives the same prompt and writes browser code for a twelve-second Pomeranian animation (a puddle, a doghouse and a bone). The site publishes the independent recording, output tokens and known API cost.
+
+- Gallery: https://pombench.com/
+- AI model comparison: https://pombench.com/compare/
+- LLM benchmark method: https://pombench.com/method/
+- Shared prompt: https://pombench.com/results/PROMPT.md
+- Results data: https://pombench.com/results/index.json

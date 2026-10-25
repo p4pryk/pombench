@@ -21,6 +21,7 @@
 !/scripts/check-secrets.mjs
 !/scripts/sanitize-public.mjs
 !/scripts/smoke-build.mjs
+!/scripts/build-seo-assets.mjs
 !/tests/
 /tests/*
 !/tests/catalog.test.ts
