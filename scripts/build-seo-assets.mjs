@@ -36,14 +36,13 @@ for (const model of published) {
 const newest = [...published].sort((a, b) => (b.releasedAt ?? '').localeCompare(a.releasedAt ?? '') || a.name.localeCompare(b.name)).slice(0, 4);
 const font = fs.existsSync('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf') ? '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf' : 'DejaVu-Sans';
 const fontRegular = fs.existsSync('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf') ? '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf' : 'DejaVu-Sans';
-const n = published.length;
 run('convert', [
   '-size', '1200x630', 'xc:#f4f6f1',
   '(', path.join(assets, 'pomeranian-hero.webp'), '-resize', '520x630^', '-gravity', 'center', '-extent', '520x630', ')', '-gravity', 'east', '-composite',
   '-fill', '#f4f6f1', '-draw', 'rectangle 0,0 700,630',
   '(', path.join(assets, 'logo-512.png'), '-resize', '88x88', ')', '-gravity', 'northwest', '-geometry', '+56+48', '-composite',
   '-font', font, '-fill', '#26332d', '-pointsize', '48', '-gravity', 'northwest', '-annotate', '+56+180', 'AI coding benchmark',
-  '-font', fontRegular, '-fill', '#52624a', '-pointsize', '28', '-annotate', '+56+250', `${n} LLMs · one animation`,
+  '-font', fontRegular, '-fill', '#52624a', '-pointsize', '28', '-annotate', '+56+250', 'One animation, every model',
   '-strip', '-quality', '82', path.join(assets, 'og-pombench-1200x630.jpg'),
 ]);
 const row = path.join(assets, 'og-compare-row.png');

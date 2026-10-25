@@ -4,8 +4,10 @@ import {newestFirst, publishedModels} from './catalog.ts';
 export const siteOrigin = 'https://pombench.com';
 /** First public publication of this benchmark. Later catalog updates use Catalog.publishedAt. */
 export const FIRST_PUBLISHED_AT = '2026-10-24T17:33:46.803982+00:00';
-/** Models added or recaptured in the 25 Oct 2026 release. Their pages use the catalog timestamp. */
-export const EXTENSION_IDS = new Set(['claude-fable-5-1', 'FW-GLM-5.3', 'qwen3.8-max', 'mistral-large-4', 'xiaomi-mimo-v2.6-pro']);
+/** Models added or recaptured on 25 Oct 2026. Their pages use the catalog timestamp. */
+export const EXTENSION_IDS = new Set(['claude-fable-5-1', 'FW-GLM-5.3', 'qwen3.8-max', 'mistral-large-4', 'xiaomi-mimo-v2.6-pro', 'glm-5.3-flash']);
+/** Newest benchmark additions. They lead "Latest models tested" even when the API release date is older. */
+const LATEST_WAVE_IDS = ['glm-5.3-flash'];
 
 const SLUG_OVERRIDES: Record<string, string> = {
   'FW-Kimi-K3': 'kimi-k3',
@@ -48,6 +50,8 @@ const HAND_RIVALS: Record<string, string[]> = {
   'Gemini 3.5 Flash-Lite': ['Gemini 3.8 Flash', 'Gemini 4 Argon', 'Claude Opus 5'],
   'Gemini 3.8 Flash': ['Gemini 4 Argon', 'Gemini 3.5 Flash-Lite', 'GPT-6 Astra'],
   'Gemini 4 Argon': ['Gemini 3.8 Flash', 'Claude Opus 5.5', 'GPT-6.1 Sol'],
+  'GLM 5.3': ['GLM 5.3 Flash', 'MAI-Thinking-1', 'Claude Fable 5.1'],
+  'GLM 5.3 Flash': ['GLM 5.3', 'DeepSeek V4.1 Flash', 'Gemini 3.8 Flash'],
   'Grok 4.7': ['GPT-6.1 Sol', 'Claude Opus 5.5', 'Gemini 4 Argon'],
   'Kimi K3': ['Kimi K3.1 Pro', 'Claude Sonnet 5', 'GPT-5.6 Sol'],
   'Llama 4 Maverick': ['Llama 4 Scout', 'Muse Wonder', 'GPT-4.1 Mini'],
@@ -63,9 +67,17 @@ export const NAV_ITEMS: [string, string][] = [['gallery', 'AI coding benchmark']
 
 export const escapeHtml = (v: unknown) => String(v ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 
+function normalizedSlug(id: string) {
+  return id.toLowerCase().replace(/[._\s]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+}
+
 export function modelSlug(id: string) {
   if (SLUG_OVERRIDES[id]) return SLUG_OVERRIDES[id];
-  return id.toLowerCase().replace(/[._\s]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  const normalized = normalizedSlug(id);
+  // Published id is glm-5.3-flash. Also accept an FW- prefixed alias so the page
+  // stays on glm-5-3-flash and does not collide with glm-5-3.
+  if (/^(?:fw-)?glm-5-3-flash$/.test(normalized)) return 'glm-5-3-flash';
+  return normalized;
 }
 
 export const modelPath = (m: Pick<Model, 'id'>) => '/animations/' + modelSlug(m.id) + '/';
@@ -155,7 +167,10 @@ export function rivalsFor(m: Model, models: Model[]) {
   return computedRivals(m, models);
 }
 export function latestModels(models: Model[], excludeId?: string, count = 4) {
-  return [...models].filter(m => m.id !== excludeId).sort(newestFirst).slice(0, count);
+  const pool = models.filter(m => m.id !== excludeId);
+  const lead = LATEST_WAVE_IDS.map(id => pool.find(m => m.id === id)).filter((m): m is Model => !!m);
+  const rest = pool.filter(m => !lead.some(item => item.id === m.id)).sort(newestFirst);
+  return [...lead, ...rest].slice(0, Math.max(count, lead.length));
 }
 const readyOf = (c: Catalog) => publishedModels(c.models);
 
@@ -212,7 +227,7 @@ export function modelEditorial(m: Model, c: Catalog) {
   const versus = rivals.slice(0, 2).map(item => item.name);
   const versusText = versus.length > 1 ? `${versus[0]} and ${versus[1]}` : (versus[0] ?? 'other models');
   const vs = rivals.map(rival => `<li><a href="${modelPath(rival)}">${E(m.name)} vs ${E(rival.name)}</a>: ${E(tokenText(m))} vs ${E(tokenText(rival))} output tokens; known API cost ${E(costRankText(m))} vs ${E(costRankText(rival))}. <a href="${comparePairPath(m, rival)}">Watch side by side</a></li>`).join('');
-  return `<section class="model-editorial model-seo" aria-label="About this model's benchmark"><h2 id="how-performed">How ${E(m.name)} performed</h2><p>${E(paragraphs[0])}</p><p>${E(paragraphs[1])}</p><p>Then compare ${E(m.name)} vs ${E(versusText)} below, or open the <a href="/compare/">AI model comparison</a> to play up to four models on one synchronized timeline.</p></section><section class="model-vs" aria-labelledby="vs"><h2 id="vs">${E(vsHeading(m, rivals))}</h2><ul>${vs}</ul></section><section class="model-code" aria-labelledby="code"><h2 id="code">${E(m.name)} code</h2><p>${E(m.name)} wrote its own native browser animation code from the same prompt as every other model. One execution repair is available for empty, truncated or unexecutable code; the final response is kept, not a best-of selection.</p><p><a href="/results/PROMPT.md">Read the shared prompt</a> · <a href="/method/">How the LLM benchmark works</a></p></section><section class="model-latest" aria-labelledby="latest"><h3 id="latest">Latest models tested</h3><p class="related-models">${latest.map(item => `<a href="${modelPath(item)}">${E(item.name)}</a>`).join('')}<a href="/">All ${models.length} models</a></p></section>`;
+  return `<section class="model-editorial model-seo" aria-label="About this model's benchmark"><h2 id="how-performed">How ${E(m.name)} performed</h2><p>${E(paragraphs[0])}</p><p>${E(paragraphs[1])}</p><p>Then compare ${E(m.name)} vs ${E(versusText)} below, or open the <a href="/compare/">AI model comparison</a> to play up to four models on one synchronized timeline.</p></section><section class="model-vs" aria-labelledby="vs"><h2 id="vs">${E(vsHeading(m, rivals))}</h2><ul>${vs}</ul></section><section class="model-code" aria-labelledby="code"><h2 id="code">${E(m.name)} code</h2><p>${E(m.name)} wrote its own native browser animation code from the same prompt as every other model. One execution repair is available for empty, truncated or unexecutable code; the final response is kept, not a best-of selection.</p><p><a href="/results/PROMPT.md">Read the shared prompt</a> · <a href="/method/">How the LLM benchmark works</a></p></section><section class="model-latest" aria-labelledby="latest"><h3 id="latest">Latest models tested</h3><p class="related-models">${latest.map(item => `<a href="${modelPath(item)}">${E(item.name)}</a>`).join('')}<a href="/">All models</a></p></section>`;
 }
 
 export function factsList(m: Model) {
@@ -248,15 +263,13 @@ function linkedNames(models: Model[]) {
 }
 
 export function galleryEditorial(c: Catalog) {
-  const n = readyOf(c).length;
   const added = extensionModels(c);
   const addedSentence = added.length ? `<p>The ${escapeHtml(publishedLabel(c.publishedAt))} update adds ${linkedNames(added)}.</p>` : '';
   return `<section class="benchmark-intro"><h2>An LLM coding benchmark you can watch</h2><p>Most LLM benchmarks give you a single number. PomBench gives you the pixels: every model receives the same prompt and writes its own self-contained browser code for a twelve-second scene in which a Pomeranian runs, jumps a puddle, enters its doghouse, retrieves a bone and turns toward the camera. An independent offline browser records the result at ${c.protocol.width} × ${c.protocol.height} and ${c.protocol.captureFps} fps, and no organizer edits the model code.</p><p>Use it as a practical AI benchmark for creative coding: watch the movement, compare up to four models on one timeline, and check recorded output tokens and known API costs. It is a sample of animation programming, not an overall ranking of AI intelligence.</p>${addedSentence}<p><a href="/compare/">Open the AI model comparison</a> · <a href="/method/">How the LLM benchmark works</a> · <a href="/results/PROMPT.md">Read the shared prompt</a></p></section>`;
 }
 export function homeHero(c: Catalog) {
-  const n = readyOf(c).length;
   const scene = c.version === 'pombench-v4' ? 'A Pomeranian, a puddle, a doghouse and a bone.' : 'A Pomeranian, a doghouse and a bone.';
-  return `<section class="hero"><div class="hero-copy"><div class="eyebrow"><span class="tiny-paw">✦</span> THE LLM CODING BENCHMARK</div><h1>AI coding benchmark:<br><em>one little dog, ${n} models.</em></h1><p class="lead">${escapeHtml(scene)}<br>The same coding brief, written as browser animation code by every model.</p><p class="meta-line">${escapeHtml(publishedLine(c))}</p><a class="button primary hero-cta" href="/compare/">Compare AI models <span>↗</span></a></div><figure class="hero-art">${heroImg()}</figure></section>`;
+  return `<section class="hero"><div class="hero-copy"><div class="eyebrow"><span class="tiny-paw">✦</span> THE LLM CODING BENCHMARK</div><h1>AI coding benchmark:<br><em>one little dog, every model.</em></h1><p class="lead">${escapeHtml(scene)}<br>The same coding brief, written as browser animation code by every model.</p><p class="meta-line">${escapeHtml(publishedLine(c))}</p><a class="button primary hero-cta" href="/compare/">Compare AI models <span>↗</span></a></div><figure class="hero-art">${heroImg()}</figure></section>`;
 }
 
 const FAQ = [
@@ -278,11 +291,12 @@ export function methodLinks(c: Catalog) {
   const latest = latestModels(models);
   const extra = extensionModels(c).filter(m => !latest.some(item => item.id === m.id));
   const links = [...latest, ...extra];
-  return `<section class="method-links"><h2>The prompt and protocol</h2><p>Every model receives the same initial prompt. <a href="/results/PROMPT.md">Read the full shared prompt</a> or the <a href="/results/PROTOCOL.json">benchmark protocol (JSON)</a>. The complete result data is published as <a href="/results/index.json">results/index.json</a>.</p><h2>See the results</h2><p><a href="/">Browse all ${models.length} LLM coding benchmark results</a> · <a href="/compare/">Open the AI model comparison</a> · Latest: ${linkedNames(links)}</p></section>`;
+  return `<section class="method-links"><h2>The prompt and protocol</h2><p>Every model receives the same initial prompt. <a href="/results/PROMPT.md">Read the full shared prompt</a> or the <a href="/results/PROTOCOL.json">benchmark protocol (JSON)</a>. The complete result data is published as <a href="/results/index.json">results/index.json</a>.</p><h2>See the results</h2><p><a href="/">${BROWSE_HEADING}</a> · <a href="/compare/">Open the AI model comparison</a> · Latest: ${linkedNames(links)}</p></section>`;
 }
 
-const HOME_TITLE = (n: number) => `AI Coding Benchmark: ${n} LLMs, One Animation Test | PomBench`;
-const HOME_DESCRIPTION = (n: number) => `PomBench is an AI coding benchmark you can watch: ${n} LLMs write code for the same 12-second Pomeranian animation. Compare models, output tokens and API costs.`;
+export const BROWSE_HEADING = 'Browse the LLM coding benchmark results';
+const HOME_TITLE = 'AI Coding Benchmark: Every Model, One Test | PomBench';
+const HOME_DESCRIPTION = 'PomBench is an AI coding benchmark you can watch: every model writes code for the same 12-second Pomeranian animation. Compare output tokens and API costs.';
 const COMPARE_TITLE = 'AI Model Comparison: Compare LLMs Side by Side | PomBench';
 const COMPARE_DESCRIPTION = 'AI model comparison you can watch: play up to four LLMs side by side on the same coding task. Compare animation quality, output tokens and known API cost.';
 const METHOD_TITLE = 'LLM Benchmark Method: How Our AI Coding Test Works | PomBench';
@@ -309,17 +323,16 @@ export function pageSeo(c: Catalog, route: string): PageSeo {
   const models = readyOf(c);
   const m = route.startsWith('model/') ? modelByKey(models, route.slice(6)) : undefined;
   const valid = ['gallery', 'compare', 'method'].includes(route) || !!m;
-  const n = models.length;
   const rivals = m ? rivalsFor(m, models) : [];
-  const title = m ? modelTitle(m.name) : route === 'compare' ? COMPARE_TITLE : route === 'method' ? METHOD_TITLE : valid ? HOME_TITLE(n) : 'Page not found | PomBench';
-  const description = m ? metaDescription(m, rivals[0]) : route === 'compare' ? COMPARE_DESCRIPTION : route === 'method' ? METHOD_DESCRIPTION : valid ? HOME_DESCRIPTION(n) : 'This PomBench page is unavailable. Explore the published model animations and the AI coding benchmark.';
+  const title = m ? modelTitle(m.name) : route === 'compare' ? COMPARE_TITLE : route === 'method' ? METHOD_TITLE : valid ? HOME_TITLE : 'Page not found | PomBench';
+  const description = m ? metaDescription(m, rivals[0]) : route === 'compare' ? COMPARE_DESCRIPTION : route === 'method' ? METHOD_DESCRIPTION : valid ? HOME_DESCRIPTION : 'This PomBench page is unavailable. Explore the published model animations and the AI coding benchmark.';
   const canonical = valid ? siteOrigin + (m ? modelPath(m) : routePath(route)) : null;
   const hubImage = route === 'compare' ? '/assets/og-compare-1200x630.png' : '/assets/og-pombench-1200x630.jpg';
   const image = siteOrigin + (m?.poster ?? hubImage);
   const imageWidth = m ? 960 : 1200;
   const imageHeight = m ? 540 : 630;
   const imageType = m || route === 'compare' ? 'image/png' : 'image/jpeg';
-  const imageAlt = m ? `${m.name} coding benchmark: animation frame` : route === 'compare' ? 'PomBench AI model comparison: four LLMs on one coding task' : `PomBench AI coding benchmark: one Pomeranian animation coded by ${n} LLMs`;
+  const imageAlt = m ? `${m.name} coding benchmark: animation frame` : route === 'compare' ? 'PomBench AI model comparison: four LLMs on one coding task' : 'PomBench AI coding benchmark: one Pomeranian animation, every model';
   const modified = day(c.publishedAt);
   const published = day(FIRST_PUBLISHED_AT);
   const graph: unknown[] = [organization(), website()];
@@ -399,7 +412,6 @@ export function staticBody(c: Catalog, route: string) {
   const E = escapeHtml;
   const d = pageSeo(c, route);
   const m = d.model;
-  const n = readyOf(c).length;
   let body = '';
   if (m) {
     const rival = rivalsFor(m, readyOf(c))[0];
@@ -407,7 +419,7 @@ export function staticBody(c: Catalog, route: string) {
     const compareLabel = rival ? `Compare ${m.name} vs ${rival.name}` : 'Compare AI models';
     body = `${breadcrumb(m)}<section class="model-head"><div><h1>${E(m.name)} coding benchmark</h1><p>${E(m.provider)} · API model <code>${E(apiId(m))}</code>${m.inferenceSource === 'openrouter-api' ? ' · via OpenRouter' : ''} · ${E(publishedLine(c))}</p></div><a class="button primary" href="${compareHref}">${E(compareLabel)} ↗</a></section><div class="model-layout"><div class="model-stage"><div class="screen"><video src="${E(m.video)}" poster="${E(m.poster)}" width="960" height="540" controls controlslist="nodownload" muted playsinline preload="metadata" aria-label="${E(m.name)} coding benchmark: recorded 12-second Pomeranian animation"></video></div>${modelEditorial(m, c)}</div><aside class="model-info"><section class="stats-panel"><h2>${E(m.name)} at a glance</h2>${factsList(m)}${m.framingRepair ? `<p>${E(m.framingRepair.note)}</p>` : ''}${m.priceUnavailableReason ? '<p class="stat-note">Cost unavailable: a verified price for this deployed version has not been found. Missing pricing is not treated as zero.</p>' : ''}</section></aside></div>`;
   } else if (route === 'gallery') {
-    body = `${homeHero(c)}<h2>Browse all ${n} LLM coding benchmark results</h2><p>Each card opens one model's recorded animation with its output tokens and known API cost. Newest models first.</p>${staticCards(c)}${galleryEditorial(c)}`;
+    body = `${homeHero(c)}<h2>${BROWSE_HEADING}</h2><p>Each card opens one model's recorded animation with its output tokens and known API cost. Newest models first.</p>${staticCards(c)}${galleryEditorial(c)}`;
   } else if (route === 'compare') body = `${compareHead()}${compareTail(staticCards(c))}`;
   else if (route === 'method') body = methodDocument(c);
   else body = `<section class="page-head"><h1>Page not found</h1><p>This animation is not published or this address does not exist.</p><a class="button" href="/">Explore the model animations</a></section>`;

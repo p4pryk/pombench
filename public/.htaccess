@@ -118,6 +118,8 @@ RewriteRule ^(?:animations|models)/llama[.-]4[.-]scout/?$ https://pombench.com/a
 # Models added 2026-10-25. Same one-hop case/dot/prefix coverage as the rules above.
 RewriteCond %{REQUEST_URI} !^/animations/claude-fable-5-1/$
 RewriteRule ^(?:animations|models)/claude[.-]fable[.-]5[.-]1/?$ https://pombench.com/animations/claude-fable-5-1/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/glm-5-3-flash/$
+RewriteRule ^(?:animations|models)/(?:FW[.-])?GLM[.-]5[.-]3[.-]Flash/?$ https://pombench.com/animations/glm-5-3-flash/ [R=301,NC,L]
 RewriteCond %{REQUEST_URI} !^/animations/glm-5-3/$
 RewriteRule ^(?:animations|models)/(?:FW[.-])?GLM[.-]5[.-]3/?$ https://pombench.com/animations/glm-5-3/ [R=301,NC,L]
 RewriteCond %{REQUEST_URI} !^/animations/qwen3-8-max/$
