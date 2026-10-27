@@ -59,3 +59,22 @@ test('GLM 5.3 Flash has its own page, description, rivals and sitemap video entr
  const other=modelEditorial(glm,c);assert.match(other.split('id="latest"')[1],/href="\/animations\/glm-5-3-flash\/"/);assert.match(footerInner(c),/href="\/animations\/glm-5-3-flash\/"/);
  for(const model of ready){const page=pageSeo(c,'model/'+model.id);assert.ok(page.title.length<=65,model.id);assert.ok(page.description.length<=160,model.id);assert.equal(page.canonical,siteOrigin+modelPath(model));}
 });
+test('GPT-6.1 Terra has its own page, description, rivals and sitemap video entry',()=>{
+ const terra=c.models.find(model=>model.id==='gpt-6.1-terra')!,sol=c.models.find(model=>model.id==='gpt-6.1-sol')!,older=c.models.find(model=>model.id==='gpt-5.6-terra')!,ready=publishedModels(c.models);
+ assert.equal(terra.name,'GPT-6.1 Terra');assert.equal(modelSlug(terra.id),'gpt-6-1-terra');assert.equal(modelSlug('gpt-5.6-terra'),'gpt-5-6-terra');
+ for(const id of ['gpt-6.1-terra','GPT-6.1-Terra','openai.gpt-6.1-terra'])assert.equal(modelSlug(id),'gpt-6-1-terra');
+ assert.notEqual(modelPath(terra),modelPath(older));
+ const seo=pageSeo(c,'model/'+terra.id);assert.equal(seo.valid,true);assert.equal(seo.canonical,siteOrigin+'/animations/gpt-6-1-terra/');
+ assert.equal(seo.title,'GPT-6.1 Terra Benchmark: Coding Test & Animation | PomBench');assert.ok(seo.title.length<=65);assert.ok(seo.description.length<=160);
+ assert.match(seo.description,/6,428 output tokens/);assert.match(seo.description,/known API cost \$0\.0347/);assert.match(seo.description,/Compare GPT-6\.1 Terra vs GPT-6\.1 Sol/);
+ assert.doesNotMatch(seo.title,/\d+\s+(models|LLMs)/);assert.doesNotMatch(seo.description,/\d+\s+(models|LLMs)/);
+ const body=modelDescription(terra,c).join(' ');assert.match(body,/6,428 output tokens/);assert.match(body,/\$0\.0347/);assert.match(body,/rank \d+ of \d+/);
+ assert.deepEqual(rivalsFor(terra,ready).map(model=>model.name),['GPT-6.1 Sol','GPT-5.6 Terra','Claude Opus 5.5']);
+ assert.equal(rivalsFor(sol,ready)[0].name,'GPT-6.1 Terra');assert.equal(rivalsFor(older,ready)[0].name,'GPT-6.1 Terra');
+ assert.equal(modelTimestamp(terra,c),c.publishedAt);
+ const xml=siteMap(c),block=xml.split('<url>').find(part=>part.includes('/animations/gpt-6-1-terra/'));
+ assert.ok(block);assert.match(block!,/<video:video>/);assert.match(block!,/<video:content_loc>https:\/\/pombench.com\/results\/gpt-6\.1-terra\/animation\.mp4<\/video:content_loc>/);assert.ok(block!.includes('<lastmod>'+c.publishedAt+'</lastmod>'));
+ const other=modelEditorial(sol,c);assert.match(other.split('id="latest"')[1],/href="\/animations\/gpt-6-1-terra\/"/);assert.match(footerInner(c),/href="\/animations\/gpt-6-1-terra\/"/);
+ const gallery=renderSeoDocument(fs.readFileSync('index.html','utf8'),c,'gallery');
+ assert.match(gallery,/The 27 Oct 2026 update adds/);assert.match(gallery,/GPT-6\.1 Terra/);assert.doesNotMatch(gallery,/update adds[^<]*\d+ models/);
+});
