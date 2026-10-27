@@ -1,0 +1,26 @@
+{
+  "campaign": "pombench-terra-20261027",
+  "at": "2026-10-27T04:42:02.479925+00:00",
+  "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+  "protocolHash": "ef8b6d80c1038255181e60d9856157bffb1318239c4073f5668e09696981c68b",
+  "maxOutputTokens": 32768,
+  "submissionsPerModel": 2,
+  "tools": [],
+  "reasoningEffort": "low",
+  "generationDeadlineSeconds": 1200,
+  "policy": "Same byte-identical V4 initial prompt; one conditional execution repair for empty, truncated or unexecutable source. Final response only, no best-of or manual code edits. All completed reply tokens and provider-reported costs included.",
+  "routingPolicy": "OpenRouter is the API intermediary. Each request fixes one named model and one exact upstream endpoint slug with fallbacks disabled; no model router, automatic model selection, Highspeed duplicate or substitute is allowed. Actual upstream name, returned model and canonical catalog version are retained.",
+  "models": [
+    "gpt-6.1-terra"
+  ],
+  "apiModels": [
+    "openai/gpt-6.1-terra"
+  ],
+  "versions": {
+    "gpt-6.1-terra": "openai/gpt-6.1-terra-20261026"
+  },
+  "upstreamVariants": {
+    "gpt-6.1-terra": "openai"
+  },
+  "costPolicy": "Display actual OpenRouter usage.cost summed across all completed creative responses. Completion tokens already include reasoning; never add reasoning tokens a second time. All raw provider and wire evidence is retained privately. No key, account setting or credential is published."
+}

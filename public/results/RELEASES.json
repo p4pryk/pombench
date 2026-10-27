@@ -239,6 +239,10 @@
     "glm-5.3-flash": {
       "date": "2026-08-26",
       "source": "https://openrouter.ai/z-ai/glm-5.3-flash"
+    },
+    "gpt-6.1-terra": {
+      "date": "2026-10-26",
+      "source": "https://developers.openai.com/api/docs/models/gpt-6.1-terra"
     }
   }
 }

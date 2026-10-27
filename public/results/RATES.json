@@ -483,6 +483,18 @@
       "source": "https://openrouter.ai/z-ai/glm-5.3-flash",
       "surface": "OpenRouter, pinned Fireworks upstream",
       "note": "Actual known inference cost is taken from OpenRouter usage.cost; rates are retained for reconciliation. No tools or search calls."
+    },
+    "gpt-6.1-terra": {
+      "input": 1.0,
+      "output": 5.0,
+      "cached": 0.049999999999999996,
+      "write": 1.25,
+      "currency": "USD",
+      "unit": "per million tokens",
+      "checkedAt": "2026-10-27",
+      "source": "https://openrouter.ai/openai/gpt-6.1-terra",
+      "surface": "OpenRouter, pinned OpenAI upstream",
+      "note": "Actual known inference cost is taken from OpenRouter usage.cost; rates are retained for reconciliation. No tools or search calls."
     }
   },
   "unverified": {

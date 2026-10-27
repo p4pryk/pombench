@@ -2,7 +2,7 @@
   "version": "pombench-v4",
   "campaign": "pombench-v4-20261024",
   "title": "The puddle, the Pomeranian and the bone",
-  "publishedAt": "2026-10-25T15:04:14.437700+00:00",
+  "publishedAt": "2026-10-27T04:44:23.980349+00:00",
   "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
   "protocolHash": "ef8b6d80c1038255181e60d9856157bffb1318239c4073f5668e09696981c68b",
   "promptUrl": "/results/PROMPT.md",
@@ -7713,6 +7713,160 @@
         "reviewedAt": "2026-10-25T15:03:58.942434+00:00"
       },
       "usageComplete": true
+    },
+    {
+      "id": "gpt-6.1-terra",
+      "name": "GPT-6.1 Terra",
+      "provider": "OpenAI",
+      "version": "openai/gpt-6.1-terra-20261026",
+      "inferenceSource": "openrouter-api",
+      "upstreamProvider": "OpenAI",
+      "apiModel": "openai/gpt-6.1-terra",
+      "base": "/results/gpt-6.1-terra",
+      "status": "captured",
+      "reasoningEffort": "low",
+      "maxOutputTokens": 32768,
+      "generationDeadlineSeconds": 1200,
+      "loopRequired": false,
+      "technicalTotal": 6,
+      "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+      "releasedAt": "2026-10-26",
+      "releaseSource": "https://developers.openai.com/api/docs/models/gpt-6.1-terra",
+      "usage": {
+        "input_tokens": 2031,
+        "output_tokens": 6428,
+        "total_tokens": 8459,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 2028,
+        "reasoning_output_tokens": 808
+      },
+      "finalUsage": {
+        "input_tokens": 2031,
+        "output_tokens": 6428,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 2028,
+        "total_tokens": 8459,
+        "reasoning_output_tokens": 808
+      },
+      "attempts": [
+        {
+          "number": 1,
+          "usage": {
+            "input_tokens": 2031,
+            "output_tokens": 6428,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 2028,
+            "total_tokens": 8459,
+            "reasoning_output_tokens": 808
+          },
+          "generationSeconds": 72.59089674999996,
+          "stopReason": "stop",
+          "sourceHash": "3373be6221283cf5d3118e518054d6228fd49852da6beeadc90c2444a61f0eed",
+          "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+          "maxOutputTokens": 32768,
+          "extendedBudget": false,
+          "reasoningEffort": "low",
+          "source": "/results/gpt-6.1-terra/attempt-1-source.txt",
+          "price": {
+            "usd": 0.034678,
+            "source": "https://openrouter.ai/openai/gpt-6.1-terra",
+            "checkedAt": "2026-10-27",
+            "basis": "provider-reported"
+          },
+          "status": "captured",
+          "errors": [],
+          "summary": "/results/gpt-6.1-terra/attempt-1-summary.json"
+        }
+      ],
+      "submissions": 1,
+      "sourceHash": "3373be6221283cf5d3118e518054d6228fd49852da6beeadc90c2444a61f0eed",
+      "source": "/results/gpt-6.1-terra/source.txt",
+      "generationPromptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+      "generationSeconds": 72.59089674999996,
+      "stopReason": "stop",
+      "price": {
+        "usd": 0.034678,
+        "source": "https://openrouter.ai/openai/gpt-6.1-terra",
+        "checkedAt": "2026-10-27",
+        "basis": "provider-reported"
+      },
+      "billingNote": "Known cost comes from OpenRouter terminal usage receipts, including all completed creative responses. Credit-purchase fees and taxes are excluded.",
+      "technicalChecks": {
+        "contract": true,
+        "renders": true,
+        "visible": true,
+        "motion": true,
+        "deterministic": true,
+        "offline": true
+      },
+      "technicalPassed": 6,
+      "errors": [],
+      "metrics": {
+        "sampleColorStd": [
+          37.39377975463867,
+          37.393184661865234,
+          37.33232498168945,
+          37.29753494262695,
+          35.70094680786133,
+          34.940711975097656,
+          34.94804000854492,
+          36.55484390258789,
+          37.38277816772461,
+          37.26871871948242,
+          37.177127838134766,
+          37.17799758911133
+        ],
+        "changedPixelFractions": [
+          0.0026697530864197533,
+          0.05294945987654321,
+          0.05050733024691358,
+          0.03721450617283951,
+          0.022750771604938273,
+          0.002791280864197531,
+          0.031927083333333335,
+          0.033290895061728394,
+          0.020341435185185185,
+          0.016255787037037037,
+          0.0006018518518518519
+        ],
+        "finalBoundaryStepRmse": 0.05370170623064041,
+        "repeatPixelRmse": {
+          "repeat-a": 0.0,
+          "repeat-b": 0.0,
+          "repeat-c": 0.0
+        },
+        "renderRoundTripMedianMs": 1.2306045000004815,
+        "renderRoundTripP95Ms": 1.769199999999637
+      },
+      "capture": {
+        "frames": 360,
+        "fps": 30,
+        "durationSeconds": 12,
+        "width": 960,
+        "height": 540,
+        "complete": true,
+        "isolation": "Separate offline Chromium process, service workers and downloads disabled, CSP, all post-bootstrap network blocked. Organizer measures screenshot pixels; candidate reports are ignored.",
+        "sourceHash": "3373be6221283cf5d3118e518054d6228fd49852da6beeadc90c2444a61f0eed",
+        "frameEvidenceHash": "515eea1abbfc53986baea89f01d0edd0618c07b1fafb5b6ba632bc6930bbaf11"
+      },
+      "evidenceHashes": {
+        "capture.json": "515eea1abbfc53986baea89f01d0edd0618c07b1fafb5b6ba632bc6930bbaf11",
+        "poster.png": "676283a3a327cbcf670ca1936bf162cffcc524d766f67675fe326640e26fbec9",
+        "contact-sheet.jpg": "2df2929728938662ff495bcdc716bc8478fb8ae1e26f0a722bfd8dbf469937cd",
+        "animation.mp4": "64b7e4277c0b888dd6bbf2a898ad38a7a2bd2436663cb5f6fefb5d3d23bfddcb"
+      },
+      "summary": "/results/gpt-6.1-terra/summary.json",
+      "video": "/results/gpt-6.1-terra/animation.mp4",
+      "poster": "/results/gpt-6.1-terra/poster.png",
+      "contactSheet": "/results/gpt-6.1-terra/contact-sheet.jpg",
+      "startFrame": "/results/gpt-6.1-terra/start-frame.png",
+      "framingReview": {
+        "sourceHash": "3373be6221283cf5d3118e518054d6228fd49852da6beeadc90c2444a61f0eed",
+        "status": "visible",
+        "note": "The recorded storyboard keeps the dog and doghouse in the canvas. This framing observation does not certify realism, reflection, bone contact or narrative success.",
+        "reviewedAt": "2026-10-27T04:44:20.034268+00:00"
+      },
+      "usageComplete": true
     }
   ],
   "protocol": {
@@ -7793,7 +7947,8 @@
     "/results/FRAMING-CORRECTION.json",
     "/results/OPENROUTER-V4.json",
     "/results/EXTENSION-20261025.json",
-    "/results/GLM-FLASH-V4.json"
+    "/results/GLM-FLASH-V4.json",
+    "/results/TERRA-V4.json"
   ],
   "methodology": [
     "Results use Microsoft Foundry, Google Vertex AI and OpenRouter APIs. OpenRouter requests fix one named model and upstream endpoint, without model/provider fallbacks. Private service configuration is excluded.",
@@ -7805,6 +7960,7 @@
     "Gemini 4 Argon received a disclosed user-requested framing correction after its first recording put the dog outside the canvas. Same initial task, original source plus visibility diagnostics, two total completed responses, final response retained. Both responses are included in cost and tokens; see FRAMING-CORRECTION.json. No organizer source edits. Other models are unchanged.",
     "Two additional V4 models use the identical initial prompt through OpenRouter with a fixed upstream provider and no fallbacks. See OPENROUTER-V4.json. Their known inference cost is taken from terminal OpenRouter receipts, not a fabricated invoice or zero placeholder.",
     "User-authorized additions and completion rescue. All initial prompts are byte-identical to V4. Execution repairs retain the final response, never best-of. All previous completed failed responses remain retained and included in totals. GLM uses OpenRouter; earlier interrupted usage remains unknown. Exact per-response request settings are retained in the result data.",
-    "GLM 5.3 Flash uses the identical initial prompt through OpenRouter with a fixed upstream provider and no fallbacks. See GLM-FLASH-V4.json. Their known inference cost is taken from terminal OpenRouter receipts, not a fabricated invoice or zero placeholder."
+    "GLM 5.3 Flash uses the identical initial prompt through OpenRouter with a fixed upstream provider and no fallbacks. See GLM-FLASH-V4.json. Their known inference cost is taken from terminal OpenRouter receipts, not a fabricated invoice or zero placeholder.",
+    "GPT-6.1 Terra uses the identical initial prompt through OpenRouter with a fixed upstream provider and no fallbacks. See TERRA-V4.json. Their known inference cost is taken from terminal OpenRouter receipts, not a fabricated invoice or zero placeholder."
   ]
 }

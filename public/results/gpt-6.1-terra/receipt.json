@@ -1,0 +1,50 @@
+{
+  "modelId": "openai/gpt-6.1-terra",
+  "modelVersion": "openai/gpt-6.1-terra-20261026",
+  "returnedModel": "openai/gpt-6.1-terra",
+  "upstreamProvider": "OpenAI",
+  "source": "Actual OpenRouter API usage",
+  "usage": {
+    "input_tokens": 2031,
+    "output_tokens": 6428,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 2028,
+    "total_tokens": 8459,
+    "reasoning_output_tokens": 808
+  },
+  "rawUsage": {
+    "prompt_tokens": 2031,
+    "completion_tokens": 6428,
+    "total_tokens": 8459,
+    "cost": 0.034678,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 2028,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 0.034678,
+      "upstream_inference_prompt_cost": 0.002538,
+      "upstream_inference_completions_cost": 0.03214
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 808,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  },
+  "reportedCostUsd": 0.034678,
+  "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+  "sourceHash": "3373be6221283cf5d3118e518054d6228fd49852da6beeadc90c2444a61f0eed",
+  "requestHash": "3717d2f851f4612e18b1c84d54e59740a2bf7e7ca2a0d20c6201aa29e5eea230",
+  "responseHash": "69918be698fa63519032ded31c053fca06dac6f510e5b3a03fb8a909a37988d2",
+  "streamHash": "c2de1419d0864dd757a0e2879d3c1f04d714f9e79ba64a7956204bb4ee48e6db",
+  "sourceExtraction": "Trim outer whitespace and unwrap one surrounding HTML fence only; no source changes",
+  "tools": [],
+  "submission": 1,
+  "usageComplete": true,
+  "visualScore": null,
+  "visualReview": "Inspect the recorded film; browser execution does not grade realism, anatomy, reflection or narrative success."
+}
