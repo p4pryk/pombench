@@ -80,6 +80,8 @@ RewriteCond %{REQUEST_URI} !^/animations/gpt-6-sol/$
 RewriteRule ^(?:animations|models)/gpt[.-]6[.-]sol/?$ https://pombench.com/animations/gpt-6-sol/ [R=301,NC,L]
 RewriteCond %{REQUEST_URI} !^/animations/gpt-6-1-sol/$
 RewriteRule ^(?:animations|models)/gpt[.-]6[.-]1[.-]sol/?$ https://pombench.com/animations/gpt-6-1-sol/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/gpt-6-1-terra/$
+RewriteRule ^(?:animations|models)/(?:openai[.-])?gpt[.-]6[.-]1[.-]terra/?$ https://pombench.com/animations/gpt-6-1-terra/ [R=301,NC,L]
 RewriteCond %{REQUEST_URI} !^/animations/gpt-oss-120b/$
 RewriteRule ^(?:animations|models)/gpt[.-]oss[.-]120b/?$ https://pombench.com/animations/gpt-oss-120b/ [R=301,NC,L]
 RewriteCond %{REQUEST_URI} !^/animations/gemini-3-1-pro-preview/$

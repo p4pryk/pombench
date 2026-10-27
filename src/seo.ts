@@ -4,10 +4,12 @@ import {newestFirst, publishedModels} from './catalog.ts';
 export const siteOrigin = 'https://pombench.com';
 /** First public publication of this benchmark. Later catalog updates use Catalog.publishedAt. */
 export const FIRST_PUBLISHED_AT = '2026-10-24T17:33:46.803982+00:00';
-/** Models added or recaptured on 25 Oct 2026. Their pages use the catalog timestamp. */
-export const EXTENSION_IDS = new Set(['claude-fable-5-1', 'FW-GLM-5.3', 'qwen3.8-max', 'mistral-large-4', 'xiaomi-mimo-v2.6-pro', 'glm-5.3-flash']);
-/** Newest benchmark additions. They lead "Latest models tested" even when the API release date is older. */
-const LATEST_WAVE_IDS = ['glm-5.3-flash'];
+/** Models added after the first publication. Their pages use the catalog timestamp. */
+export const EXTENSION_IDS = new Set(['claude-fable-5-1', 'FW-GLM-5.3', 'qwen3.8-max', 'mistral-large-4', 'xiaomi-mimo-v2.6-pro', 'glm-5.3-flash', 'gpt-6.1-terra']);
+/** Newest benchmark additions. They lead "Latest models tested" even when an API release date is older. */
+const LATEST_WAVE_IDS = ['gpt-6.1-terra', 'glm-5.3-flash'];
+/** Models named in the homepage update sentence. Only the addition in this catalog. */
+const UPDATE_NOTE_IDS = ['gpt-6.1-terra'];
 
 const SLUG_OVERRIDES: Record<string, string> = {
   'FW-Kimi-K3': 'kimi-k3',
@@ -40,11 +42,12 @@ const HAND_RIVALS: Record<string, string[]> = {
   'GPT-5.5': ['GPT-5.4 Mini', 'GPT-5.4 Nano', 'DeepSeek V4 Pro'],
   'GPT-5.6 Luna': ['GPT-5.6 Sol', 'GPT-5.6 Terra', 'Kimi K3'],
   'GPT-5.6 Sol': ['GPT-5.6 Luna', 'GPT-5.6 Terra', 'Kimi K3'],
-  'GPT-5.6 Terra': ['GPT-5.6 Luna', 'GPT-5.6 Sol', 'Kimi K3'],
+  'GPT-5.6 Terra': ['GPT-6.1 Terra', 'GPT-5.6 Luna', 'GPT-5.6 Sol'],
   'GPT-6 Astra': ['GPT-6 Luna', 'GPT-6 Sol', 'Gemini 3.8 Flash'],
-  'GPT-6 Luna': ['GPT-6 Sol', 'GPT-6.1 Sol', 'Claude Opus 5.5'],
-  'GPT-6 Sol': ['GPT-6 Luna', 'GPT-6.1 Sol', 'Claude Opus 5.5'],
-  'GPT-6.1 Sol': ['GPT-6 Sol', 'Gemini 4 Argon', 'Claude Opus 5.5'],
+  'GPT-6 Luna': ['GPT-6 Sol', 'GPT-6.1 Sol', 'GPT-6.1 Terra'],
+  'GPT-6 Sol': ['GPT-6 Luna', 'GPT-6.1 Sol', 'GPT-6.1 Terra'],
+  'GPT-6.1 Sol': ['GPT-6.1 Terra', 'GPT-6 Sol', 'Claude Opus 5.5'],
+  'GPT-6.1 Terra': ['GPT-6.1 Sol', 'GPT-5.6 Terra', 'Claude Opus 5.5'],
   'GPT-OSS 120B': ['GPT-5 Mini', 'GPT-5 Nano', 'Claude Haiku 4.5'],
   'Gemini 3.1 Pro Preview': ['Gemini 3.5 Flash-Lite', 'Gemini 3.8 Flash', 'GPT-5.3 Codex'],
   'Gemini 3.5 Flash-Lite': ['Gemini 3.8 Flash', 'Gemini 4 Argon', 'Claude Opus 5'],
@@ -77,6 +80,8 @@ export function modelSlug(id: string) {
   // Published id is glm-5.3-flash. Also accept an FW- prefixed alias so the page
   // stays on glm-5-3-flash and does not collide with glm-5-3.
   if (/^(?:fw-)?glm-5-3-flash$/.test(normalized)) return 'glm-5-3-flash';
+  // Published id is gpt-6.1-terra. Also accept an openai- prefixed alias.
+  if (/^(?:openai-)?gpt-6-1-terra$/.test(normalized)) return 'gpt-6-1-terra';
   return normalized;
 }
 
@@ -262,8 +267,12 @@ function linkedNames(models: Model[]) {
   return models.map(m => `<a href="${modelPath(m)}">${escapeHtml(m.name)}</a>`).join(', ');
 }
 
+function notedModels(c: Catalog) {
+  const ready = readyOf(c);
+  return UPDATE_NOTE_IDS.map(id => ready.find(m => m.id === id)).filter((m): m is Model => !!m);
+}
 export function galleryEditorial(c: Catalog) {
-  const added = extensionModels(c);
+  const added = notedModels(c);
   const addedSentence = added.length ? `<p>The ${escapeHtml(publishedLabel(c.publishedAt))} update adds ${linkedNames(added)}.</p>` : '';
   return `<section class="benchmark-intro"><h2>An LLM coding benchmark you can watch</h2><p>Most LLM benchmarks give you a single number. PomBench gives you the pixels: every model receives the same prompt and writes its own self-contained browser code for a twelve-second scene in which a Pomeranian runs, jumps a puddle, enters its doghouse, retrieves a bone and turns toward the camera. An independent offline browser records the result at ${c.protocol.width} × ${c.protocol.height} and ${c.protocol.captureFps} fps, and no organizer edits the model code.</p><p>Use it as a practical AI benchmark for creative coding: watch the movement, compare up to four models on one timeline, and check recorded output tokens and known API costs. It is a sample of animation programming, not an overall ranking of AI intelligence.</p>${addedSentence}<p><a href="/compare/">Open the AI model comparison</a> · <a href="/method/">How the LLM benchmark works</a> · <a href="/results/PROMPT.md">Read the shared prompt</a></p></section>`;
 }
