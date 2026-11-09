@@ -1,0 +1,40 @@
+{
+  "modelId": "claude-fable-5-2",
+  "modelVersion": "1",
+  "source": "Actual Foundry API usage",
+  "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+  "sourceHash": "3239c161f68307a4062d8f43352163b19e4e21cab226212904db23010838580b",
+  "requestHash": "adf2bba292beb2142b75bb2ea7c166f5671bf8ffd629c000156f01d90d10d126",
+  "responseHash": "e0bfa98022301b2e6b5c0acd8a33e0bded0b77e29344183f38f27e342f7864e5",
+  "streamHash": "f4e4009a65337238fb9641c2cfb9bacfcce5f1968ef30f2e76bcf0e0eaa95951",
+  "sourceExtraction": "Trim outer whitespace and unwrap a single surrounding HTML fence only; no code changes",
+  "tools": [],
+  "usageComplete": true,
+  "submission": 1,
+  "rawUsage": {
+    "input_tokens": 3313,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 0,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 59124,
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "speed": "standard",
+    "output_tokens_details": {
+      "thinking_tokens": 41889
+    }
+  },
+  "usage": {
+    "input_tokens": 3313,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 59124,
+    "total_tokens": 62437,
+    "reasoning_output_tokens": 41889
+  },
+  "visualScore": null,
+  "visualReview": "Inspect the recorded film; technical capture does not grade visual quality or task success."
+}

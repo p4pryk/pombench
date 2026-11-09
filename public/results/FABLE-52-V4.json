@@ -1,0 +1,10 @@
+{
+  "model": "claude-fable-5-2",
+  "models": [
+    "claude-fable-5-2"
+  ],
+  "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+  "protocolHash": "ef8b6d80c1038255181e60d9856157bffb1318239c4073f5668e09696981c68b",
+  "provider": "Microsoft Foundry",
+  "policy": "Same initial prompt, optional execution repair, no manual source edits. Previous OpenRouter failure retained separately."
+}

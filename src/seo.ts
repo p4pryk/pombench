@@ -5,11 +5,11 @@ export const siteOrigin = 'https://pombench.com';
 /** First public publication of this benchmark. Later catalog updates use Catalog.publishedAt. */
 export const FIRST_PUBLISHED_AT = '2026-10-24T17:33:46.803982+00:00';
 /** Models added after the first publication. Their pages use the catalog timestamp. */
-export const EXTENSION_IDS = new Set(['claude-fable-5-1', 'FW-GLM-5.3', 'qwen3.8-max', 'mistral-large-4', 'xiaomi-mimo-v2.6-pro', 'glm-5.3-flash', 'gpt-6.1-terra']);
+export const EXTENSION_IDS = new Set(['claude-fable-5-1', 'claude-fable-5-2', 'FW-GLM-5.3', 'qwen3.8-max', 'mistral-large-4', 'xiaomi-mimo-v2.6-pro', 'glm-5.3-flash', 'gpt-6.1-terra']);
 /** Newest benchmark additions. They lead "Latest models tested" even when an API release date is older. */
-const LATEST_WAVE_IDS = ['gpt-6.1-terra', 'glm-5.3-flash'];
+const LATEST_WAVE_IDS = ['claude-fable-5-2', 'gpt-6.1-terra', 'glm-5.3-flash'];
 /** Models named in the homepage update sentence. Only the addition in this catalog. */
-const UPDATE_NOTE_IDS = ['gpt-6.1-terra'];
+const UPDATE_NOTE_IDS = ['claude-fable-5-2'];
 
 const SLUG_OVERRIDES: Record<string, string> = {
   'FW-Kimi-K3': 'kimi-k3',
@@ -20,6 +20,7 @@ const SLUG_OVERRIDES: Record<string, string> = {
 
 /** Hand-picked rivals from the 24 Oct keyword pass. Names only; ranks are computed from the live catalog. */
 const HAND_RIVALS: Record<string, string[]> = {
+  'Claude Fable 5.2': ['Claude Fable 5.1', 'Claude Opus 5.5', 'GPT-6.1 Terra'],
   'Claude Haiku 4.5': ['Claude Opus 4.8', 'Claude Sonnet 5', 'Mistral Large 3'],
   'Claude Haiku 5.5': ['Claude Sonnet 5.5', 'Claude Opus 5.5', 'Muse Wonder'],
   'Claude Opus 4.8': ['Claude Sonnet 5', 'Claude Opus 5', 'Mistral Medium 3.5'],

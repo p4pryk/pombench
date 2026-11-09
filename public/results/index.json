@@ -2,7 +2,7 @@
   "version": "pombench-v4",
   "campaign": "pombench-v4-20261024",
   "title": "The puddle, the Pomeranian and the bone",
-  "publishedAt": "2026-10-27T04:44:23.980349+00:00",
+  "publishedAt": "2026-11-09T19:58:30.622595+00:00",
   "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
   "protocolHash": "ef8b6d80c1038255181e60d9856157bffb1318239c4073f5668e09696981c68b",
   "promptUrl": "/results/PROMPT.md",
@@ -7867,6 +7867,154 @@
         "reviewedAt": "2026-10-27T04:44:20.034268+00:00"
       },
       "usageComplete": true
+    },
+    {
+      "id": "claude-fable-5-2",
+      "name": "Claude Fable 5.2",
+      "provider": "Anthropic",
+      "version": "1",
+      "inferenceSource": "foundry-api",
+      "base": "/results/claude-fable-5-2",
+      "status": "captured",
+      "reasoningEffort": "low",
+      "maxOutputTokens": 65536,
+      "generationDeadlineSeconds": 1200,
+      "loopRequired": false,
+      "technicalTotal": 6,
+      "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+      "releasedAt": "2026-11-09",
+      "releaseSource": "https://platform.claude.com/docs/en/models/fable-5-2/overview",
+      "usage": {
+        "reasoning_output_tokens": 41889,
+        "total_tokens": 62437,
+        "input_tokens": 3313,
+        "cached_input_tokens": 0,
+        "output_tokens": 59124,
+        "cache_write_input_tokens": 0
+      },
+      "finalUsage": {
+        "input_tokens": 3313,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 59124,
+        "total_tokens": 62437,
+        "reasoning_output_tokens": 41889
+      },
+      "attempts": [
+        {
+          "number": 1,
+          "usage": {
+            "input_tokens": 3313,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 59124,
+            "total_tokens": 62437,
+            "reasoning_output_tokens": 41889
+          },
+          "generationSeconds": 638.9376747608185,
+          "stopReason": "end_turn",
+          "sourceHash": "3239c161f68307a4062d8f43352163b19e4e21cab226212904db23010838580b",
+          "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+          "maxOutputTokens": 65536,
+          "reasoningEffort": "low",
+          "source": "/results/claude-fable-5-2/attempt-1-source.txt",
+          "summary": "/results/claude-fable-5-2/attempt-1-summary.json",
+          "status": "captured",
+          "errors": [],
+          "price": {
+            "usd": 2.391464,
+            "source": "https://platform.claude.com/docs/en/models/fable-5-2/overview",
+            "checkedAt": "2026-11-09"
+          }
+        }
+      ],
+      "submissions": 1,
+      "sourceHash": "3239c161f68307a4062d8f43352163b19e4e21cab226212904db23010838580b",
+      "source": "/results/claude-fable-5-2/source.txt",
+      "generationPromptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+      "generationSeconds": 638.9376747608185,
+      "stopReason": "end_turn",
+      "price": {
+        "usd": 2.391464,
+        "source": "https://platform.claude.com/docs/en/models/fable-5-2/overview",
+        "checkedAt": "2026-11-09"
+      },
+      "billingNote": "Foundry cost is calculated using published standard rates and may differ from the Azure invoice. An earlier OpenRouter response exhausted its limit without producing code and cost $1.337224; it is not included in this Foundry run.",
+      "priorOpenRouterAttempt": {
+        "outputTokens": 32768,
+        "costUsd": 1.337224,
+        "outcome": "No source returned before output limit"
+      },
+      "usageComplete": true,
+      "summary": "/results/claude-fable-5-2/summary.json",
+      "video": "/results/claude-fable-5-2/animation.mp4",
+      "poster": "/results/claude-fable-5-2/poster.png",
+      "contactSheet": "/results/claude-fable-5-2/contact-sheet.jpg",
+      "startFrame": "/results/claude-fable-5-2/start-frame.png",
+      "technicalChecks": {
+        "contract": true,
+        "renders": true,
+        "visible": true,
+        "motion": true,
+        "deterministic": false,
+        "offline": true
+      },
+      "technicalPassed": 5,
+      "errors": [],
+      "metrics": {
+        "sampleColorStd": [
+          26.09786033630371,
+          26.081266403198242,
+          26.302709579467773,
+          26.359825134277344,
+          25.859033584594727,
+          25.493789672851562,
+          25.485063552856445,
+          26.2514705657959,
+          26.46543312072754,
+          26.781713485717773,
+          26.166122436523438,
+          26.17730712890625
+        ],
+        "changedPixelFractions": [
+          0.005640432098765432,
+          0.054392361111111114,
+          0.054753086419753086,
+          0.05246141975308642,
+          0.03316743827160494,
+          0.012743055555555556,
+          0.043701774691358025,
+          0.05003086419753086,
+          0.034193672839506174,
+          0.034047067901234566,
+          0.0070756172839506176
+        ],
+        "finalBoundaryStepRmse": 0.8889340758323669,
+        "repeatPixelRmse": {
+          "repeat-a": 0.0,
+          "repeat-b": 0.0,
+          "repeat-c": 0.0077744703739881516
+        },
+        "renderRoundTripMedianMs": 2.314791499999046,
+        "renderRoundTripP95Ms": 3.6058878500000904
+      },
+      "capture": {
+        "frames": 360,
+        "fps": 30,
+        "durationSeconds": 12,
+        "width": 960,
+        "height": 540,
+        "complete": true,
+        "isolation": "Separate offline Chromium process, service workers and downloads disabled, CSP, all post-bootstrap network blocked. Organizer measures screenshot pixels; candidate reports are ignored.",
+        "sourceHash": "3239c161f68307a4062d8f43352163b19e4e21cab226212904db23010838580b",
+        "frameEvidenceHash": "e9ff8d4a78f3d9c75dbc126fb9e7f290b3e747c86f38fc41b40ac4e9f2a620f4"
+      },
+      "evidenceHashes": {
+        "capture.json": "e9ff8d4a78f3d9c75dbc126fb9e7f290b3e747c86f38fc41b40ac4e9f2a620f4",
+        "poster.png": "f84e9c16dd7bdc218aa49680af4e42c86f4856758d08fd4739f73343e17a9c55",
+        "contact-sheet.jpg": "46d2dfd63de16cef98eab2c174c322ed9fd234140f7c767d216cc98e1374d667",
+        "animation.mp4": "095265792fefb92a22433754e2c440e8dc091e353b63028745814628a36ff96c"
+      }
     }
   ],
   "protocol": {
@@ -7948,7 +8096,8 @@
     "/results/OPENROUTER-V4.json",
     "/results/EXTENSION-20261025.json",
     "/results/GLM-FLASH-V4.json",
-    "/results/TERRA-V4.json"
+    "/results/TERRA-V4.json",
+    "/results/FABLE-52-V4.json"
   ],
   "methodology": [
     "Results use Microsoft Foundry, Google Vertex AI and OpenRouter APIs. OpenRouter requests fix one named model and upstream endpoint, without model/provider fallbacks. Private service configuration is excluded.",
@@ -7961,6 +8110,7 @@
     "Two additional V4 models use the identical initial prompt through OpenRouter with a fixed upstream provider and no fallbacks. See OPENROUTER-V4.json. Their known inference cost is taken from terminal OpenRouter receipts, not a fabricated invoice or zero placeholder.",
     "User-authorized additions and completion rescue. All initial prompts are byte-identical to V4. Execution repairs retain the final response, never best-of. All previous completed failed responses remain retained and included in totals. GLM uses OpenRouter; earlier interrupted usage remains unknown. Exact per-response request settings are retained in the result data.",
     "GLM 5.3 Flash uses the identical initial prompt through OpenRouter with a fixed upstream provider and no fallbacks. See GLM-FLASH-V4.json. Their known inference cost is taken from terminal OpenRouter receipts, not a fabricated invoice or zero placeholder.",
-    "GPT-6.1 Terra uses the identical initial prompt through OpenRouter with a fixed upstream provider and no fallbacks. See TERRA-V4.json. Their known inference cost is taken from terminal OpenRouter receipts, not a fabricated invoice or zero placeholder."
+    "GPT-6.1 Terra uses the identical initial prompt through OpenRouter with a fixed upstream provider and no fallbacks. See TERRA-V4.json. Their known inference cost is taken from terminal OpenRouter receipts, not a fabricated invoice or zero placeholder.",
+    "Claude Fable 5.2 uses the shared initial prompt through Microsoft Foundry. The earlier unsuccessful OpenRouter call and its cost are retained separately; Foundry totals use standard published rates."
   ]
 }

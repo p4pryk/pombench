@@ -243,6 +243,10 @@
     "gpt-6.1-terra": {
       "date": "2026-10-26",
       "source": "https://developers.openai.com/api/docs/models/gpt-6.1-terra"
+    },
+    "claude-fable-5-2": {
+      "date": "2026-11-09",
+      "source": "https://platform.claude.com/docs/en/models/fable-5-2/overview"
     }
   }
 }
