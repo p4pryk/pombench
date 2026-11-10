@@ -20,14 +20,15 @@ const SLUG_OVERRIDES: Record<string, string> = {
 
 /** Hand-picked rivals from the 24 Oct keyword pass. Names only; ranks are computed from the live catalog. */
 const HAND_RIVALS: Record<string, string[]> = {
+  'Claude Fable 5.1': ['Claude Fable 5.2', 'Claude Opus 5.5', 'Claude Sonnet 5.5'],
   'Claude Fable 5.2': ['Claude Fable 5.1', 'Claude Opus 5.5', 'GPT-6.1 Terra'],
   'Claude Haiku 4.5': ['Claude Opus 4.8', 'Claude Sonnet 5', 'Mistral Large 3'],
   'Claude Haiku 5.5': ['Claude Sonnet 5.5', 'Claude Opus 5.5', 'Muse Wonder'],
   'Claude Opus 4.8': ['Claude Sonnet 5', 'Claude Opus 5', 'Mistral Medium 3.5'],
   'Claude Opus 5': ['Claude Sonnet 5', 'Claude Opus 4.8', 'Gemini 3.5 Flash-Lite'],
-  'Claude Opus 5.5': ['Claude Sonnet 5.5', 'Gemini 4 Argon', 'GPT-6.1 Sol'],
+  'Claude Opus 5.5': ['Claude Sonnet 5.5', 'Claude Fable 5.2', 'Gemini 4 Argon'],
   'Claude Sonnet 5': ['Claude Opus 5', 'Claude Opus 4.8', 'GPT-5.6 Luna'],
-  'Claude Sonnet 5.5': ['Claude Opus 5.5', 'Claude Haiku 5.5', 'GPT-6.1 Sol'],
+  'Claude Sonnet 5.5': ['Claude Opus 5.5', 'Claude Fable 5.2', 'Claude Haiku 5.5'],
   'Codestral 2501': ['Mistral Large 3', 'Mistral Medium 3.5', 'Llama 4 Maverick'],
   'DeepSeek V4 Pro': ['DeepSeek V4.1 Flash', 'GPT-5.5', 'Mistral Medium 3.5'],
   'DeepSeek V4.1 Flash': ['DeepSeek V4 Pro', 'GPT-6 Astra', 'Gemini 3.8 Flash'],
@@ -83,6 +84,8 @@ export function modelSlug(id: string) {
   if (/^(?:fw-)?glm-5-3-flash$/.test(normalized)) return 'glm-5-3-flash';
   // Published id is gpt-6.1-terra. Also accept an openai- prefixed alias.
   if (/^(?:openai-)?gpt-6-1-terra$/.test(normalized)) return 'gpt-6-1-terra';
+  // Published id is claude-fable-5-2. Also accept an anthropic- prefixed alias.
+  if (/^(?:anthropic-)?claude-fable-5-2$/.test(normalized)) return 'claude-fable-5-2';
   return normalized;
 }
 
