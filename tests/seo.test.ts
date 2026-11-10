@@ -79,6 +79,25 @@ test('GPT-6.1 Terra has its own page, description, rivals and sitemap video entr
  assert.match(gallery,/The 9 Nov 2026 update adds/);assert.match(gallery,/Claude Fable 5\.2/);assert.doesNotMatch(gallery,/update adds[^<]*\d+ models/);
 });
 
- test('Claude Fable 5.2 has a playable canonical page and a video sitemap entry',()=>{
- const model=c.models.find(m=>m.id==='claude-fable-5-2')!;assert.ok(model.video);assert.equal(modelSlug(model.id),'claude-fable-5-2');const seo=pageSeo(c,'model/'+model.id);assert.equal(seo.canonical,siteOrigin+'/animations/claude-fable-5-2/');const block=siteMap(c).split('<url>').find(p=>p.includes('/animations/claude-fable-5-2/'));assert.ok(block);assert.match(block!,/<video:video>/);
+test('Claude Fable 5.2 has its own page, description, rivals and sitemap video entry',()=>{
+ const fable=c.models.find(model=>model.id==='claude-fable-5-2')!,prior=c.models.find(model=>model.id==='claude-fable-5-1')!,ready=publishedModels(c.models);
+ assert.equal(fable.name,'Claude Fable 5.2');assert.equal(modelSlug(fable.id),'claude-fable-5-2');assert.equal(modelSlug('claude-fable-5.1'),'claude-fable-5-1');
+ for(const id of ['claude-fable-5.2','Claude-Fable-5.2','anthropic.claude-fable-5.2'])assert.equal(modelSlug(id),'claude-fable-5-2');
+ assert.notEqual(modelPath(fable),modelPath(prior));
+ const seo=pageSeo(c,'model/'+fable.id);assert.equal(seo.valid,true);assert.equal(seo.canonical,siteOrigin+'/animations/claude-fable-5-2/');
+ assert.equal(seo.title,'Claude Fable 5.2 Benchmark: Coding Test & Animation | PomBench');assert.ok(seo.title.length<=65);assert.ok(seo.description.length<=160);
+ assert.match(seo.description,/59,124 output tokens/);assert.match(seo.description,/known API cost \$2\.3915/);assert.match(seo.description,/Compare Claude Fable 5\.2 vs Claude Fable 5\.1/);
+ assert.doesNotMatch(seo.title,/\d+\s+(models|LLMs)/);assert.doesNotMatch(seo.description,/\d+\s+(models|LLMs)/);
+ const body=modelDescription(fable,c).join(' ');assert.match(body,/59,124 output tokens/);assert.match(body,/\$2\.3915/);assert.match(body,/rank \d+ of \d+/);
+ assert.deepEqual(rivalsFor(fable,ready).map(model=>model.name),['Claude Fable 5.1','Claude Opus 5.5','GPT-6.1 Terra']);
+ assert.equal(rivalsFor(prior,ready)[0].name,'Claude Fable 5.2');
+ assert.equal(modelTimestamp(fable,c),c.publishedAt);
+ const graph=seo.structuredData['@graph'] as {['@type']:string;contentUrl?:string;uploadDate?:string}[];
+ const video=graph.find(item=>item['@type']==='VideoObject');
+ assert.equal(video?.contentUrl,siteOrigin+'/results/claude-fable-5-2/animation.mp4');assert.equal(video?.uploadDate,c.publishedAt);
+ const block=siteMap(c).split('<url>').find(part=>part.includes('/animations/claude-fable-5-2/'));
+ assert.ok(block);assert.match(block!,/<video:video>/);assert.match(block!,/<video:content_loc>https:\/\/pombench.com\/results\/claude-fable-5-2\/animation\.mp4<\/video:content_loc>/);assert.ok(block!.includes('<lastmod>'+c.publishedAt+'</lastmod>'));
+ const other=modelEditorial(prior,c);assert.match(other.split('id="latest"')[1],/href="\/animations\/claude-fable-5-2\/"/);assert.match(footerInner(c),/href="\/animations\/claude-fable-5-2\/"/);
+ const home=pageSeo(c,'gallery');assert.doesNotMatch(home.title,/\d/);assert.doesNotMatch(home.description,/\d+\s+(models|LLMs)/i);
+ for(const model of ready){const page=pageSeo(c,'model/'+model.id);assert.ok(page.title.length<=65,model.id);assert.ok(page.description.length<=160,model.id);assert.equal(page.canonical,siteOrigin+modelPath(model));assert.doesNotMatch(page.title,/\d+\s+(models|LLMs)/);}
 });
