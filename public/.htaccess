@@ -90,6 +90,8 @@ RewriteCond %{REQUEST_URI} !^/animations/gemini-3-5-flash-lite/$
 RewriteRule ^(?:animations|models)/gemini[.-]3[.-]5[.-]flash[.-]lite/?$ https://pombench.com/animations/gemini-3-5-flash-lite/ [R=301,NC,L]
 RewriteCond %{REQUEST_URI} !^/animations/gemini-3-8-flash/$
 RewriteRule ^(?:animations|models)/gemini[.-]3[.-]8[.-]flash/?$ https://pombench.com/animations/gemini-3-8-flash/ [R=301,NC,L]
+RewriteCond %{REQUEST_URI} !^/animations/gemini-4-carbon/$
+RewriteRule ^(?:animations|models)/(?:google[.-])?gemini[.-]4[.-]carbon/?$ https://pombench.com/animations/gemini-4-carbon/ [R=301,NC,L]
 RewriteCond %{REQUEST_URI} !^/animations/gemini-4-argon/$
 RewriteRule ^(?:animations|models)/gemini[.-]4[.-]argon/?$ https://pombench.com/animations/gemini-4-argon/ [R=301,NC,L]
 RewriteCond %{REQUEST_URI} !^/animations/grok-4-7/$

@@ -69,7 +69,7 @@ test('GPT-6.1 Terra has its own page, description, rivals and sitemap video entr
  assert.match(seo.description,/6,428 output tokens/);assert.match(seo.description,/known API cost \$0\.0347/);assert.match(seo.description,/Compare GPT-6\.1 Terra vs GPT-6\.1 Sol/);
  assert.doesNotMatch(seo.title,/\d+\s+(models|LLMs)/);assert.doesNotMatch(seo.description,/\d+\s+(models|LLMs)/);
  const body=modelDescription(terra,c).join(' ');assert.match(body,/6,428 output tokens/);assert.match(body,/\$0\.0347/);assert.match(body,/rank \d+ of \d+/);
- assert.deepEqual(rivalsFor(terra,ready).map(model=>model.name),['GPT-6.1 Sol','GPT-5.6 Terra','Claude Opus 5.5']);
+ assert.deepEqual(rivalsFor(terra,ready).map(model=>model.name),['GPT-6.1 Sol','GPT-5.6 Terra','Gemini 4 Carbon']);
  assert.equal(rivalsFor(sol,ready)[0].name,'GPT-6.1 Terra');assert.equal(rivalsFor(older,ready)[0].name,'GPT-6.1 Terra');
  assert.equal(modelTimestamp(terra,c),c.publishedAt);
  const xml=siteMap(c),block=xml.split('<url>').find(part=>part.includes('/animations/gpt-6-1-terra/'));
@@ -89,7 +89,7 @@ test('Claude Fable 5.2 has its own page, description, rivals and sitemap video e
  assert.match(seo.description,/59,124 output tokens/);assert.match(seo.description,/known API cost \$2\.3915/);assert.match(seo.description,/Compare Claude Fable 5\.2 vs Claude Fable 5\.1/);
  assert.doesNotMatch(seo.title,/\d+\s+(models|LLMs)/);assert.doesNotMatch(seo.description,/\d+\s+(models|LLMs)/);
  const body=modelDescription(fable,c).join(' ');assert.match(body,/59,124 output tokens/);assert.match(body,/\$2\.3915/);assert.match(body,/rank \d+ of \d+/);
- assert.deepEqual(rivalsFor(fable,ready).map(model=>model.name),['Claude Fable 5.1','Claude Opus 5.5','GPT-6.1 Terra']);
+ assert.deepEqual(rivalsFor(fable,ready).map(model=>model.name),['Claude Fable 5.1','Claude Opus 5.5','Gemini 4 Carbon']);
  assert.equal(rivalsFor(prior,ready)[0].name,'Claude Fable 5.2');
  assert.equal(modelTimestamp(fable,c),c.publishedAt);
  const graph=seo.structuredData['@graph'] as {['@type']:string;contentUrl?:string;uploadDate?:string}[];
@@ -102,4 +102,24 @@ test('Claude Fable 5.2 has its own page, description, rivals and sitemap video e
  for(const model of ready){const page=pageSeo(c,'model/'+model.id);assert.ok(page.title.length<=65,model.id);assert.ok(page.description.length<=160,model.id);assert.equal(page.canonical,siteOrigin+modelPath(model));assert.doesNotMatch(page.title,/\d+\s+(models|LLMs)/);}
 });
 
- test('Gemini 4 Carbon has a playable canonical page and video sitemap entry',()=>{const model=c.models.find(m=>m.id==='gemini-4-carbon')!;assert.ok(model.video);const seo=pageSeo(c,'model/'+model.id);assert.equal(seo.canonical,siteOrigin+'/animations/gemini-4-carbon/');const block=siteMap(c).split('<url>').find(p=>p.includes('/animations/gemini-4-carbon/'));assert.ok(block);assert.match(block!,/<video:video>/);});
+test('Gemini 4 Carbon has its own page, description, rivals and sitemap video entry',()=>{
+ const carbon=c.models.find(model=>model.id==='gemini-4-carbon')!,argon=c.models.find(model=>model.id==='gemini-4-argon')!,ready=publishedModels(c.models);
+ assert.equal(carbon.name,'Gemini 4 Carbon');assert.equal(modelSlug(carbon.id),'gemini-4-carbon');assert.notEqual(modelPath(carbon),modelPath(argon));
+ for(const id of ['gemini-4-carbon','Gemini-4-Carbon','google.gemini-4-carbon'])assert.equal(modelSlug(id),'gemini-4-carbon');
+ const seo=pageSeo(c,'model/'+carbon.id);assert.equal(seo.valid,true);assert.equal(seo.canonical,siteOrigin+'/animations/gemini-4-carbon/');
+ assert.equal(seo.title,'Gemini 4 Carbon Benchmark: Coding Test & Animation | PomBench');assert.ok(seo.title.length<=65);assert.ok(seo.description.length<=160);
+ assert.match(seo.description,/100,724 output tokens/);assert.match(seo.description,/known API cost \$1\.2874/);assert.match(seo.description,/Compare Gemini 4 Carbon vs Gemini 4 Argon/);
+ assert.doesNotMatch(seo.title,/\d+\s+(models|LLMs)/);assert.doesNotMatch(seo.description,/\d+\s+(models|LLMs)/);
+ const body=modelDescription(carbon,c).join(' ');assert.match(body,/100,724 output tokens/);assert.match(body,/\$1\.2874/);assert.match(body,/rank \d+ of \d+/);
+ assert.deepEqual(rivalsFor(carbon,ready).map(model=>model.name),['Gemini 4 Argon','Claude Fable 5.2','GPT-6.1 Terra']);
+ assert.equal(rivalsFor(argon,ready)[0].name,'Gemini 4 Carbon');
+ assert.equal(modelTimestamp(carbon,c),c.publishedAt);
+ const graph=seo.structuredData['@graph'] as {['@type']:string;contentUrl?:string;uploadDate?:string}[];
+ const video=graph.find(item=>item['@type']==='VideoObject');
+ assert.equal(video?.contentUrl,siteOrigin+'/results/gemini-4-carbon/animation.mp4');assert.equal(video?.uploadDate,c.publishedAt);
+ const block=siteMap(c).split('<url>').find(part=>part.includes('/animations/gemini-4-carbon/'));
+ assert.ok(block);assert.match(block!,/<video:video>/);assert.match(block!,/<video:content_loc>https:\/\/pombench.com\/results\/gemini-4-carbon\/animation\.mp4<\/video:content_loc>/);assert.ok(block!.includes('<lastmod>'+c.publishedAt+'</lastmod>'));
+ const other=modelEditorial(argon,c);assert.match(other.split('id="latest"')[1],/href="\/animations\/gemini-4-carbon\/"/);assert.match(footerInner(c),/href="\/animations\/gemini-4-carbon\/"/);
+ const home=pageSeo(c,'gallery');assert.doesNotMatch(home.title,/\d/);assert.doesNotMatch(home.description,/\d+\s+(models|LLMs)/i);
+ for(const model of ready){const page=pageSeo(c,'model/'+model.id);assert.ok(page.title.length<=65,model.id);assert.ok(page.description.length<=160,model.id);assert.equal(page.canonical,siteOrigin+modelPath(model));assert.doesNotMatch(page.title,/\d+\s+(models|LLMs)/);}
+});
