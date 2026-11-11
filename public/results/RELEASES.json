@@ -247,6 +247,10 @@
     "claude-fable-5-2": {
       "date": "2026-11-09",
       "source": "https://platform.claude.com/docs/en/models/fable-5-2/overview"
+    },
+    "gemini-4-carbon": {
+      "date": "2026-11-10",
+      "source": "https://ai.google.dev/gemini-api/docs/models"
     }
   }
 }

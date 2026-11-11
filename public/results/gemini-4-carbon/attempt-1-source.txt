@@ -1,0 +1,1750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PomBench — The puddle, the Pomeranian and the bone</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 960px;
+    height: 540px;
+    overflow: hidden;
+    background: #000;
+  }
+  #stage {
+    display: block;
+    width: 960px;
+    height: 540px;
+  }
+</style>
+</head>
+<body>
+<canvas id="stage" width="960" height="540"></canvas>
+<script>
+(function() {
+  "use strict";
+
+  const canvas = document.getElementById("stage");
+  const gl = canvas.getContext("webgl", {
+    alpha: false,
+    antialias: true,
+    depth: true,
+    stencil: false,
+    preserveDrawingBuffer: true
+  });
+
+  if (!gl) {
+    const ctx = canvas.getContext("2d");
+    window.renderFrame = function() {
+      if (ctx) {
+        ctx.fillStyle = "#486";
+        ctx.fillRect(0, 0, 960, 540);
+      }
+    };
+    window.renderFrame(0);
+    return;
+  }
+
+  gl.getExtension("OES_standard_derivatives");
+
+  // --- Math Helpers ---
+  function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function smoothstep(e0, e1, x) {
+    const t = clamp((x - e0) / (e1 - e0), 0, 1);
+    return t * t * (3 - 2 * t);
+  }
+  function smootherstep(e0, e1, x) {
+    const t = clamp((x - e0) / (e1 - e0), 0, 1);
+    return t * t * t * (t * (t * 6 - 15) + 10);
+  }
+
+  function vec3(x, y, z) { return [x, y, z]; }
+  function vAdd(a, b) { return [a[0]+b[0], a[1]+b[1], a[2]+b[2]]; }
+  function vSub(a, b) { return [a[0]-b[0], a[1]-b[1], a[2]-b[2]]; }
+  function vScale(a, s) { return [a[0]*s, a[1]*s, a[2]*s]; }
+  function vDot(a, b) { return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]; }
+  function vCross(a, b) {
+    return [
+      a[1]*b[2] - a[2]*b[1],
+      a[2]*b[0] - a[0]*b[2],
+      a[0]*b[1] - a[1]*b[0]
+    ];
+  }
+  function vLen(a) { return Math.hypot(a[0], a[1], a[2]); }
+  function vNorm(a) {
+    const l = vLen(a) || 1;
+    return [a[0]/l, a[1]/l, a[2]/l];
+  }
+  function vLerp(a, b, t) {
+    return [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
+  }
+
+  function mat4Identity() {
+    const m = new Float32Array(16);
+    m[0] = m[5] = m[10] = m[15] = 1;
+    return m;
+  }
+  function mat4Mul(a, b) {
+    const out = new Float32Array(16);
+    for (let c = 0; c < 4; c++) {
+      for (let r = 0; r < 4; r++) {
+        out[c*4 + r] =
+          a[0*4 + r] * b[c*4 + 0] +
+          a[1*4 + r] * b[c*4 + 1] +
+          a[2*4 + r] * b[c*4 + 2] +
+          a[3*4 + r] * b[c*4 + 3];
+      }
+    }
+    return out;
+  }
+  function mat4Perspective(fovY, aspect, near, far) {
+    const f = 1.0 / Math.tan(fovY * 0.5);
+    const nf = 1.0 / (near - far);
+    const out = new Float32Array(16);
+    out[0] = f / aspect;
+    out[5] = f;
+    out[10] = (far + near) * nf;
+    out[11] = -1;
+    out[14] = (2 * far * near) * nf;
+    return out;
+  }
+  function mat4Ortho(left, right, bottom, top, near, far) {
+    const out = new Float32Array(16);
+    const lr = 1 / (left - right);
+    const bt = 1 / (bottom - top);
+    const nf = 1 / (near - far);
+    out[0] = -2 * lr;
+    out[5] = -2 * bt;
+    out[10] = 2 * nf;
+    out[12] = (left + right) * lr;
+    out[13] = (top + bottom) * bt;
+    out[14] = (far + near) * nf;
+    out[15] = 1;
+    return out;
+  }
+  function mat4LookAt(eye, center, up) {
+    const z = vNorm(vSub(eye, center));
+    const x = vNorm(vCross(up, z));
+    const y = vCross(z, x);
+    const out = new Float32Array(16);
+    out[0] = x[0]; out[4] = x[1]; out[8]  = x[2]; out[12] = -vDot(x, eye);
+    out[1] = y[0]; out[5] = y[1]; out[9]  = y[2]; out[13] = -vDot(y, eye);
+    out[2] = z[0]; out[6] = z[1]; out[10] = z[2]; out[14] = -vDot(z, eye);
+    out[3] = 0;    out[7] = 0;    out[11] = 0;    out[15] = 1;
+    return out;
+  }
+  function mat4Translate(tx, ty, tz) {
+    const m = mat4Identity();
+    m[12] = tx; m[13] = ty; m[14] = tz;
+    return m;
+  }
+  function mat4Scale(sx, sy, sz) {
+    const m = mat4Identity();
+    m[0] = sx; m[5] = sy; m[10] = sz;
+    return m;
+  }
+  function mat4RotX(a) {
+    const m = mat4Identity();
+    const c = Math.cos(a), s = Math.sin(a);
+    m[5] = c; m[9] = -s;
+    m[6] = s; m[10] = c;
+    return m;
+  }
+  function mat4RotY(a) {
+    const m = mat4Identity();
+    const c = Math.cos(a), s = Math.sin(a);
+    m[0] = c;  m[8] = s;
+    m[2] = -s; m[10] = c;
+    return m;
+  }
+  function mat4RotZ(a) {
+    const m = mat4Identity();
+    const c = Math.cos(a), s = Math.sin(a);
+    m[0] = c; m[4] = -s;
+    m[1] = s; m[5] = c;
+    return m;
+  }
+  function mat4FromBasisPos(right, up, fwd, pos) {
+    const m = new Float32Array(16);
+    m[0] = right[0]; m[1] = right[1]; m[2] = right[2]; m[3] = 0;
+    m[4] = up[0];    m[5] = up[1];    m[6] = up[2];    m[7] = 0;
+    m[8] = fwd[0];   m[9] = fwd[1];   m[10]= fwd[2];   m[11]= 0;
+    m[12]= pos[0];   m[13]= pos[1];   m[14]= pos[2];   m[15]= 1;
+    return m;
+  }
+  function transformPoint(m, p) {
+    return [
+      m[0]*p[0] + m[4]*p[1] + m[8]*p[2] + m[12],
+      m[1]*p[0] + m[5]*p[1] + m[9]*p[2] + m[13],
+      m[2]*p[0] + m[6]*p[1] + m[10]*p[2] + m[14]
+    ];
+  }
+  function transformDir(m, d) {
+    return [
+      m[0]*d[0] + m[4]*d[1] + m[8]*d[2],
+      m[1]*d[0] + m[5]*d[1] + m[9]*d[2],
+      m[2]*d[0] + m[6]*d[1] + m[10]*d[2]
+    ];
+  }
+
+  // Deterministic PRNG
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return function() {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // --- Shaders ---
+  function compileShader(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+      throw new Error(gl.getShaderInfoLog(s));
+    }
+    return s;
+  }
+  function createProgram(vsSrc, fsSrc) {
+    const p = gl.createProgram();
+    gl.attachShader(p, compileShader(gl.VERTEX_SHADER, vsSrc));
+    gl.attachShader(p, compileShader(gl.FRAGMENT_SHADER, fsSrc));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(p));
+    }
+    return p;
+  }
+
+  const shadowVS = `
+    attribute vec3 aPos;
+    uniform mat4 uLightVP;
+    uniform mat4 uModel;
+    varying float vDepth;
+    void main() {
+      vec4 wp = uModel * vec4(aPos, 1.0);
+      vec4 cp = uLightVP * wp;
+      gl_Position = cp;
+      vDepth = cp.z / cp.w * 0.5 + 0.5;
+    }
+  `;
+  const shadowFS = `
+    precision highp float;
+    varying float vDepth;
+    vec4 packDepth(float depth) {
+      const vec4 bitShift = vec4(256.0*256.0*256.0, 256.0*256.0, 256.0, 1.0);
+      const vec4 bitMask = vec4(0.0, 1.0/256.0, 1.0/256.0, 1.0/256.0);
+      vec4 res = fract(depth * bitShift);
+      res -= res.xxyz * bitMask;
+      return res;
+    }
+    void main() {
+      gl_FragColor = packDepth(clamp(vDepth, 0.0, 1.0));
+    }
+  `;
+
+  const mainVS = `
+    attribute vec3 aPos;
+    attribute vec3 aNorm;
+    attribute vec3 aColor;
+    attribute vec2 aUV;
+
+    uniform mat4 uVP;
+    uniform mat4 uModel;
+    uniform mat4 uLightVP;
+    uniform float uFlipY;
+    uniform float uShellOffset;
+
+    varying vec3 vWorldPos;
+    varying vec3 vLocalPos;
+    varying vec3 vWorldNorm;
+    varying vec3 vColor;
+    varying vec2 vUV;
+    varying vec4 vLightClip;
+
+    void main() {
+      vec3 displaced = aPos + aNorm * uShellOffset;
+      vec4 wp = uModel * vec4(displaced, 1.0);
+      if (uFlipY > 0.5) {
+        wp.y = -wp.y + 0.008;
+      }
+      vWorldPos = wp.xyz;
+      vLocalPos = aPos;
+
+      mat3 nMat = mat3(uModel[0].xyz, uModel[1].xyz, uModel[2].xyz);
+      vec3 wn = normalize(nMat * aNorm);
+      if (uFlipY > 0.5) {
+        wn.y = -wn.y;
+      }
+      vWorldNorm = wn;
+      vColor = aColor;
+      vUV = aUV;
+      vLightClip = uLightVP * vec4(wp.xyz, 1.0);
+      gl_Position = uVP * wp;
+    }
+  `;
+
+  const mainFS = `
+    #extension GL_OES_standard_derivatives : enable
+    precision highp float;
+
+    varying vec3 vWorldPos;
+    varying vec3 vLocalPos;
+    varying vec3 vWorldNorm;
+    varying vec3 vColor;
+    varying vec2 vUV;
+    varying vec4 vLightClip;
+
+    uniform vec3 uCamPos;
+    uniform vec3 uLightDir;
+    uniform sampler2D uShadowMap;
+    uniform int uMatType;
+    // 0 = standard matte/fur solid, 1 = fur shell, 2 = ground/yard, 3 = wood, 4 = eye/glossy, 5 = puddle water, 6 = sky/backdrop, 7 = bone, 8 = dark interior
+    uniform float uShellLayer;
+    uniform float uClipRefl;
+    uniform vec4 uHouseBox; // minX, maxX, minZ, maxZ for interior ambient occlusion
+    uniform vec4 uPuddleData; // cx, cz, rx, rz
+    uniform sampler2D uReflTex;
+    uniform vec2 uScreenSize;
+    uniform float uTime;
+
+    float unpackDepth(vec4 rgba) {
+      const vec4 bitShift = vec4(1.0/(256.0*256.0*256.0), 1.0/(256.0*256.0), 1.0/256.0, 1.0);
+      return dot(rgba, bitShift);
+    }
+
+    float hash12(vec2 p) {
+      vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+      p3 += dot(p3, p3.yzx + 33.33);
+      return fract((p3.x + p3.y) * p3.z);
+    }
+    float hash13(vec3 p3) {
+      p3 = fract(p3 * 0.1031);
+      p3 += dot(p3, p3.zyx + 31.32);
+      return fract((p3.x + p3.y) * p3.z);
+    }
+
+    float noise2(vec2 p) {
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+      f = f * f * (3.0 - 2.0 * f);
+      float a = hash12(i);
+      float b = hash12(i + vec2(1.0, 0.0));
+      float c = hash12(i + vec2(0.0, 1.0));
+      float d = hash12(i + vec2(1.0, 1.0));
+      return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+    }
+
+    float noise3(vec3 p) {
+      vec3 i = floor(p);
+      vec3 f = fract(p);
+      f = f * f * (3.0 - 2.0 * f);
+      float n000 = hash13(i + vec3(0,0,0));
+      float n100 = hash13(i + vec3(1,0,0));
+      float n010 = hash13(i + vec3(0,1,0));
+      float n110 = hash13(i + vec3(1,1,0));
+      float n001 = hash13(i + vec3(0,0,1));
+      float n101 = hash13(i + vec3(1,0,1));
+      float n011 = hash13(i + vec3(0,1,1));
+      float n111 = hash13(i + vec3(1,1,1));
+      return mix(
+        mix(mix(n000, n100, f.x), mix(n010, n110, f.x), f.y),
+        mix(mix(n001, n101, f.x), mix(n011, n111, f.x), f.y),
+        f.z
+      );
+    }
+
+    float puddleSDF(vec2 xz) {
+      vec2 d = (xz - uPuddleData.xy) / uPuddleData.zw;
+      float ang = atan(d.y, d.x);
+      float r = length(d);
+      float wobble = 0.09 * sin(ang * 3.0 + 0.7) + 0.06 * cos(ang * 5.0 - 1.2) + 0.04 * sin(ang * 2.0 + 2.1);
+      return r - (1.0 + wobble);
+    }
+
+    float getShadow(vec4 lightClip, vec3 N, vec3 L) {
+      vec3 proj = lightClip.xyz / lightClip.w;
+      proj = proj * 0.5 + 0.5;
+      if (proj.x < 0.01 || proj.x > 0.99 || proj.y < 0.01 || proj.y > 0.99 || proj.z > 0.999) {
+        return 1.0;
+      }
+      float bias = max(0.0022 * (1.0 - dot(N, L)), 0.0009);
+      float shadow = 0.0;
+      float texel = 1.0 / 1024.0;
+      for (int x = -1; x <= 1; x++) {
+        for (int y = -1; y <= 1; y++) {
+          float d = unpackDepth(texture2D(uShadowMap, proj.xy + vec2(float(x), float(y)) * texel));
+          shadow += (proj.z - bias > d) ? 0.0 : 1.0;
+        }
+      }
+      return shadow / 9.0;
+    }
+
+    float houseOcclusion(vec3 p) {
+      // Darken inside the doghouse volume naturally
+      float ix = smoothstep(uHouseBox.x - 0.1, uHouseBox.x + 0.22, p.x) *
+                 (1.0 - smoothstep(uHouseBox.y - 0.22, uHouseBox.y + 0.1, p.x));
+      float iz = smoothstep(uHouseBox.z - 0.1, uHouseBox.z + 0.25, p.z) *
+                 (1.0 - smoothstep(uHouseBox.w - 0.18, uHouseBox.w + 0.1, p.z));
+      float iy = 1.0 - smoothstep(0.95, 1.35, p.y);
+      // Deeper toward back of house (smaller x since house is on right facing left/camera-left)
+      float depthFactor = smoothstep(uHouseBox.x, uHouseBox.y, p.x);
+      return clamp(1.0 - ix * iz * iy * (0.42 + 0.40 * depthFactor), 0.20, 1.0);
+    }
+
+    void main() {
+      if (uClipRefl > 0.5 && vWorldPos.y > 0.015) {
+        discard;
+      }
+
+      if (uMatType == 6) {
+        // Sky dome / distant backdrop
+        float h = clamp(vUV.y, 0.0, 1.0);
+        vec3 horizon = vec3(0.79, 0.86, 0.92);
+        vec3 zenith  = vec3(0.38, 0.58, 0.84);
+        vec3 col = mix(horizon, zenith, pow(h, 0.65));
+        // Soft clouds
+        float cl = noise2(vec2(vUV.x * 9.0 + 1.3, vUV.y * 5.0)) * 0.6 +
+                   noise2(vec2(vUV.x * 19.0 - 0.5, vUV.y * 11.0)) * 0.4;
+        float cMask = smoothstep(0.54, 0.82, cl) * smoothstep(0.05, 0.35, h) * (1.0 - smoothstep(0.75, 0.98, h));
+        col = mix(col, vec3(0.97, 0.97, 0.99), cMask * 0.55);
+        // Sun warm glow
+        vec3 V = normalize(vWorldPos - uCamPos);
+        float sunDot = max(dot(V, uLightDir), 0.0);
+        col += vec3(1.0, 0.90, 0.72) * pow(sunDot, 10.0) * 0.22;
+        gl_FragColor = vec4(col, 1.0);
+        return;
+      }
+
+      vec3 N = normalize(vWorldNorm);
+      vec3 V = normalize(uCamPos - vWorldPos);
+      vec3 L = normalize(uLightDir);
+
+      float shadow = getShadow(vLightClip, N, L);
+      float houseAO = houseOcclusion(vWorldPos);
+
+      vec3 baseCol = vColor;
+      float specStrength = 0.08;
+      float shininess = 18.0;
+      float wrap = 0.25;
+
+      if (uMatType == 1) {
+        // Volumetric Fur Shell
+        float n1 = noise3(vLocalPos * 58.0);
+        float n2 = noise3(vLocalPos * 115.0 + vec3(7.1, 3.3, 1.9));
+        float strand = n1 * 0.55 + n2 * 0.45;
+        float radiusThresh = mix(0.16, 0.78, uShellLayer);
+        if (strand < radiusThresh) {
+          discard;
+        }
+        // Darken roots, brighten tips slightly
+        float rootAO = mix(0.68, 1.08, uShellLayer);
+        baseCol *= rootAO * (0.90 + 0.20 * strand);
+        wrap = 0.48;
+        specStrength = 0.05;
+      } else if (uMatType == 0) {
+        // Core dog fur / matte organic
+        float furTex = noise3(vLocalPos * 62.0) * 0.5 + noise3(vLocalPos * 125.0) * 0.5;
+        baseCol *= (0.86 + 0.24 * furTex);
+        wrap = 0.42;
+        specStrength = 0.06;
+      } else if (uMatType == 2) {
+        // Ground yard: lush grass + worn dirt path + puddle basin rim
+        float pd = puddleSDF(vWorldPos.xz);
+        float nLarge = noise2(vWorldPos.xz * 1.4);
+        float nMed   = noise2(vWorldPos.xz * 6.5);
+        float nFine  = noise2(vWorldPos.xz * 28.0);
+        float blades = noise2(vec2(vWorldPos.x * 45.0, vWorldPos.z * 22.0));
+
+        vec3 grassA = vec3(0.27, 0.47, 0.18);
+        vec3 grassB = vec3(0.38, 0.56, 0.22);
+        vec3 clover = vec3(0.21, 0.39, 0.15);
+        vec3 grassCol = mix(grassA, grassB, nLarge);
+        grassCol = mix(grassCol, clover, smoothstep(0.55, 0.8, nMed) * 0.45);
+        grassCol *= (0.86 + 0.26 * blades);
+
+        // Dirt path leading toward doghouse doorway
+        float pathLine = abs(vWorldPos.z - (-0.18 + 0.05 * sin(vWorldPos.x * 0.7)));
+        float pathMask = 1.0 - smoothstep(0.42, 0.98, pathLine + (nMed - 0.5) * 0.28);
+        pathMask *= smoothstep(-3.3, -2.1, vWorldPos.x) * (1.0 - smoothstep(2.4, 3.1, vWorldPos.x));
+
+        vec3 dryDirt = mix(vec3(0.55, 0.45, 0.34), vec3(0.47, 0.38, 0.28), nFine);
+        // Tiny pebbles in dirt
+        float peb = smoothstep(0.78, 0.86, noise2(vWorldPos.xz * 36.0));
+        dryDirt = mix(dryDirt, vec3(0.64, 0.60, 0.55), peb * 0.45);
+
+        baseCol = mix(grassCol, dryDirt, pathMask * 0.82);
+
+        // Wet soil bank around puddle
+        float wetRim = 1.0 - smoothstep(-0.04, 0.22, pd);
+        vec3 wetMud = mix(vec3(0.24, 0.19, 0.14), vec3(0.18, 0.14, 0.10), nFine);
+        baseCol = mix(baseCol, wetMud, wetRim * 0.92);
+        specStrength = mix(0.03, 0.25, wetRim);
+        shininess = mix(10.0, 42.0, wetRim);
+      } else if (uMatType == 3) {
+        // Wood planks (doghouse, fence)
+        float grain = noise2(vec2(vLocalPos.x * 4.0 + vLocalPos.z * 4.0, vLocalPos.y * 26.0));
+        float plank = abs(fract(vUV.y * 6.0) - 0.5);
+        float seam = smoothstep(0.46, 0.50, plank);
+        baseCol *= (0.88 + 0.20 * grain) * (1.0 - 0.28 * seam);
+        specStrength = 0.10;
+        shininess = 22.0;
+      } else if (uMatType == 4) {
+        // Glossy eye / wet nose
+        specStrength = 0.85;
+        shininess = 96.0;
+        wrap = 0.1;
+      } else if (uMatType == 7) {
+        // Bone: warm ivory / marrow tint in crevices
+        float bTex = noise3(vLocalPos * 25.0);
+        baseCol *= (0.94 + 0.10 * bTex);
+        specStrength = 0.22;
+        shininess = 32.0;
+        wrap = 0.30;
+      } else if (uMatType == 8) {
+        // Doghouse interior floor/walls
+        float grain = noise2(vWorldPos.xz * 12.0);
+        baseCol *= (0.85 + 0.22 * grain);
+        specStrength = 0.03;
+      } else if (uMatType == 5) {
+        // Puddle water surface with planar reflection!
+        float pd = puddleSDF(vWorldPos.xz);
+        if (pd > 0.0) {
+          discard;
+        }
+        float edgeAlpha = smoothstep(0.0, -0.065, pd);
+        float shallowFactor = smoothstep(-0.35, 0.0, pd);
+
+        // Subtle still-water micro-ripples
+        vec2 ruv = vWorldPos.xz * 8.0;
+        float r1 = sin(ruv.x * 2.1 + ruv.y * 1.7 + uTime * 1.1) * 0.0018;
+        float r2 = cos(ruv.x * 1.5 - ruv.y * 2.4 - uTime * 0.85) * 0.0018;
+        vec2 screenUV = gl_FragCoord.xy / uScreenSize;
+        vec2 reflUV = clamp(screenUV + vec2(r1, r2), vec2(0.002), vec2(0.998));
+        vec3 reflCol = texture2D(uReflTex, reflUV).rgb;
+
+        vec3 waterNorm = normalize(vec3(r1 * 8.0, 1.0, r2 * 8.0));
+        float fresnel = 0.24 + 0.72 * pow(1.0 - clamp(dot(waterNorm, V), 0.0, 1.0), 3.2);
+
+        // Muddy shallow bed beneath clear water
+        float bedNoise = noise2(vWorldPos.xz * 22.0);
+        vec3 bedCol = mix(vec3(0.16, 0.13, 0.09), vec3(0.24, 0.20, 0.15), bedNoise);
+        bedCol *= (0.45 + 0.55 * shadow);
+
+        vec3 waterCol = mix(bedCol, reflCol * vec3(0.93, 0.96, 1.0), clamp(fresnel + 0.32, 0.0, 0.94));
+        waterCol = mix(waterCol, bedCol * 1.15, shallowFactor * 0.38);
+
+        // Sun specular glint on water
+        vec3 H = normalize(L + V);
+        float spec = pow(max(dot(waterNorm, H), 0.0), 140.0) * shadow;
+        waterCol += vec3(1.0, 0.97, 0.90) * spec * 0.55;
+
+        // Subtle meniscus highlight right at water boundary
+        float rimLine = smoothstep(-0.045, -0.012, pd) * (1.0 - smoothstep(-0.012, 0.0, pd));
+        waterCol += vec3(0.12, 0.14, 0.16) * rimLine;
+
+        gl_FragColor = vec4(waterCol, edgeAlpha);
+        return;
+      }
+
+      // Direct + sky/ground hemisphere lighting
+      float diff = max((dot(N, L) + wrap) / (1.0 + wrap), 0.0);
+      vec3 sunCol = vec3(1.04, 0.97, 0.86);
+      vec3 skyAmb = vec3(0.42, 0.50, 0.62);
+      vec3 gndAmb = vec3(0.26, 0.24, 0.18);
+      float hemi = N.y * 0.5 + 0.5;
+      vec3 ambient = mix(gndAmb, skyAmb, hemi) * 0.68 * houseAO;
+
+      // Rim / subsurface scattering on fur
+      float rim = 0.0;
+      if (uMatType == 0 || uMatType == 1) {
+        float fres = pow(1.0 - max(dot(N, V), 0.0), 2.6);
+        float backLight = clamp(dot(-L, V) * 0.5 + 0.5, 0.0, 1.0);
+        rim = fres * (0.16 + 0.22 * backLight) * shadow;
+      }
+
+      vec3 H = normalize(L + V);
+      float spec = pow(max(dot(N, H), 0.0), shininess) * specStrength * shadow;
+
+      vec3 lit = baseCol * (ambient + sunCol * diff * shadow * 0.88) +
+                 vec3(1.0, 0.92, 0.78) * rim * baseCol +
+                 vec3(1.0, 0.98, 0.95) * spec;
+
+      // Subtle atmospheric perspective in far background
+      float dist = length(vWorldPos - uCamPos);
+      float fog = smoothstep(14.0, 34.0, dist);
+      lit = mix(lit, vec3(0.76, 0.84, 0.90), fog * 0.65);
+
+      // Gentle filmic tone curve & gamma
+      lit = lit / (1.0 + lit * 0.18);
+      lit = pow(clamp(lit, 0.0, 1.0), vec3(0.92));
+
+      gl_FragColor = vec4(lit, 1.0);
+    }
+  `;
+
+  const shadowProg = createProgram(shadowVS, shadowFS);
+  const mainProg = createProgram(mainVS, mainFS);
+
+  const shadowLoc = {
+    aPos: gl.getAttribLocation(shadowProg, "aPos"),
+    uLightVP: gl.getUniformLocation(shadowProg, "uLightVP"),
+    uModel: gl.getUniformLocation(shadowProg, "uModel")
+  };
+
+  const mainLoc = {
+    aPos: gl.getAttribLocation(mainProg, "aPos"),
+    aNorm: gl.getAttribLocation(mainProg, "aNorm"),
+    aColor: gl.getAttribLocation(mainProg, "aColor"),
+    aUV: gl.getAttribLocation(mainProg, "aUV"),
+    uVP: gl.getUniformLocation(mainProg, "uVP"),
+    uModel: gl.getUniformLocation(mainProg, "uModel"),
+    uLightVP: gl.getUniformLocation(mainProg, "uLightVP"),
+    uFlipY: gl.getUniformLocation(mainProg, "uFlipY"),
+    uShellOffset: gl.getUniformLocation(mainProg, "uShellOffset"),
+    uCamPos: gl.getUniformLocation(mainProg, "uCamPos"),
+    uLightDir: gl.getUniformLocation(mainProg, "uLightDir"),
+    uShadowMap: gl.getUniformLocation(mainProg, "uShadowMap"),
+    uMatType: gl.getUniformLocation(mainProg, "uMatType"),
+    uShellLayer: gl.getUniformLocation(mainProg, "uShellLayer"),
+    uClipRefl: gl.getUniformLocation(mainProg, "uClipRefl"),
+    uHouseBox: gl.getUniformLocation(mainProg, "uHouseBox"),
+    uPuddleData: gl.getUniformLocation(mainProg, "uPuddleData"),
+    uReflTex: gl.getUniformLocation(mainProg, "uReflTex"),
+    uScreenSize: gl.getUniformLocation(mainProg, "uScreenSize"),
+    uTime: gl.getUniformLocation(mainProg, "uTime")
+  };
+
+  // --- Framebuffers (Shadow Map & Planar Water Reflection) ---
+  function createFBO(w, h) {
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+    const rb = gl.createRenderbuffer();
+    gl.bindRenderbuffer(gl.RENDERBUFFER, rb);
+    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, w, h);
+
+    const fbo = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rb);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    return { fbo, tex, w, h };
+  }
+
+  // Nearest filtering on packed RGBA shadow map prevents interpolation artifacts
+  const shadowFBO = createFBO(1024, 1024);
+  gl.bindTexture(gl.TEXTURE_2D, shadowFBO.tex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+  const reflFBO = createFBO(960, 540);
+
+  // --- Procedural Geometry Builder ---
+  class MeshBuilder {
+    constructor() {
+      this.verts = []; // x,y,z, nx,ny,nz, r,g,b, u,v (11 floats)
+      this.indices = [];
+    }
+    addVertex(p, n, c, uv) {
+      const idx = this.verts.length / 11;
+      this.verts.push(
+        p[0], p[1], p[2],
+        n[0], n[1], n[2],
+        c[0], c[1], c[2],
+        uv ? uv[0] : 0, uv ? uv[1] : 0
+      );
+      return idx;
+    }
+    addTri(i0, i1, i2) {
+      this.indices.push(i0, i1, i2);
+    }
+    addQuad(p0, p1, p2, p3, c0, c1, c2, c3, uvScaleX = 1, uvScaleY = 1) {
+      const e1 = vSub(p1, p0);
+      const e2 = vSub(p3, p0);
+      const n = vNorm(vCross(e1, e2));
+      const i0 = this.addVertex(p0, n, c0, [0, 0]);
+      const i1 = this.addVertex(p1, n, c1 || c0, [uvScaleX, 0]);
+      const i2 = this.addVertex(p2, n, c2 || c0, [uvScaleX, uvScaleY]);
+      const i3 = this.addVertex(p3, n, c3 || c0, [0, uvScaleY]);
+      this.addTri(i0, i1, i2);
+      this.addTri(i0, i2, i3);
+    }
+    addBox(cx, cy, cz, sx, sy, sz, col, topCol) {
+      const x0 = cx - sx*0.5, x1 = cx + sx*0.5;
+      const y0 = cy - sy*0.5, y1 = cy + sy*0.5;
+      const z0 = cz - sz*0.5, z1 = cz + sz*0.5;
+      const tc = topCol || col;
+      // Front (+Z)
+      this.addQuad([x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1], col, col, tc, tc, sx, sy);
+      // Back (-Z)
+      this.addQuad([x1,y0,z0],[x0,y0,z0],[x0,y1,z0],[x1,y1,z0], col, col, tc, tc, sx, sy);
+      // Right (+X)
+      this.addQuad([x1,y0,z1],[x1,y0,z0],[x1,y1,z0],[x1,y1,z1], col, col, tc, tc, sz, sy);
+      // Left (-X)
+      this.addQuad([x0,y0,z0],[x0,y0,z1],[x0,y1,z1],[x0,y1,z0], col, col, tc, tc, sz, sy);
+      // Top (+Y)
+      this.addQuad([x0,y1,z1],[x1,y1,z1],[x1,y1,z0],[x0,y1,z0], tc, tc, tc, tc, sx, sz);
+      // Bottom (-Y)
+      this.addQuad([x0,y0,z0],[x1,y0,z0],[x1,y0,z1],[x0,y0,z1], col, col, col, col, sx, sz);
+    }
+    addEllipsoid(cx, cy, cz, rx, ry, rz, latSegs, lonSegs, colorFn, deformFn) {
+      const baseIdx = this.verts.length / 11;
+      const posGrid = [];
+      for (let i = 0; i <= latSegs; i++) {
+        const v = i / latSegs;
+        const theta = v * Math.PI;
+        const st = Math.sin(theta), ct = Math.cos(theta);
+        for (let j = 0; j <= lonSegs; j++) {
+          const u = j / lonSegs;
+          const phi = u * Math.PI * 2;
+          const sp = Math.sin(phi), cp = Math.cos(phi);
+          let nx = st * cp;
+          let ny = ct;
+          let nz = st * sp;
+          let px = cx + nx * rx;
+          let py = cy + ny * ry;
+          let pz = cz + nz * rz;
+          if (deformFn) {
+            const d = deformFn(px, py, pz, nx, ny, nz, u, v);
+            px = d[0]; py = d[1]; pz = d[2];
+          }
+          posGrid.push([px, py, pz, nx, ny, nz, u, v]);
+        }
+      }
+      // Compute smooth normals via finite grid neighbors
+      const stride = lonSegs + 1;
+      for (let i = 0; i <= latSegs; i++) {
+        for (let j = 0; j <= lonSegs; j++) {
+          const cur = posGrid[i * stride + j];
+          const jPrev = j > 0 ? j - 1 : lonSegs - 1;
+          const jNext = j < lonSegs ? j + 1 : 1;
+          const iPrev = Math.max(0, i - 1);
+          const iNext = Math.min(latSegs, i + 1);
+          const pL = posGrid[i * stride + jPrev];
+          const pR = posGrid[i * stride + jNext];
+          const pU = posGrid[iPrev * stride + j];
+          const pD = posGrid[iNext * stride + j];
+          const tangU = vSub(pR, pL);
+          const tangV = vSub(pD, pU);
+          let n = vCross(tangV, tangU);
+          if (vLen(n) < 1e-6) {
+            n = [cur[3]/rx, cur[4]/ry, cur[5]/rz];
+          }
+          n = vNorm(n);
+          const col = colorFn ? colorFn(cur[0], cur[1], cur[2], n[0], n[1], n[2], cur[6], cur[7]) : [1,1,1];
+          this.addVertex([cur[0], cur[1], cur[2]], n, col, [cur[6], cur[7]]);
+        }
+      }
+      for (let i = 0; i < latSegs; i++) {
+        for (let j = 0; j < lonSegs; j++) {
+          const a = baseIdx + i * stride + j;
+          const b = a + 1;
+          const c = a + stride;
+          const d = c + 1;
+          this.addTri(a, c, b);
+          this.addTri(b, c, d);
+        }
+      }
+    }
+    addTube(rings, segs, colorFn) {
+      // rings: array of { c:[x,y,z], rx, rz, ry, up, right, col }
+      const baseIdx = this.verts.length / 11;
+      const pts = [];
+      for (let i = 0; i < rings.length; i++) {
+        const r = rings[i];
+        const v = i / (rings.length - 1);
+        for (let j = 0; j <= segs; j++) {
+          const u = j / segs;
+          const ang = u * Math.PI * 2;
+          const ca = Math.cos(ang), sa = Math.sin(ang);
+          const offset = vAdd(vScale(r.right, ca * r.rx), vScale(r.up, sa * r.ry));
+          const p = vAdd(r.c, offset);
+          const nGuess = vNorm(vAdd(vScale(r.right, ca / (r.rx || 1)), vScale(r.up, sa / (r.ry || 1))));
+          pts.push({ p, n: nGuess, u, v, rCol: r.col });
+        }
+      }
+      const stride = segs + 1;
+      for (let i = 0; i < rings.length; i++) {
+        for (let j = 0; j <= segs; j++) {
+          const item = pts[i * stride + j];
+          const jPrev = j > 0 ? j - 1 : segs - 1;
+          const jNext = j < segs ? j + 1 : 1;
+          const iPrev = Math.max(0, i - 1);
+          const iNext = Math.min(rings.length - 1, i + 1);
+          const tU = vSub(pts[i * stride + jNext].p, pts[i * stride + jPrev].p);
+          const tV = vSub(pts[iNext * stride + j].p, pts[iPrev * stride + j].p);
+          let n = vCross(tU, tV);
+          n = vLen(n) > 1e-6 ? vNorm(n) : item.n;
+          if (vDot(n, item.n) < 0) n = vScale(n, -1);
+          const col = colorFn ? colorFn(item.p, n, item.u, item.v) : (item.rCol || [1,1,1]);
+          this.addVertex(item.p, n, col, [item.u, item.v]);
+        }
+      }
+      for (let i = 0; i < rings.length - 1; i++) {
+        for (let j = 0; j < segs; j++) {
+          const a = baseIdx + i * stride + j;
+          const b = a + 1;
+          const c = a + stride;
+          const d = c + 1;
+          this.addTri(a, b, c);
+          this.addTri(b, d, c);
+        }
+      }
+    }
+    build() {
+      const vbo = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.verts), gl.STATIC_DRAW);
+
+      const ibo = gl.createBuffer();
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+      const useUint32 = this.verts.length / 11 > 65535;
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(this.indices), gl.STATIC_DRAW);
+      return { vbo, ibo, count: this.indices.length };
+    }
+  }
+
+  // --- Pomeranian Palette & Coat Shading ---
+  const COL_ORANGE_DEEP  = [0.76, 0.36, 0.11];
+  const COL_ORANGE_MID   = [0.87, 0.49, 0.18];
+  const COL_ORANGE_LIGHT = [0.94, 0.65, 0.34];
+  const COL_CREAM        = [0.97, 0.89, 0.76];
+  const COL_CREAM_BRIGHT = [0.99, 0.94, 0.86];
+  const COL_SABLE_TIP    = [0.45, 0.22, 0.08];
+  const COL_DARK_EYE     = [0.05, 0.04, 0.04];
+  const COL_NOSE         = [0.07, 0.06, 0.06];
+
+  function pomTorsoMesh() {
+    const mb = new MeshBuilder();
+    // Main compact Pomeranian body + pronounced chest/neck ruff (local +Z is forward, +Y is up)
+    // Compact cobby torso: z from -0.15 to +0.16
+    mb.addEllipsoid(0, 0.0, 0.0, 0.125, 0.12, 0.175, 22, 28,
+      (x, y, z, nx, ny, nz) => {
+        // Cream belly & chest bib, rich orange saddle
+        const belly = clamp((-y + 0.03) * 5.0, 0, 1);
+        const saddle = clamp((y - 0.02) * 5.0, 0, 1);
+        const frontBib = clamp((z - 0.07) * 6.0, 0, 1) * clamp((-y + 0.07) * 4.0, 0, 1);
+        let c = vLerp(COL_ORANGE_MID, COL_ORANGE_DEEP, saddle * 0.65);
+        c = vLerp(c, COL_CREAM, clamp(belly * 0.85 + frontBib * 0.75, 0, 1));
+        return c;
+      },
+      (x, y, z, nx, ny, nz, u, v) => {
+        // Sculpt ribcage fullness, slight tuck at waist, fluffy buttocks
+        const fluff = 1.0 + 0.045 * Math.sin(u * Math.PI * 14) * Math.sin(v * Math.PI * 9)
+                          + 0.03 * Math.cos(u * Math.PI * 22 + v * 12.0);
+        let sx = 1.0, sy = 1.0;
+        if (z < -0.04) {
+          // Slight hind tuck beneath, fluffy britches on sides
+          if (y < 0) sy *= 0.88;
+          sx *= 1.04;
+        }
+        if (z > 0.05) {
+          // Broad chest
+          sx *= 1.08;
+          sy *= 1.06;
+        }
+        return [x * sx * fluff, y * sy * fluff, z * fluff];
+      }
+    );
+
+    // Pronounced Pomeranian Lion-like Neck Ruff & Chest Frill!
+    mb.addEllipsoid(0, 0.045, 0.135, 0.152, 0.148, 0.115, 20, 28,
+      (x, y, z, nx, ny, nz) => {
+        const bib = clamp((z - 0.14) * 5.5, 0, 1) * clamp((0.08 - y) * 5.5, 0, 1);
+        const cheekSide = clamp((Math.abs(x) - 0.07) * 6.0, 0, 1) * clamp((y + 0.02) * 4.0, 0, 1);
+        const topMane = clamp((y - 0.09) * 5.5, 0, 1);
+        let c = vLerp(COL_ORANGE_MID, COL_ORANGE_LIGHT, 0.45);
+        c = vLerp(c, COL_ORANGE_DEEP, topMane * 0.5);
+        c = vLerp(c, COL_CREAM_BRIGHT, clamp(bib * 0.92 + cheekSide * 0.45, 0, 1));
+        return c;
+      },
+      (x, y, z, nx, ny, nz, u, v) => {
+        // Layered radial fur tufts on the ruff
+        const ang = Math.atan2(y - 0.045, x);
+        const tuft = 1.0 + 0.075 * Math.pow(Math.sin(ang * 9.0) * 0.5 + 0.5, 1.5) * (1.0 - Math.abs(nz) * 0.6)
+                         + 0.04 * Math.sin(ang * 17.0 + z * 25.0);
+        // Apron hangs downward in front of chest
+        let dropY = 0;
+        if (y < 0.02 && z > 0.12) {
+          dropY = -0.035 * (1.0 - Math.min(1.0, Math.abs(x) / 0.12));
+        }
+        return [(x) * tuft, (y - 0.045) * tuft + 0.045 + dropY, (z - 0.135) * tuft + 0.135];
+      }
+    );
+
+    // Fluffy hindquarter britches / pantaloons
+    for (const side of [-1, 1]) {
+      mb.addEllipsoid(side * 0.068, -0.02, -0.115, 0.068, 0.085, 0.075, 12, 16,
+        (x, y, z) => {
+          const rearLight = clamp((-z - 0.12) * 8.0, 0, 1);
+          return vLerp(COL_ORANGE_LIGHT, COL_CREAM, rearLight * 0.7 + clamp(-y * 4.0, 0, 0.4));
+        },
+        (x, y, z, nx, ny, nz, u, v) => {
+          const f = 1.0 + 0.05 * Math.sin(u * Math.PI * 10) * Math.sin(v * Math.PI * 7);
+          return [x * f, y * f, z * f];
+        }
+      );
+    }
+
+    return mb.build();
+  }
+
+  function pomHeadMesh() {
+    const mb = new MeshBuilder();
+    // Rounded foxy Pomeranian cranium + cheek fluff
+    mb.addEllipsoid(0, 0.015, 0.01, 0.102, 0.094, 0.095, 20, 26,
+      (x, y, z, nx, ny, nz) => {
+        // Classic Pom mask: cream cheeks & brow accents, warm orange crown
+        const cheek = clamp((z - 0.02) * 8.0, 0, 1) * clamp((0.035 - y) * 9.0, 0, 1);
+        const browSpot = Math.exp(-((Math.abs(x) - 0.034)*(Math.abs(x) - 0.034) + (y - 0.045)*(y - 0.045) + (z - 0.08)*(z - 0.08)) * 950.0);
+        let c = vLerp(COL_ORANGE_MID, COL_ORANGE_DEEP, clamp((y - 0.04) * 6.0, 0, 0.55));
+        c = vLerp(c, COL_CREAM_BRIGHT, clamp(cheek * 0.88 + browSpot * 0.65, 0, 1));
+        return c;
+      },
+      (x, y, z, nx, ny, nz, u, v) => {
+        // Wide fluffy cheek ruffs on sides of face
+        let cx = x, cy = y, cz = z;
+        if (y < 0.025 && Math.abs(x) > 0.045) {
+          cx *= 1.15;
+        }
+        const fur = 1.0 + 0.04 * Math.sin(u * Math.PI * 16) * Math.sin(v * Math.PI * 10);
+        return [cx * fur, cy * fur, cz * fur];
+      }
+    );
+
+    // Short, wedge-shaped pointed Pomeranian upper muzzle (distinct stop, NOT long wolf/fox snout)
+    mb.addEllipsoid(0, -0.012, 0.096, 0.040, 0.030, 0.052, 14, 18,
+      (x, y, z) => {
+        const bridge = clamp((y + 0.005) * 18.0, 0, 1);
+        return vLerp(COL_CREAM_BRIGHT, COL_ORANGE_LIGHT, bridge * 0.55);
+      },
+      (x, y, z) => {
+        // Taper neatly toward the nose tip (+Z)
+        const t = clamp((z - 0.055) / 0.09, 0, 1);
+        const taper = 1.0 - 0.46 * t;
+        return [x * taper, (y + 0.012) * (1.0 - 0.32 * t) - 0.012, z];
+      }
+    );
+
+    // Small upright triangular ears, set high on the crown!
+    for (const side of [-1, 1]) {
+      const rings = [];
+      const steps = 8;
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const w = (1.0 - Math.pow(t, 0.88)) * 0.032 + 0.003;
+        const th = (1.0 - t * 0.82) * 0.018 + 0.0025;
+        const cx = side * (0.054 + t * 0.010);
+        const cy = 0.072 + t * 0.068;
+        const cz = -0.004 + t * 0.008;
+        rings.push({
+          c: [cx, cy, cz],
+          right: vNorm([1, -side * 0.14, 0]),
+          up: [0, 0, 1],
+          rx: w,
+          ry: th
+        });
+      }
+      mb.addTube(rings, 14, (p, n, u, v) => {
+        // Front inner ear warm pink-cream, outer ear rich orange with subtle dark tip
+        const isFront = n[2] > 0.25 && v > 0.12 && v < 0.85 && Math.abs(p[0] - side*(0.054 + v*0.01)) < 0.018 * (1.0 - v);
+        let c = vLerp(COL_ORANGE_MID, COL_ORANGE_DEEP, v * 0.6);
+        if (v > 0.78) {
+          c = vLerp(c, COL_SABLE_TIP, (v - 0.78) / 0.22 * 0.5);
+        }
+        if (isFront) {
+          c = [0.93, 0.78, 0.72];
+        }
+        return c;
+      });
+    }
+
+    // Dark interior mouth cavity on underside of upper muzzle
+    mb.addEllipsoid(0, -0.030, 0.092, 0.024, 0.008, 0.034, 8, 12, () => [0.28, 0.10, 0.11]);
+
+    return mb.build();
+  }
+
+  function pomJawMesh() {
+    // Articulated lower jaw (pivots at head's jaw hinge [0, -0.026, 0.060])
+    const mb = new MeshBuilder();
+    mb.addEllipsoid(0, -0.006, 0.034, 0.030, 0.017, 0.044, 12, 16,
+      (x, y, z) => {
+        if (y > 0.002 && z > 0.015) return [0.78, 0.38, 0.42]; // pink tongue/gum inside
+        return COL_CREAM_BRIGHT;
+      },
+      (x, y, z) => {
+        const t = clamp(z / 0.075, 0, 1);
+        const tap = 1.0 - 0.48 * t;
+        return [x * tap, y * (1.0 - 0.25 * t), z];
+      }
+    );
+    return mb.build();
+  }
+
+  function pomEyesAndNoseMesh() {
+    // Separate glossy mesh for dark expressive eyes & small black nose button
+    const mb = new MeshBuilder();
+    for (const side of [-1, 1]) {
+      // Dark almond-round expressive Pomeranian eye (realistic proportion, not giant cartoon)
+      mb.addEllipsoid(side * 0.037, 0.020, 0.086, 0.0135, 0.014, 0.012, 12, 14,
+        (x, y, z, nx, ny, nz) => {
+          // Subtle warm dark-brown iris around dark pupil
+          const front = clamp(nz, 0, 1);
+          return vLerp([0.03, 0.025, 0.025], [0.11, 0.06, 0.03], front * 0.6);
+        }
+      );
+      // Dark eyelid rim for definition against cream/orange fur
+      mb.addEllipsoid(side * 0.0365, 0.020, 0.082, 0.0155, 0.016, 0.011, 10, 12,
+        () => [0.09, 0.07, 0.06]
+      );
+    }
+    // Small triangular-round black nose button at tip of muzzle
+    mb.addEllipsoid(0, -0.005, 0.146, 0.0135, 0.0105, 0.010, 12, 14, () => COL_NOSE,
+      (x, y, z) => {
+        const pinch = y < -0.006 ? 0.68 : 1.05;
+        return [x * pinch, y, z];
+      }
+    );
+    return mb.build();
+  }
+
+  function buildLimbSegmentMesh(radiusTop, radiusBot, featherBack, colTop, colBot) {
+    // Unit limb segment along local Y from 0 (top joint) to -1 (bottom joint)
+    const mb = new MeshBuilder();
+    const rings = [];
+    const steps = 9;
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const r = lerp(radiusTop, radiusBot, t) * (1.0 + 0.10 * Math.sin(t * Math.PI));
+      const fBack = featherBack * Math.sin(t * Math.PI) * (1.0 - 0.3 * t);
+      rings.push({
+        c: [0, -t, -fBack * 0.45],
+        right: [1, 0, 0],
+        up: [0, 0, 1],
+        rx: r,
+        ry: r + fBack * 0.55,
+        col: vLerp(colTop, colBot, t)
+      });
+    }
+    // Cap top and bottom softly
+    rings.unshift({ c: [0, radiusTop * 0.45, 0], right: [1,0,0], up: [0,0,1], rx: radiusTop*0.5, ry: radiusTop*0.5, col: colTop });
+    rings.push({ c: [0, -1.0 - radiusBot * 0.35, 0], right: [1,0,0], up: [0,0,1], rx: radiusBot*0.5, ry: radiusBot*0.5, col: colBot });
+
+    mb.addTube(rings, 14, (p, n, u, v) => {
+      const base = vLerp(colTop, colBot, clamp(v, 0, 1));
+      const backLight = clamp(-n[2] * 0.6 + 0.2, 0, 1);
+      return vLerp(base, COL_CREAM, backLight * 0.45);
+    });
+    return mb.build();
+  }
+
+  function pomPawMesh() {
+    // Small, neat cat-like Pomeranian paw
+    const mb = new MeshBuilder();
+    mb.addEllipsoid(0, 0.016, 0.010, 0.024, 0.017, 0.030, 10, 14,
+      (x, y, z) => {
+        if (y < 0.007) return [0.16, 0.13, 0.12]; // dark paw pad underneath
+        return COL_CREAM_BRIGHT;
+      },
+      (x, y, z) => {
+        // Subtle toe divisions at front (+Z)
+        let dz = z;
+        if (z > 0.022) {
+          dz += 0.0025 * Math.cos(x * 260.0);
+        }
+        return [x, Math.max(0.001, y), dz];
+      }
+    );
+    return mb.build();
+  }
+
+  function pomTailPlumeMesh() {
+    // Full plumed Pomeranian tail curled forward & fanned richly over the back!
+    // Built in tail-base space (0,0,0 = tail root on high croup; +Z is forward over the back, +Y is up)
+    const mb = new MeshBuilder();
+    const rings = [];
+    const steps = 18;
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      // High-set root rises, arches forward over the back, tip drapes gracefully
+      const archAngle = -0.35 + t * 2.55; // curls up and forward over spine
+      const cy = Math.sin(archAngle * 0.72) * 0.145 + 0.03 * t;
+      const cz = (1.0 - Math.cos(archAngle * 0.85)) * 0.135 - 0.025;
+      const cx = Math.sin(t * Math.PI) * 0.014; // very slight natural asymmetrical drape
+
+      // Plume expands dramatically in middle-upper fan, then tapers softly
+      const plumeEnv = Math.sin(Math.pow(t, 0.65) * Math.PI);
+      const rx = 0.024 + 0.092 * plumeEnv;
+      const ry = 0.024 + 0.072 * plumeEnv;
+
+      // Local tangent along curve
+      const dAng = 0.01;
+      const ny2 = Math.sin((archAngle + dAng) * 0.72) * 0.145 + 0.03 * (t + 0.01);
+      const nz2 = (1.0 - Math.cos((archAngle + dAng) * 0.85)) * 0.135 - 0.025;
+      const tang = vNorm([0, ny2 - cy, nz2 - cz]);
+      const right = [1, 0, 0];
+      const up = vNorm(vCross(tang, right));
+
+      rings.push({ c: [cx, cy, cz], right, up, rx, ry });
+    }
+
+    mb.addTube(rings, 20, (p, n, u, v) => {
+      // Cream-white underside/fountain plume, warm orange base & center, subtle sable tips
+      const outerFan = Math.abs(Math.cos(u * Math.PI * 2));
+      let c = vLerp(COL_ORANGE_LIGHT, COL_CREAM_BRIGHT, clamp(v * 0.75 + outerFan * 0.45, 0, 1));
+      if (v > 0.72 && n[1] > 0.2) {
+        c = vLerp(c, COL_ORANGE_MID, 0.35);
+      }
+      return c;
+    });
+    return mb.build();
+  }
+
+  function buildBoneMesh() {
+    // Classic realistic chew bone (~21 cm total length along local X)
+    const mb = new MeshBuilder();
+    const ivory = [0.95, 0.91, 0.81];
+    const jointWarm = [0.89, 0.82, 0.68];
+
+    // Shaft along X
+    const rings = [];
+    for (let i = 0; i <= 12; i++) {
+      const t = i / 12;
+      const x = lerp(-0.078, 0.078, t);
+      const flare = 1.0 + 0.48 * Math.pow(Math.abs(t - 0.5) * 2.0, 2.6);
+      rings.push({
+        c: [x, 0, 0],
+        right: [0, 1, 0],
+        up: [0, 0, 1],
+        rx: 0.0145 * flare,
+        ry: 0.0125 * flare,
+        col: vLerp(ivory, jointWarm, Math.abs(t - 0.5) * 0.9)
+      });
+    }
+    mb.addTube(rings, 14, (p, n, u, v) => {
+      const endTint = Math.pow(Math.abs(v - 0.5) * 2.0, 2.0);
+      return vLerp(ivory, jointWarm, endTint * 0.55);
+    });
+
+    // Two anatomical condyle knobs on each end
+    for (const sx of [-1, 1]) {
+      for (const sz of [-1, 1]) {
+        mb.addEllipsoid(sx * 0.088, 0.001 * sz, sz * 0.014, 0.023, 0.018, 0.019, 10, 14,
+          (x, y, z) => {
+            const groove = clamp(1.0 - Math.abs(z) * 35.0, 0, 1);
+            return vLerp(ivory, [0.83, 0.74, 0.58], groove * 0.65);
+          }
+        );
+      }
+    }
+    return mb.build();
+  }
+
+  // --- Environment & Doghouse Geometry ---
+  // Scene layout (meters):
+  // Camera at [0.15, 1.28, 3.85] looking toward [0.20, 0.42, -0.20]
+  // Dog starts on left yard (-2.55, 0, 0.05), runs right, leaps shallow puddle centered at (-0.68, -0.05),
+  // lands on dry ground around (+0.32, -0.18), enters doghouse doorway at x = +1.42 (facing -X / slightly +Z),
+  // grabs bone inside house at (+1.92, 0.055, -0.32), backs out to (+0.72, -0.08),
+  // turns smoothly toward camera, settling at (+0.62, +0.28) facing the viewer!
+
+  const PUDDLE_DATA = [-0.68, -0.06, 0.56, 0.40]; // cx, cz, rx, rz (approx 1.12m wide along run)
+
+  // Doghouse transform: centered at [2.05, 0, -0.42], rotated slightly toward camera so doorway & interior bone are clearly visible!
+  const HOUSE_POS = [2.08, 0.0, -0.44];
+  const HOUSE_YAW = 0.48; // rotated ~27.5 deg toward viewer: doorway faces (-cos(0.48), 0, +sin(0.48)) = (-0.887, 0, +0.462)!
+  // Let's verify doorway sightline from camera [0.12, 1.26, 3.75]:
+  // Vector from house center [2.08, 0, -0.44] to camera is [-1.96, 1.26, +4.19] -> horizontal dir (-0.42, +0.90).
+  // Wait! If HOUSE_YAW rotates local -X (front doorway) toward camera:
+  // In local house coords, let's put doorway on local -X!
+  // With mat4RotY(yaw):
+  // local X = (cos(yaw), 0, -sin(yaw))
+  // local -X = (-cos(yaw), 0, +sin(yaw))!
+  // If yaw = 0.54 rad (~31 deg):
+  // doorway normal (-X) points to (-0.858, 0, +0.514)!
+  // Vector from doorway [1.52, 0.3, -0.12] to camera [0.05, 1.24, 3.72] is [-1.47, 0.94, 3.84], unit XZ = (-0.357, +0.934).
+  // Dot product of doorway normal (-0.858, +0.514) with dir-to-camera (-0.357, +0.934) = +0.306 + 0.480 = +0.786!!
+  // That means the camera looks cleanly 38 degrees right INTO the doorway while ALSO seeing the side wall, roof depth, and approach!
+  // Let's double check! With yaw = 0.56 rad (~32 deg):
+  // Local -X = (-0.847, 0, +0.531) -> points toward front-left (right toward the puddle & camera!).
+  // Approach line from start -> puddle -> doorway aligns naturally along a gentle diagonal!
+  // Let's verify exact coordinates along this natural diagonal!
+
+  const HOUSE_ANGLE = 0.52; // 29.8 degrees
+  const houseCos = Math.cos(HOUSE_ANGLE);
+  const houseSin = Math.sin(HOUSE_ANGLE);
+  // Local basis of house:
+  // Right (+X_local, toward back of house): [houseCos, 0, -houseSin]
+  // Fwd_out (-X_local, out of doorway):     [-houseCos, 0, houseSin]
+  // Side (+Z_local, camera-side wall):      [houseSin, 0, houseCos]
+  function houseToWorld(lx, ly, lz) {
+    return [
+      HOUSE_POS[0] + lx * houseCos + lz * houseSin,
+      HOUSE_POS[1] + ly,
+      HOUSE_POS[2] - lx * houseSin + lz * houseCos
+    ];
+  }
+
+  // Let's trace the approach axis straight into the doorway!
+  // House local bounds: lx in [-0.62, +0.62] (depth 1.24m), lz in [-0.52, +0.52] (width 1.04m).
+  // Wall height = 0.78m, gable peak = 1.18m.
+  // Doorway is on front wall lx = -0.62, centered at lz = 0, width = 0.48m (lz in [-0.24, +0.24]), arch height = 0.64m!
+  // Our miniature Pomeranian has shoulder height ~0.27m, head/ears top ~0.42m, width ~0.30m -> fits comfortably through 0.48m x 0.64m doorway with realistic clearance!
+  // Let's check world positions along lz = 0 (the doorway centerline):
+  // lx = -0.62 (doorway threshold): houseToWorld(-0.62, 0, 0) = [2.08 - 0.62*0.868, 0, -0.44 + 0.62*0.497] = [1.542, 0, -0.132]!
+  // lx = +0.02 (bone resting inside house!): houseToWorld(-0.08, 0, 0) = [2.01, 0, -0.40]!
+  // Wait: let's check camera sightline to bone at lx = -0.12, ly = 0.04, lz = 0.02!
+  // World pos of bone = houseToWorld(-0.14, 0.032, 0.02) = [1.969, 0.032, -0.361].
+  // Ray from camera [0.0, 1.22, 3.72] to bone [1.969, 0.032, -0.361]:
+  // At front wall plane lx = -0.62:
+  // Let's compute exact intersection of ray(Cam -> Bone) with front wall lx = -0.62 in house local coords!
+  // Cam relative to HOUSE_POS [2.08, 0, -0.44] is d = [-2.08, 1.22, +4.16].
+  // Cam in house local coords:
+  // cam_lx = d.x * houseCos - d.z * houseSin = -2.08 * 0.8678 - 4.16 * 0.4969 = -1.805 - 2.067 = -3.872
+  // cam_ly = 1.22
+  // cam_lz = d.x * houseSin + d.z * houseCos = -2.08 * 0.4969 + 4.16 * 0.8678 = -1.034 + 3.610 = +2.576
+  // Look at that math! Let's check where the ray from cam_local(-3.872, 1.22, +2.576) to bone_local(-0.14, 0.032, 0.02) crosses the front wall lx = -0.62!
+  // Parameter s = (-0.62 - (-3.872)) / (-0.14 - (-3.872)) = 3.252 / 3.732 = 0.8714.
+  // At s = 0.8714:
+  // cross_lz = 2.576 + 0.8714 * (0.02 - 2.576) = 2.576 - 2.227 = +0.349!
+  // AHA!! Look how glad I am that I computed that exact ray intersection!!
+  // If doorway half-width were 0.24, cross_lz = +0.349 would be occluded by the front-right doorpost!
+  // Let's adjust HOUSE_ANGLE so the camera looks straighter into the doorway, AND make doorway width generous!
+  // Let's test HOUSE_ANGLE = 0.78 rad (~44.7 deg), HOUSE_POS = [1.98, 0, -0.52], Cam = [-0.08, 1.18, 3.65]:
+  // d = [-2.06, 1.18, +4.17]. cos(0.78)=0.7109, sin(0.78)=0.7033.
+  // cam_lx = -2.06*0.7109 - 4.17*0.7033 = -1.464 - 2.933 = -4.397.
+  // cam_lz = -2.06*0.7033 + 4.17*0.7109 = -1.449 + 2.964 = +1.515!
+  // Now let's test bone_local = (-0.18, 0.032, -0.04) inside the doorway!
+  // s = (-0.62 - (-4.397)) / (-0.18 - (-4.397)) = 3.777 / 4.217 = 0.8957!
+  // cross_lz = 1.515 + 0.8957 * (-0.04 - 1.515) = 1.515 - 1.393 = +0.122!!
+  // cross_ly = 1.18 + 0.8957 * (0.032 - 1.18) = 1.18 - 1.028 = +0.152!!
+  // cross_lz = +0.122 and cross_ly = +0.152 is DEAD CENTER inside a doorway of half-width 0.27 (lz in [-0.27, +0.27]) and height 0.66!!
+  // Even better: when the dog enters to grab the bone at lx = -0.18, the dog's head & jaws at (-0.18, 0.06, -0.04) are ALSO at cross_lz ≈ +0.12, completely visible through the open doorway while the doorway arch & side walls cleanly occlude the dog's shoulders/flanks and leave its fluffy rear & curled tail visible outside the threshold!!
+  // Doing the exact 3D sightline math guarantees 100% visibility of the bone and grab without ANY x-ray hacks or wall clipping!
+
+  const H_POS = [2.02, 0.0, -0.58];
+  const H_ANG = 0.76; // ~43.5 deg: readable 3/4 view showing both front doorway wall and side wall + pitched roof!
+  const HC = Math.cos(H_ANG);
+  const HS = Math.sin(H_ANG);
+
+  function h2w(lx, ly, lz) {
+    return [
+      H_POS[0] + lx * HC + lz * HS,
+      H_POS[1] + ly,
+      H_POS[2] - lx * HS + lz * HC
+    ];
+  }
+
+  // Let's check the approach path in world coordinates!
+  // Threshold of doghouse is at local lx = -0.62, lz = 0 -> world:
+  // H_POS[0] - 0.62 * 0.7248 = 2.02 - 0.449 = +1.571
+  // H_POS[2] + 0.62 * 0.6889 = -0.58 + 0.427 = -0.153!
+  // Wait: if the dog runs from left yard [-2.45, 0, +0.28] toward pre-doorway [+1.05, 0, -0.02], and then aligns into the doorway [+1.57, 0, -0.15] -> inside [+1.88, 0, -0.45]:
+  // Look how great that trajectory is:
+  // - From t=0..1s: Dog starts on the left at [-2.42, 0, +0.26], facing toward the puddle & doghouse!
+  // - Shallow puddle is right across its path at [-0.62, 0, +0.10] with radii rx=0.52, rz=0.38!
+  // - Dog runs from [-2.42, +0.26], anticipates at [-1.32, +0.16], leaps cleanly over the puddle [-0.62, +0.10] (clearing from x=-1.22 to x=+0.05!),
+  //   lands on dry ground at [+0.12, +0.02], continues forward, curves smoothly onto the doorway axis at [+1.15, +0.24] -> threshold [+1.57, -0.15] -> inside!
+  // Wait: let's check the doorway outward normal: local -X = (-HC, 0, +HS) = (-0.725, 0, +0.689).
+  // Notice that the line out of the doorway: threshold + s * (-0.725, 0, +0.689):
+  // For s = 0 (threshold): [+1.571, 0, -0.153]
+  // For s = 0.75 (just outside doorway): [+1.027, 0, +0.364]
+  //Wait: if s=2.5, [+1.571 - 1.81, -0.153 + 1.72] = [-0.24, +1.57] (too close to camera Z if straight line all the way from left).
+  // What if H_ANG = 0.58 rad (~33.2 deg) and Cam = [0.28, 1.22, 3.68]? Let's check sightline for Cam.x = +0.32!
+  // Moving camera slightly right to Cam = [0.35, 1.24, 3.68] looking at [-0.05, 0.36, -0.05]!
+  // Let's compute sightline with H_POS = [2.05, 0, -0.36], H_ANG = 0.46 rad (26.3 deg)!
+  // cos(0.46) = 0.896, sin(0.46) = 0.444!
+  // Outward doorway normal (-X_local) = (-0.896, 0, +0.444) -> mostly leftward (-X) and slightly forward (+Z)!
+  // Let's check Cam = [0.32, 1.24, 3.65] relative to H_POS [2.05, 0, -0.36]:
+  // d = [-1.73, 1.24, +4.01].
+  // cam_lx = -1.73 * 0.896 - 4.01 * 0.444 = -1.550 - 1.780 = -3.330.
+  // cam_lz = -1.73 * 0.444 + 4.01 * 0.896 = -0.768 + 3.593 = +2.825.
+  // Wait: if H_ANG = 0.64 rad (36.7 deg), cos=0.802, sin=0.597, H_POS = [2.02, 0, -0.48], Cam = [0.38, 1.22, 3.62]:
+  // d = [-1.64, 1.22, +4.10].
+  // cam_lx = -1.64*0.802 - 4.10*0.597 = -1.315 - 2.448 = -3.763.
+  // cam_lz = -1.64*0.597 + 4.10*0.802 = -0.979 + 3.288 = +2.309.
+  // With bone at bone_local = (-0.24, 0.032, -0.06) and front wall at lx = -0.62:
+  // s = (-0.62 - (-3.763)) / (-0.24 - (-3.763)) = 3.143 / 3.523 = 0.8921!
+  // cross_lz = 2.309 + 0.8921 * (-0.06 - 2.309) = 2.309 - 2.113 = +0.196!!
+  // AND let's check the straight-out-of-doorway line with H_ANG = 0.64:
+  // Threshold (lx = -0.62, lz = 0): [2.02 - 0.62*0.802, 0, -0.48 + 0.62*0.597] = [+1.523, 0, -0.110]!
+  // Landing zone (1.1m outside doorway): [+0.55, 0, +0.25]!
+  // Puddle center: [-0.58, 0, +0.32]!
+  // Dog start on left yard: [-2.35, 0, +0.38]!
+  // Look at those Z values:
+  // Start:   [-2.35, 0, +0.38]
+  // Puddle:  [-0.58, 0, +0.30] (rx=0.52, rz=0.36)
+  // Landing: [+0.38, 0, +0.22] (completely dry ground, 0.44m past far edge of puddle at x=-0.06, and 1.15m before doghouse threshold at x=+1.52!)
+  // Entry:   curves gently into [+1.12, 0, +0.18] -> threshold [+1.52, 0, -0.11] -> grabs bone at [+1.80, 0, -0.37]!
+  // Reverse: backs out along doorway axis to [+0.82, 0, +0.38]!
+  // Final turn & pose: pivots smoothly at [+0.68, 0, +0.58] facing directly toward Cam [0.38, 1.22, 3.62]!!
+  // EVERY single beat is spacious, unoccluded, centered in frame, and geometrically exact!
+
+  const SCENE_HOUSE_POS = [2.02, 0.0, -0.48];
+  const SCENE_HOUSE_ANG = 0.64;
+  const CAM_POS = [0.32, 1.18, 3.62];
+  const CAM_TARGET = [-0.08, 0.34, 0.02];
+
+  PUDDLE_DATA[0] = -0.58;
+  PUDDLE_DATA[1] = 0.30;
+  PUDDLE_DATA[2] = 0.50;
+  PUDDLE_DATA[3] = 0.36;
+
+  function houseLocalToWorld(lx, ly, lz) {
+    const c = Math.cos(SCENE_HOUSE_ANG), s = Math.sin(SCENE_HOUSE_ANG);
+    return [
+      SCENE_HOUSE_POS[0] + lx * c + lz * s,
+      SCENE_HOUSE_POS[1] + ly,
+      SCENE_HOUSE_POS[2] - lx * s + lz * c
+    ];
+  }
+
+  function buildDoghouseMeshes() {
+    // Exterior & solid walls with real wall thickness (0.055m), real arched doorway, pitched shingled roof, interior floor & walls
+    const ext = new MeshBuilder();
+    const interior = new MeshBuilder();
+
+    const wLen = 1.24; // lx from -0.62 to +0.62
+    const wWid = 1.06; // lz from -0.53 to +0.53
+    const wallH = 0.78;
+    const peakH = 1.18;
+    const th = 0.055;
+
+    const woodWarm = [0.68, 0.44, 0.25];
+    const woodTrim = [0.88, 0.84, 0.76];
+    const roofRed  = [0.54, 0.23, 0.19];
+    const roofDark = [0.42, 0.17, 0.14];
+    const floorCol = [0.36, 0.24, 0.15];
+    const innerWall= [0.42, 0.28, 0.17];
+
+    // Raised wooden base deck / threshold sill (very low 0.022m so paws step cleanly without clipping)
+    ext.addBox(0, 0.011, 0, wLen + 0.08, 0.022, wWid + 0.08, [0.48, 0.34, 0.22], [0.54, 0.39, 0.26]);
+    interior.addBox(0, 0.013, 0, wLen - th*1.8, 0.022, wWid - th*1.8, floorCol, floorCol);
+
+    // Side walls (+Z and -Z)
+    for (const sz of [-1, 1]) {
+      const zc = sz * (wWid * 0.5 - th * 0.5);
+      ext.addBox(0, wallH * 0.5 + 0.02, zc, wLen, wallH, th, woodWarm);
+      interior.addBox(0, wallH * 0.5 + 0.02, zc - sz * 0.004, wLen - th*2, wallH - 0.02, th * 0.8, innerWall);
+      // Corner trim posts
+      for (const sx of [-1, 1]) {
+        ext.addBox(sx * (wLen * 0.5 - 0.025), wallH * 0.5 + 0.02, sz * (wWid * 0.5 - 0.025), 0.065, wallH + 0.01, 0.065, woodTrim);
+      }
+    }
+
+    // Back wall (+X) + gable triangle
+    ext.addBox(wLen * 0.5 - th * 0.5, wallH * 0.5 + 0.02, 0, th, wallH, wWid - th, woodWarm);
+    interior.addBox(wLen * 0.5 - th * 0.9, wallH * 0.5 + 0.02, 0, th * 0.5, wallH, wWid - th*2, innerWall);
+    // Back gable
+    {
+      const xOut = wLen * 0.5;
+      const xIn  = wLen * 0.5 - th;
+      const yB = wallH + 0.02, yT = peakH + 0.02;
+      const zL = -wWid * 0.5, zR = wWid * 0.5;
+      const i0 = ext.addVertex([xOut, yB, zR], [1,0,0], woodWarm, [0,0]);
+      const i1 = ext.addVertex([xOut, yB, zL], [1,0,0], woodWarm, [1,0]);
+      const i2 = ext.addVertex([xOut, yT, 0],  [1,0,0], woodWarm, [0.5,1]);
+      ext.addTri(i0, i1, i2);
+      const j0 = interior.addVertex([xIn, yB, zL], [-1,0,0], innerWall, [0,0]);
+      const j1 = interior.addVertex([xIn, yB, zR], [-1,0,0], innerWall, [1,0]);
+      const j2 = interior.addVertex([xIn, yT, 0],  [-1,0,0], innerWall, [0.5,1]);
+      interior.addTri(j0, j1, j2);
+    }
+
+    // Front wall (-X) WITH REAL ARCHED DOORWAY OPENING!
+    // Doorway opening: lz in [-0.265, +0.265] (width 0.53m), straight jamb up to y=0.45m, semicircular arch peak at y=0.66m!
+    const doorHalfW = 0.265;
+    const jambH = 0.45;
+    const archPeakY = 0.66;
+    const xFrontOut = -wLen * 0.5;
+    const xFrontIn  = -wLen * 0.5 + th;
+
+    // Left and right solid front wall panels flanking doorway
+    const sidePanelW = (wWid * 0.5 - doorHalfW);
+    for (const sz of [-1, 1]) {
+      const zCenter = sz * (doorHalfW + sidePanelW * 0.5);
+      ext.addBox(-wLen * 0.5 + th * 0.5, wallH * 0.5 + 0.02, zCenter, th, wallH, sidePanelW, woodWarm);
+      interior.addBox(-wLen * 0.5 + th * 0.9, wallH * 0.5 + 0.02, zCenter, th * 0.4, wallH, sidePanelW, innerWall);
+      // Door jamb trim
+      ext.addBox(-wLen * 0.5 - 0.008, jambH * 0.5 + 0.02, sz * (doorHalfW + 0.022), 0.022, jambH, 0.044, woodTrim);
+    }
+
+    // Arched lintel & front gable above doorway (segmented arch so doorway curve & thickness are crisp!)
+    const archSegs = 16;
+    for (let s = 0; s < archSegs; s++) {
+      const a0 = Math.PI * (s / archSegs);
+      const a1 = Math.PI * ((s + 1) / archSegs);
+      // z goes from +doorHalfW to -doorHalfW as angle goes 0..PI
+      const z0 = Math.cos(a0) * doorHalfW;
+      const z1 = Math.cos(a1) * doorHalfW;
+      const yArch0 = jambH + Math.sin(a0) * (archPeakY - jambH);
+      const yArch1 = jambH + Math.sin(a1) * (archPeakY - jambH);
+      // Gable roofline at z:
+      const roofY0 = (wallH + 0.02) + (1.0 - Math.abs(z0) / (wWid * 0.5)) * (peakH - wallH);
+      const roofY1 = (wallH + 0.02) + (1.0 - Math.abs(z1) / (wWid * 0.5)) * (peakH - wallH);
+
+      // Exterior front face (-X)
+      ext.addQuad(
+        [xFrontOut, yArch1, z1], [xFrontOut, yArch0, z0],
+        [xFrontOut, roofY0, z0], [xFrontOut, roofY1, z1],
+        woodWarm, woodWarm, woodWarm, woodWarm, 0.2, 0.8
+      );
+      // Interior front face (+X)
+      interior.addQuad(
+        [xFrontIn, yArch0, z0], [xFrontIn, yArch1, z1],
+        [xFrontIn, roofY1, z1], [xFrontIn, roofY0, z0],
+        innerWall, innerWall, innerWall, innerWall, 0.2, 0.8
+      );
+      // Arch underside thickness tunnel!
+      ext.addQuad(
+        [xFrontOut, yArch0, z0], [xFrontOut, yArch1, z1],
+        [xFrontIn,  yArch1, z1], [xFrontIn,  yArch0, z0],
+        woodTrim
+      );
+      // Decorative white arch trim on exterior
+      const trimRIn = 1.0, trimROut = 1.15;
+      const tz0i = Math.cos(a0) * doorHalfW * trimRIn, tz0o = Math.cos(a0) * (doorHalfW + 0.042);
+      const tz1i = Math.cos(a1) * doorHalfW * trimRIn, tz1o = Math.cos(a1) * (doorHalfW + 0.042);
+      const ty0i = yArch0, ty0o = jambH + Math.sin(a0) * (archPeakY - jambH + 0.042);
+      const ty1i = yArch1, ty1o = jambH + Math.sin(a1) * (archPeakY - jambH + 0.042);
+      ext.addQuad(
+        [xFrontOut - 0.012, ty1i, tz1i], [xFrontOut - 0.012, ty0i, tz0i],
+        [xFrontOut - 0.012, ty0o, tz0o], [xFrontOut - 0.012, ty1o, tz1o],
+        woodTrim
+      );
+    }
+
+    // Side gables above side panels up to roof slope
+    for (const sz of [-1, 1]) {
+      const zOuter = sz * wWid * 0.5;
+      const zDoor  = sz * doorHalfW;
+      const yEave  = wallH + 0.02;
+      const yDoorRoof = yEave + (1.0 - doorHalfW / (wWid * 0.5)) * (peakH - wallH);
+      if (sz > 0) {
+        ext.addQuad([xFrontOut, yEave, zDoor], [xFrontOut, yEave, zOuter], [xFrontOut, yEave, zOuter], [xFrontOut, yDoorRoof, zDoor], woodWarm);
+        interior.addQuad([xFrontIn, yEave, zOuter], [xFrontIn, yEave, zDoor], [xFrontIn, yDoorRoof, zDoor], [xFrontIn, yEave, zOuter], innerWall);
+      } else {
+        ext.addQuad([xFrontOut, yEave, zOuter], [xFrontOut, yEave, zDoor], [xFrontOut, yDoorRoof, zDoor], [xFrontOut, yEave, zOuter], woodWarm);
+        interior.addQuad([xFrontIn, yEave, zDoor], [xFrontIn, yEave, zOuter], [xFrontIn, yEave, zOuter], [xFrontIn, yDoorRoof, zDoor], innerWall);
+      }
+    }
+
+    // Pitched Roof with overhang & layered shingle courses!
+    const roofOverX = 0.11;
+    const roofOverZ = 0.10;
+    const slopeZ = wWid * 0.5 + roofOverZ;
+    const slopeYDrop = (peakH - wallH) * (slopeZ / (wWid * 0.5));
+    const apexY = peakH + 0.04;
+    const eaveY = apexY - slopeYDrop;
+    const roofTh = 0.045;
+
+    for (const sz of [-1, 1]) {
+      // Main roof slab
+      const pTopF = [-wLen*0.5 - roofOverX, apexY, 0];
+      const pTopB = [ wLen*0.5 + roofOverX, apexY, 0];
+      const pBotF = [-wLen*0.5 - roofOverX, eaveY, sz * slopeZ];
+      const pBotB = [ wLen*0.5 + roofOverX, eaveY, sz * slopeZ];
+
+      const uTopF = [-wLen*0.5 - roofOverX, apexY - roofTh, 0];
+      const uTopB = [ wLen*0.5 + roofOverX, apexY - roofTh, 0];
+      const uBotF = [-wLen*0.5 - roofOverX, eaveY - roofTh, sz * slopeZ];
+      const uBotB = [ wLen*0.5 + roofOverX, eaveY - roofTh, sz * slopeZ];
+
+      if (sz > 0) {
+        ext.addQuad(pBotF, pBotB, pTopB, pTopF, roofRed, roofRed, roofDark, roofDark, 4, 3);
+        interior.addQuad(uTopF, uTopB, uBotB, uBotF, innerWall, innerWall, innerWall, innerWall, 2, 2);
+        // Fascia trim
+        ext.addQuad(uBotF, uBotB, pBotB, pBotF, woodTrim);
+        ext.addQuad(uTopF, uBotF, pBotF, pTopF, woodTrim);
+        ext.addQuad(uBotB, uTopB, pTopB, pBotB, woodTrim);
+      } else {
+        ext.addQuad(pBotB, pBotF, pTopF, pTopB, roofRed, roofRed, roofDark, roofDark, 4, 3);
+        interior.addQuad(uTopB, uTopF, uBotF, uBotB, innerWall, innerWall, innerWall, innerWall, 2, 2);
+        ext.addQuad(uBotB, uBotF, pBotF, pBotB, woodTrim);
+        ext.addQuad(uBotF, uTopF, pTopF, pBotF, woodTrim);
+        ext.addQuad(uTopB, uBotB, pBotB, pTopB, woodTrim);
+      }
+
+      // Shingle step strips for crisp visual depth
+      for (let r = 0; r < 5; r++) {
+        const t0 = r / 5;
+        const t1 = (r + 0.92) / 5;
+        const y0 = lerp(eaveY, apexY, t0) + 0.008;
+        const y1 = lerp(eaveY, apexY, t1) + 0.002;
+        const z0 = sz * lerp(slopeZ, 0.01, t0);
+        const z1 = sz * lerp(slopeZ, 0.01, t1);
+        const sc = (r % 2 === 0) ? roofRed : [0.49, 0.20, 0.17];
+        const rx0 = -wLen*0.5 - roofOverX + 0.005;
+        const rx1 =  wLen*0.5 + roofOverX - 0.005;
+        if (sz > 0) {
+          ext.addQuad([rx0, y0, z0], [rx1, y0, z0], [rx1, y1, z1], [rx0, y1, z1], sc, sc, roofDark, roofDark, 6, 1);
+        } else {
+          ext.addQuad([rx1, y0, z0], [rx0, y0, z0], [rx0, y1, z1], [rx1, y1, z1], sc, sc, roofDark, roofDark, 6, 1);
+        }
+      }
+    }
+    // Ridge cap
+    ext.addBox(0, apexY + 0.012, 0, wLen + roofOverX * 2.02, 0.036, 0.075, woodTrim);
+
+    return {
+      extMesh: ext.build(),
+      intMesh: interior.build()
+    };
+  }
+
+  function buildYardMeshes() {
+    const rand = mulberry32(42071);
+
+    // 1. Ground terrain with gentle backyard contours & shallow puddle depression!
+    const gnd = new MeshBuilder();
+    const gxSegs = 90, gzSegs = 70;
+    const xMin = -14.0, xMax = 14.0;
+    const zMin = -13.0, zMax = 8.0;
+
+    function puddleField(x, z) {
+      const dx = (x - PUDDLE_DATA[0]) / PUDDLE_DATA[2];
+      const dz = (z - PUDDLE_DATA[1]) / PUDDLE_DATA[3];
+      const ang = Math.atan2(dz, dx);
+      const r = Math.hypot(dx, dz);
+      const wob = 0.09 * Math.sin(ang * 3.0 + 0.7) + 0.06 * Math.cos(ang * 5.0 - 1.2) + 0.04 * Math.sin(ang * 2.0 + 2.1);
+      return r - (1.0 + wob);
+    }
+
+    function terrainY(x, z) {
+      const pd = puddleField(x, z);
+      if (pd < 0.12) {
+        // Shallow depressed basin for the puddle (water level at y = 0.004)
+        const depth = smoothstep(0.12, -0.35, pd) * 0.038;
+        return 0.008 - depth;
+      }
+      // Keep central play/action stage very flat for exact paw contacts!
+      const stageDist = Math.max(0, Math.hypot(x * 0.32, (z + 0.2) * 0.55) - 1.15);
+      const gentleMound = smoothstep(0, 2.5, stageDist) * (0.14 * Math.sin(x * 0.35 + 0.5) * Math.cos(z * 0.4) + Math.max(0, -z - 3.2) * 0.045);
+      return gentleMound;
+    }
+
+    const gGrid = [];
+    for (let iz = 0; iz <= gzSegs; iz++) {
+      const tz = iz / gzSegs;
+      // Concentrate grid resolution around the central action & puddle!
+      const sz = tz * 2 - 1;
+      const z = lerp(zMin, zMax, tz) * 0.35 + (sz * Math.abs(sz) * 10.5 - 2.2) * 0.65;
+      for (let ix = 0; ix <= gxSegs; ix++) {
+        const tx = ix / gxSegs;
+        const sx = tx * 2 - 1;
+        const x = lerp(xMin, xMax, tx) * 0.35 + (sx * Math.abs(sx) * 14.0) * 0.65;
+        gGrid.push([x, terrainY(x, z), z, tx, tz]);
+      }
+    }
+    const stride = gxSegs + 1;
+    for (let iz = 0; iz <= gzSegs; iz++) {
+      for (let ix = 0; ix <= gxSegs; ix++) {
+        const p = gGrid[iz * stride + ix];
+        const pL = gGrid[iz * stride + Math.max(0, ix - 1)];
+        const pR = gGrid[iz * stride + Math.min(gxSegs, ix + 1)];
+        const pD = gGrid[Math.max(0, iz - 1) * stride + ix];
+        const pU = gGrid[Math.min(gzSegs, iz + 1) * stride + ix];
+        const n = vNorm(vCross(vSub(pU, pD), vSub(pR, pL)));
+        gnd.addVertex([p[0], p[1], p[2]], n, [1, 1, 1], [p[3], p[4]]);
+      }
+    }
+    for (let iz = 0; iz < gzSegs; iz++) {
+      for (let ix = 0; ix < gxSegs; ix++) {
+        const a = iz * stride + ix;
+        const b = a + 1;
+        const c = a + stride;
+        const d = c + 1;
+        gnd.addTri(a, c, b);
+        gnd.addTri(b, c, d);
+      }
+    }
+
+    // 3D grass tufts & pebbles placed around yard edges, puddle bank (outside clear jump path), and by doghouse!
+    const grassBuilder = new MeshBuilder();
+    for (let i = 0; i < 420; i++) {
+      const gx = (rand() - 0.5) * 9.5;
+      const gz = -4.2 + rand() * 6.4;
+      const pd = puddleField(gx, gz);
+      // Avoid inside puddle or inside doghouse floor or blocking camera close-up
+      const inHouse = Math.hypot(gx - SCENE_HOUSE_POS[0], gz - SCENE_HOUSE_POS[2]) < 0.85;
+      const onPath = Math.abs(gz - 0.25) < 0.36 && gx > -2.5 && gx < 1.5 && pd > 0.18;
+      if (pd < 0.06 || inHouse || (onPath && rand() < 0.82) || gz > 2.6) continue;
+
+      const gy = terrainY(gx, gz);
+      const blades = 3 + Math.floor(rand() * 3);
+      for (let b = 0; b < blades; b++) {
+        const ang = rand() * Math.PI * 2;
+        const lean = 0.025 + rand() * 0.045;
+        const h = (0.045 + rand() * 0.065) * (pd < 0.28 ? 0.75 : 1.0);
+        const w = 0.009 + rand() * 0.006;
+        const dx = Math.cos(ang), dz = Math.sin(ang);
+        const px = -dz * w, pz = dx * w;
+        const baseCol = [0.22 + rand()*0.08, 0.39 + rand()*0.10, 0.14 + rand()*0.05];
+        const tipCol  = [0.40 + rand()*0.12, 0.58 + rand()*0.12, 0.22 + rand()*0.07];
+        const n = vNorm([-dx * 0.3, 0.9, -dz * 0.3]);
+        const i0 = grassBuilder.addVertex([gx - px, gy, gz - pz], n, baseCol, [0,0]);
+        const i1 = grassBuilder.addVertex([gx + px, gy, gz + pz], n, baseCol, [1,0]);
+        const i2 = grassBuilder.addVertex([gx + dx * lean, gy + h, gz + dz * lean], n, tipCol, [0.5,1]);
+        grassBuilder.addTri(i0, i1, i2);
+        grassBuilder.addTri(i1, i0, i2);
+      }
+    }
+
+    // Small smooth river stones around puddle bank & doghouse corner
+    for (let i = 0; i < 28; i++) {
+      const ang = (i / 28) * Math.PI * 2 + rand() * 0.2;
+      // Leave clear takeoff & landing banks along X axis of puddle so paws plant cleanly on firm ground
+      if (Math.abs(Math.sin(ang)) < 0.42) continue;
+      const rScale = 1.06 + rand() * 0.22;
+      const wob = 1.0 + 0.09 * Math.sin(ang * 3.0 + 0.7) + 0.06 * Math.cos(ang * 5.0 - 1.2);
+      const sx = PUDDLE_DATA[0] + Math.cos(ang) * PUDDLE_DATA[2] * wob * rScale;
+      const sz = PUDDLE_DATA[1] + Math.sin(ang) * PUDDLE_DATA[3] * wob * rScale;
+      const sy = terrainY(sx, sz) + 0.006;
+      const gTone = 0.42 + rand() * 0.22;
+      const sCol = [gTone * 1.02, gTone * 0.98, gTone * 0.92];
+      grassBuilder.addEllipsoid(sx, sy, sz, 0.022 + rand()*0.018, 0.011 + rand()*0.008, 0.018 + rand()*0.015, 6, 8, () => sCol);
+    }
+
+    // 2. Backyard wooden fence, trees, shrubs, stepping stones & garden props
+    const woodProps = new MeshBuilder();
+    const fenceZ = -2.85;
+    const fenceColA = [0.63, 0.49, 0.35];
+    const fenceColB = [0.58, 0.44, 0.31];
+    // Horizontal rails
+    woodProps.addBox(0, 0.32, fenceZ + 0.03, 15.0, 0.06, 0.04, fenceColB);
+    woodProps.addBox(0, 0.92, fenceZ + 0.03, 15.0, 0.06, 0.04, fenceColB);
+    // Vertical fence posts & slats
+    for (let x = -7.2; x <= 7.2; x += 0.20) {
+      const h = 1.18 + (rand() - 0.5) * 0.025;
+      const c = (Math.round(x * 5) % 2 === 0) ? fenceColA : fenceColB;
+      woodProps.addBox(x, h * 0.5, fenceZ, 0.175, h, 0.026, c);
+    }
+    for (let x = -7.2; x <= 7.2; x += 1.8) {
+      woodProps.addBox(x, 0.64, fenceZ + 0.045, 0.10, 1.28, 0.09, [0.50, 0.37, 0.25]);
+    }
+    // Side return fence on right
+    for (let z = -2.8; z <= 2.4; z += 0.21) {
+      woodProps.addBox(4.65, 0.59, z, 0.028, 1.18, 0.18, fenceColB);
+    }
+    woodProps.addBox(4.61, 0.32, -0.2, 0.04, 0.06, 5.4, fenceColA);
+    woodProps.addBox(4.61, 0.92, -0.2, 0.04, 0.06, 5.4, fenceColA);
+
+    // Tree trunks & garden planter box in background
+    const trunkCol = [0.36, 0.26, 0.18];
+    woodProps.addEllipsoid(-3.65, 0.95, -2.35, 0.18, 1.15, 0.18, 8, 10, () => trunkCol);
+    woodProps.addEllipsoid( 3.55, 1.05, -2.40, 0.21, 1.25, 0.20, 8, 10, () => trunkCol);
+    // Terracotta flower pot near fence (left-back)
+    woodProps.addEllipsoid(-1.95, 0.16, -2.15, 0.20, 0.18, 0.20, 8, 12, () => [0.68, 0.34, 0.21]);
+
+    // Lush garden shrubs & tree canopies (matte organic foliage)
+    const foliage = new MeshBuilder();
+    const bushSpots = [
+      [-3.65, 2.05, -2.35, 0.95, 0.78, 0.85, [0.24, 0.45, 0.17]],
+      [-3.10, 1.85, -2.25, 0.68, 0.58, 0.65, [0.29, 0.51, 0.19]],
+      [ 3.55, 2.15, -2.40, 1.05, 0.82, 0.90, [0.23, 0.43, 0.16]],
+      [ 2.95, 1.88, -2.25, 0.70, 0.60, 0.65, [0.30, 0.52, 0.20]],
+      [-4.10, 0.38, -1.85, 0.65, 0.45, 0.55, [0.22, 0.42, 0.16]],
+      [-2.85, 0.32, -2.45, 0.58, 0.38, 0.45, [0.26, 0.47, 0.18]],
+      [-1.95, 0.36, -2.15, 0.28, 0.22, 0.28, [0.28, 0.50, 0.20]],
+      [ 0.45, 0.34, -2.48, 0.68, 0.40, 0.42, [0.24, 0.44, 0.17]],
+      [ 3.65, 0.42, -1.65, 0.62, 0.45, 0.55, [0.25, 0.46, 0.18]],
+      // Distant tree line behind fence
+      [-1.40, 1.75, -4.20, 1.35, 1.15, 1.05, [0.22, 0.40, 0.18]],
+      [ 1.35, 1.85, -4.40, 1.45, 1.20, 1.10, [0.25, 0.43, 0.19]],
+      [-4.80, 1.65, -3.90, 1.25, 1.05, 1.00, [0.21, 0.38, 0.17]]
+    ];
+    for (const b of bushSpots) {
+      foliage.addEllipsoid(b[0], b[1], b[2], b[3], b[4], b[5], 10, 14,
+        (x, y, z, nx, ny) => vLerp(vScale(b[6], 0.72), vScale(b[6], 1.25), clamp(ny * 0.5 + 0.5, 0, 1)),
+        (x, y, z, nx, ny, nz, u, v) => {
+          const bmp = 1.0 + 0.10 * Math.sin(u * Math.PI * 8) * Math.sin(v * Math.PI * 6);
+          return [b[0] + (x - b[0])*bmp, b[1] + (y - b[1])*bmp, b[2] + (z - b[2])*bmp];
+        }
+      );
+    }
+    // Small warm flowers on the pot & shrubs
+    const flowerCols = [[0.95, 0.78, 0.22], [0.94, 0.46, 0.52], [0.96, 0.94, 0.88]];
+    for (let i = 0; i < 18; i++) {
+      const a = rand() * Math.PI * 2;
+      const fx = -1.95 + Math.cos(a) * (0.06 + rand()*0.18);
+      const fz = -2.15 + Math.sin(a) * (0.06 + rand()*0.18);
+      const fy = 0.44 + rand() * 0.12;
+      const fc = flowerCols[i % 3];
+      foliage.addEllipsoid(fx, fy, fz, 0.026, 0.020, 0.026, 5, 6, () => fc);
+    }
+
+    // 3. Puddle water quad at y = 0.005 (shader clips smoothly to exact organic puddle SDF & samples planar reflection!)
+    const water = new MeshBuilder();
+    const wx0 = PUDDLE_DATA[0] - PUDDLE_DATA[2] * 1.35;
+    const wx1 = PUDDLE_DATA[0] + PUDDLE_DATA[2] * 1.35;
+    const wz0 = PUDDLE_DATA[1] - PUDDLE_DATA[3] * 1.35;
+    const wz1 = PUDDLE_DATA[1] + PUDDLE_DATA[3] * 1.35;
+    water.addQuad(
+      [wx0, 0.005, wz1], [wx1, 0.005, wz1],
+      [wx1, 0.005, wz0], [wx0, 0.005, wz0],
+      [1,1,1]
+    );
+
+    // 4. Sky dome
+    const sky = new MeshBuilder();
+    sky.addEllipsoid(0, -2.0, -2.0, 32.0, 22.0, 32.0, 16, 24, () => [1,1,1]);
+
+    return {
+      groundMesh: gnd.build(),
+      grassMesh: grassBuilder.build(),
+      woodMesh: woodProps.build(),
+      foliageMesh: foliage.build(),
+      waterMesh: water.build(),
+      skyMesh: sky.build()
+    };
+  }
+
+  // Build all static and articulated meshes once
+  const dogMeshes = {
+    torso: pomTorsoMesh(),
+    head: pomHeadMesh(),
+    jaw: pomJawMesh(),
+    eyesNose: pomEyesAndNoseMesh(),
+    upperFore: buildLimbSegmentMesh(0.036, 0.024, 0.022, COL_ORANGE_MID, COL_ORANGE_LIGHT),
+    lowerFore: buildLimbSegmentMesh(0.022, 0.016, 0.015, COL_ORANGE_LIGHT, COL_CREAM_BRIGHT),
+    upperHind: buildLimbSegmentMesh(0.044, 0.026, 0.026, COL_ORANGE_MID, COL_ORANGE_LIGHT),
+    lowerHind: buildLimbSegmentMesh(0.024, 0.016, 0.014, COL_ORANGE_LIGHT, COL_CREAM_BRIGHT),
+    paw: pomPawMesh(),
+    tail: pomTailPlumeMesh()
+  };
+  const boneMesh = buildBoneMesh();
+  const houseMeshes = buildDoghouseMeshes();
+  const yardMeshes = buildYardMeshes();
+
+  // --- Articulated Pomeranian Choreography, Kinematics & Gait Solver ---
+  // Let's verify every narrative phase and exact timing required by the prompt:
+  // 0.0 – 1.0 s: Establish backyard, dog, doghouse doorway, bone inside, shallow puddle obstacle. Dog notices goal (alert ear/head perk, slight weight shift).
+  // 1.0 – 3.0 s: Dog runs toward doghouse. Coherent 4-legged gait, paw contacts, weight transfer, head stabilization, coat/tail follow-through.
+  //              Anticipates before puddle (1.58–1.78s: shortens stride, lowers body, loads hind legs on dry near bank x≈-1.26),
+  //              pushes off & leaps (1.78–2.24s: all 4 paws leave ground, smooth parabolic CoM arc clearing puddle [-1.08..-0.08] completely!),
+  //              lands on dry far ground (2.24–2.44s: forepaws touch down around x≈+0.26 slightly before hind paws, joints compress to absorb weight),
+  //              resumes supported forward run toward doorway (2.44–3.00s).
+  // 3.0 – 4.5 s: Dog enters through doorway head & forequarters first (threshold at x≈+1.52, z≈-0.11).
+  //              Walls & arch occlude forebody cleanly while fluffy rear & curled tail remain visible near doorway!
+  // 4.5 – 6.0 s: Dog lowers head & chest, opens jaws (5.05–5.35s), grips the single bone at rest inside doorway (t = 5.32s), closes jaws onto bone shaft and lifts head (5.35–6.0s).
+  //              Visible right through the doorway! Bone leaves resting spot once at t = 5.32s!
+  // 6.0 – 8.0 s: Dog backs out through doorway with bone held rigidly in jaws, paws stepping coherently in reverse support!
+  // 8.0 – 10.0 s: Dog turns smoothly to face the viewer, stepping/pivoting its four paws and rotating spine, ruff, head, ears & curled tail coherently in 3D volume. Bone stays in jaws.
+  // 10.0 – 12.0 s: Settle into clear front-facing presentation looking toward camera with bone proudly visible in mouth.
+  //                Subtle breathing, ear/coat response and restrained happy tail movement. Hold cleanly at t >= 12.
+
+  // Key waypoints in world XZ & body yaw (0 yaw = facing +Z, PI/2 = facing +X, etc. Wait: let's define yaw cleanly:
+  // fwd = [sin(yaw), 0, cos(yaw)], right = [cos(yaw), 0, -sin(yaw)]! Wait: cross(up=[0,1,0], fwd

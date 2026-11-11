@@ -76,7 +76,7 @@ test('GPT-6.1 Terra has its own page, description, rivals and sitemap video entr
  assert.ok(block);assert.match(block!,/<video:video>/);assert.match(block!,/<video:content_loc>https:\/\/pombench.com\/results\/gpt-6\.1-terra\/animation\.mp4<\/video:content_loc>/);assert.ok(block!.includes('<lastmod>'+c.publishedAt+'</lastmod>'));
  const other=modelEditorial(sol,c);assert.match(other.split('id="latest"')[1],/href="\/animations\/gpt-6-1-terra\/"/);assert.match(footerInner(c),/href="\/animations\/gpt-6-1-terra\/"/);
  const gallery=renderSeoDocument(fs.readFileSync('index.html','utf8'),c,'gallery');
- assert.match(gallery,/The 9 Nov 2026 update adds/);assert.match(gallery,/Claude Fable 5\.2/);assert.doesNotMatch(gallery,/update adds[^<]*\d+ models/);
+ assert.match(gallery,/The 11 Nov 2026 update adds/);assert.match(gallery,/Gemini 4 Carbon/);assert.doesNotMatch(gallery,/update adds[^<]*\d+ models/);
 });
 
 test('Claude Fable 5.2 has its own page, description, rivals and sitemap video entry',()=>{
@@ -101,3 +101,5 @@ test('Claude Fable 5.2 has its own page, description, rivals and sitemap video e
  const home=pageSeo(c,'gallery');assert.doesNotMatch(home.title,/\d/);assert.doesNotMatch(home.description,/\d+\s+(models|LLMs)/i);
  for(const model of ready){const page=pageSeo(c,'model/'+model.id);assert.ok(page.title.length<=65,model.id);assert.ok(page.description.length<=160,model.id);assert.equal(page.canonical,siteOrigin+modelPath(model));assert.doesNotMatch(page.title,/\d+\s+(models|LLMs)/);}
 });
+
+ test('Gemini 4 Carbon has a playable canonical page and video sitemap entry',()=>{const model=c.models.find(m=>m.id==='gemini-4-carbon')!;assert.ok(model.video);const seo=pageSeo(c,'model/'+model.id);assert.equal(seo.canonical,siteOrigin+'/animations/gemini-4-carbon/');const block=siteMap(c).split('<url>').find(p=>p.includes('/animations/gemini-4-carbon/'));assert.ok(block);assert.match(block!,/<video:video>/);});

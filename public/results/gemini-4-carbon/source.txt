@@ -1,0 +1,1883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PomBench — The puddle, the Pomeranian and the bone</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 960px;
+    height: 540px;
+    overflow: hidden;
+    background: #000;
+  }
+  #stage {
+    display: block;
+    width: 960px;
+    height: 540px;
+  }
+</style>
+</head>
+<body>
+<canvas id="stage" width="960" height="540"></canvas>
+<script>
+(function() {
+  "use strict";
+
+  const canvas = document.getElementById("stage");
+  const gl = canvas.getContext("webgl", {
+    alpha: false,
+    antialias: true,
+    depth: true,
+    stencil: false,
+    preserveDrawingBuffer: true
+  });
+
+  if (!gl) {
+    const ctx = canvas.getContext("2d");
+    window.renderFrame = function() {
+      if (ctx) {
+        ctx.fillStyle = "#5b8266";
+        ctx.fillRect(0, 0, 960, 540);
+      }
+    };
+    window.renderFrame(0);
+    return;
+  }
+
+  gl.getExtension("OES_standard_derivatives");
+
+  // --- Math Helpers ---
+  function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function smoothstep(e0, e1, x) {
+    const t = clamp((x - e0) / (e1 - e0), 0, 1);
+    return t * t * (3 - 2 * t);
+  }
+  function smootherstep(e0, e1, x) {
+    const t = clamp((x - e0) / (e1 - e0), 0, 1);
+    return t * t * t * (t * (t * 6 - 15) + 10);
+  }
+  function vAdd(a, b) { return [a[0]+b[0], a[1]+b[1], a[2]+b[2]]; }
+  function vSub(a, b) { return [a[0]-b[0], a[1]-b[1], a[2]-b[2]]; }
+  function vScale(a, s) { return [a[0]*s, a[1]*s, a[2]*s]; }
+  function vDot(a, b) { return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]; }
+  function vCross(a, b) {
+    return [
+      a[1]*b[2] - a[2]*b[1],
+      a[2]*b[0] - a[0]*b[2],
+      a[0]*b[1] - a[1]*b[0]
+    ];
+  }
+  function vLen(a) { return Math.hypot(a[0], a[1], a[2]); }
+  function vNorm(a) {
+    const l = vLen(a) || 1;
+    return [a[0]/l, a[1]/l, a[2]/l];
+  }
+  function vLerp(a, b, t) {
+    return [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
+  }
+  function wrapAngle(a) {
+    while (a > Math.PI) a -= Math.PI * 2;
+    while (a < -Math.PI) a += Math.PI * 2;
+    return a;
+  }
+  function lerpAngle(a, b, t) {
+    return a + wrapAngle(b - a) * t;
+  }
+
+  function mat4Identity() {
+    const m = new Float32Array(16);
+    m[0] = m[5] = m[10] = m[15] = 1;
+    return m;
+  }
+  function mat4Mul(a, b) {
+    const out = new Float32Array(16);
+    for (let c = 0; c < 4; c++) {
+      for (let r = 0; r < 4; r++) {
+        out[c*4 + r] =
+          a[0*4 + r] * b[c*4 + 0] +
+          a[1*4 + r] * b[c*4 + 1] +
+          a[2*4 + r] * b[c*4 + 2] +
+          a[3*4 + r] * b[c*4 + 3];
+      }
+    }
+    return out;
+  }
+  function mat4Perspective(fovY, aspect, near, far) {
+    const f = 1.0 / Math.tan(fovY * 0.5);
+    const nf = 1.0 / (near - far);
+    const out = new Float32Array(16);
+    out[0] = f / aspect;
+    out[5] = f;
+    out[10] = (far + near) * nf;
+    out[11] = -1;
+    out[14] = (2 * far * near) * nf;
+    return out;
+  }
+  function mat4Ortho(left, right, bottom, top, near, far) {
+    const out = new Float32Array(16);
+    const lr = 1 / (left - right);
+    const bt = 1 / (bottom - top);
+    const nf = 1 / (near - far);
+    out[0] = -2 * lr;
+    out[5] = -2 * bt;
+    out[10] = 2 * nf;
+    out[12] = (left + right) * lr;
+    out[13] = (top + bottom) * bt;
+    out[14] = (far + near) * nf;
+    out[15] = 1;
+    return out;
+  }
+  function mat4LookAt(eye, center, up) {
+    const z = vNorm(vSub(eye, center));
+    const x = vNorm(vCross(up, z));
+    const y = vCross(z, x);
+    const out = new Float32Array(16);
+    out[0] = x[0]; out[4] = x[1]; out[8]  = x[2]; out[12] = -vDot(x, eye);
+    out[1] = y[0]; out[5] = y[1]; out[9]  = y[2]; out[13] = -vDot(y, eye);
+    out[2] = z[0]; out[6] = z[1]; out[10] = z[2]; out[14] = -vDot(z, eye);
+    out[15] = 1;
+    return out;
+  }
+  function mat4Translate(tx, ty, tz) {
+    const m = mat4Identity();
+    m[12] = tx; m[13] = ty; m[14] = tz;
+    return m;
+  }
+  function mat4Scale(sx, sy, sz) {
+    const m = mat4Identity();
+    m[0] = sx; m[5] = sy; m[10] = sz;
+    return m;
+  }
+  function mat4RotX(a) {
+    const m = mat4Identity();
+    const c = Math.cos(a), s = Math.sin(a);
+    m[5] = c; m[9] = -s; m[6] = s; m[10] = c;
+    return m;
+  }
+  function mat4RotY(a) {
+    const m = mat4Identity();
+    const c = Math.cos(a), s = Math.sin(a);
+    m[0] = c; m[8] = s; m[2] = -s; m[10] = c;
+    return m;
+  }
+  function mat4RotZ(a) {
+    const m = mat4Identity();
+    const c = Math.cos(a), s = Math.sin(a);
+    m[0] = c; m[4] = -s; m[1] = s; m[5] = c;
+    return m;
+  }
+  function mat4FromBasisPos(right, up, fwd, pos) {
+    const m = new Float32Array(16);
+    m[0] = right[0]; m[1] = right[1]; m[2] = right[2];
+    m[4] = up[0];    m[5] = up[1];    m[6] = up[2];
+    m[8] = fwd[0];   m[9] = fwd[1];   m[10]= fwd[2];
+    m[12]= pos[0];   m[13]= pos[1];   m[14]= pos[2];   m[15]= 1;
+    return m;
+  }
+  function transformPoint(m, p) {
+    return [
+      m[0]*p[0] + m[4]*p[1] + m[8]*p[2] + m[12],
+      m[1]*p[0] + m[5]*p[1] + m[9]*p[2] + m[13],
+      m[2]*p[0] + m[6]*p[1] + m[10]*p[2] + m[14]
+    ];
+  }
+
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return function() {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // --- Shaders ---
+  function compileShader(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+      throw new Error(gl.getShaderInfoLog(s));
+    }
+    return s;
+  }
+  function createProgram(vsSrc, fsSrc) {
+    const p = gl.createProgram();
+    gl.attachShader(p, compileShader(gl.VERTEX_SHADER, vsSrc));
+    gl.attachShader(p, compileShader(gl.FRAGMENT_SHADER, fsSrc));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(p));
+    }
+    return p;
+  }
+
+  const shadowVS = `
+    attribute vec3 aPos;
+    uniform mat4 uLightVP;
+    uniform mat4 uModel;
+    varying float vDepth;
+    void main() {
+      vec4 cp = uLightVP * (uModel * vec4(aPos, 1.0));
+      gl_Position = cp;
+      vDepth = cp.z / cp.w * 0.5 + 0.5;
+    }
+  `;
+  const shadowFS = `
+    precision highp float;
+    varying float vDepth;
+    vec4 packDepth(float depth) {
+      const vec4 bitShift = vec4(16777216.0, 65536.0, 256.0, 1.0);
+      const vec4 bitMask = vec4(0.0, 1.0/256.0, 1.0/256.0, 1.0/256.0);
+      vec4 res = fract(depth * bitShift);
+      res -= res.xxyz * bitMask;
+      return res;
+    }
+    void main() {
+      gl_FragColor = packDepth(clamp(vDepth, 0.0, 1.0));
+    }
+  `;
+
+  const mainVS = `
+    attribute vec3 aPos;
+    attribute vec3 aNorm;
+    attribute vec3 aColor;
+    attribute vec2 aUV;
+
+    uniform mat4 uVP;
+    uniform mat4 uModel;
+    uniform mat4 uLightVP;
+    uniform float uFlipY;
+    uniform float uShellOffset;
+
+    varying vec3 vWorldPos;
+    varying vec3 vLocalPos;
+    varying vec3 vWorldNorm;
+    varying vec3 vColor;
+    varying vec2 vUV;
+    varying vec4 vLightClip;
+
+    void main() {
+      vec3 displaced = aPos + aNorm * uShellOffset;
+      vec4 wp = uModel * vec4(displaced, 1.0);
+      if (uFlipY > 0.5) {
+        wp.y = 0.010 - wp.y;
+      }
+      vWorldPos = wp.xyz;
+      vLocalPos = aPos;
+
+      mat3 nMat = mat3(uModel[0].xyz, uModel[1].xyz, uModel[2].xyz);
+      vec3 wn = normalize(nMat * aNorm);
+      if (uFlipY > 0.5) {
+        wn.y = -wn.y;
+      }
+      vWorldNorm = wn;
+      vColor = aColor;
+      vUV = aUV;
+      vLightClip = uLightVP * vec4(wp.xyz, 1.0);
+      gl_Position = uVP * wp;
+    }
+  `;
+
+  const mainFS = `
+    precision highp float;
+
+    varying vec3 vWorldPos;
+    varying vec3 vLocalPos;
+    varying vec3 vWorldNorm;
+    varying vec3 vColor;
+    varying vec2 vUV;
+    varying vec4 vLightClip;
+
+    uniform vec3 uCamPos;
+    uniform vec3 uLightDir;
+    uniform sampler2D uShadowMap;
+    uniform int uMatType;
+    uniform float uShellLayer;
+    uniform float uClipRefl;
+    uniform vec4 uHouseInfo;
+    uniform vec4 uPuddleData;
+    uniform sampler2D uReflTex;
+    uniform vec2 uScreenSize;
+    uniform float uTime;
+
+    float unpackDepth(vec4 rgba) {
+      const vec4 bitShift = vec4(1.0/16777216.0, 1.0/65536.0, 1.0/256.0, 1.0);
+      return dot(rgba, bitShift);
+    }
+
+    float hash12(vec2 p) {
+      vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+      p3 += dot(p3, p3.yzx + 33.33);
+      return fract((p3.x + p3.y) * p3.z);
+    }
+    float hash13(vec3 p3) {
+      p3 = fract(p3 * 0.1031);
+      p3 += dot(p3, p3.zyx + 31.32);
+      return fract((p3.x + p3.y) * p3.z);
+    }
+    float noise2(vec2 p) {
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+      f = f * f * (3.0 - 2.0 * f);
+      return mix(
+        mix(hash12(i), hash12(i + vec2(1.0, 0.0)), f.x),
+        mix(hash12(i + vec2(0.0, 1.0)), hash12(i + vec2(1.0, 1.0)), f.x),
+        f.y
+      );
+    }
+    float noise3(vec3 p) {
+      vec3 i = floor(p);
+      vec3 f = fract(p);
+      f = f * f * (3.0 - 2.0 * f);
+      return mix(
+        mix(mix(hash13(i), hash13(i + vec3(1,0,0)), f.x),
+            mix(hash13(i + vec3(0,1,0)), hash13(i + vec3(1,1,0)), f.x), f.y),
+        mix(mix(hash13(i + vec3(0,0,1)), hash13(i + vec3(1,0,1)), f.x),
+            mix(hash13(i + vec3(0,1,1)), hash13(i + vec3(1,1,1)), f.x), f.y),
+        f.z
+      );
+    }
+
+    float puddleSDF(vec2 xz) {
+      vec2 d = (xz - uPuddleData.xy) / uPuddleData.zw;
+      float ang = atan(d.y, d.x);
+      float r = length(d);
+      float wob = 0.08 * sin(ang * 3.0 + 0.7) + 0.05 * cos(ang * 5.0 - 1.2) + 0.04 * sin(ang * 2.0 + 2.1);
+      return r - (1.0 + wob);
+    }
+
+    float getShadow(vec4 lightClip, vec3 N, vec3 L) {
+      vec3 proj = lightClip.xyz / lightClip.w * 0.5 + 0.5;
+      if (proj.x < 0.01 || proj.x > 0.99 || proj.y < 0.01 || proj.y > 0.99 || proj.z > 0.998) {
+        return 1.0;
+      }
+      float bias = max(0.0024 * (1.0 - dot(N, L)), 0.0010);
+      float s = 0.0;
+      float tx = 1.0 / 1024.0;
+      for (int x = -1; x <= 1; x++) {
+        for (int y = -1; y <= 1; y++) {
+          float d = unpackDepth(texture2D(uShadowMap, proj.xy + vec2(float(x), float(y)) * tx));
+          s += (proj.z - bias > d) ? 0.0 : 1.0;
+        }
+      }
+      return s / 9.0;
+    }
+
+    float houseOcclusion(vec3 p) {
+      vec2 rel = p.xz - uHouseInfo.xy;
+      float lx = rel.x * uHouseInfo.z - rel.y * uHouseInfo.w;
+      float lz = rel.x * uHouseInfo.w + rel.y * uHouseInfo.z;
+      float ix = smoothstep(-0.62, -0.35, lx) * (1.0 - smoothstep(0.48, 0.65, lx));
+      float iz = 1.0 - smoothstep(0.38, 0.55, abs(lz));
+      float iy = 1.0 - smoothstep(0.85, 1.15, p.y);
+      float deep = smoothstep(-0.55, 0.45, lx);
+      return clamp(1.0 - ix * iz * iy * (0.32 + 0.32 * deep), 0.34, 1.0);
+    }
+
+    void main() {
+      if (uClipRefl > 0.5 && vWorldPos.y > 0.014) {
+        discard;
+      }
+
+      if (uMatType == 6) {
+        float h = clamp(vUV.y, 0.0, 1.0);
+        vec3 col = mix(vec3(0.80, 0.87, 0.93), vec3(0.37, 0.58, 0.85), pow(h, 0.65));
+        float cl = noise2(vec2(vUV.x * 9.0 + 1.3, vUV.y * 5.0)) * 0.6 +
+                   noise2(vec2(vUV.x * 19.0 - 0.5, vUV.y * 11.0)) * 0.4;
+        float cMask = smoothstep(0.55, 0.82, cl) * smoothstep(0.05, 0.32, h) * (1.0 - smoothstep(0.75, 0.98, h));
+        col = mix(col, vec3(0.97, 0.98, 1.0), cMask * 0.52);
+        vec3 V = normalize(vWorldPos - uCamPos);
+        col += vec3(1.0, 0.91, 0.74) * pow(max(dot(V, uLightDir), 0.0), 10.0) * 0.22;
+        gl_FragColor = vec4(col, 1.0);
+        return;
+      }
+
+      vec3 N = normalize(vWorldNorm);
+      vec3 V = normalize(uCamPos - vWorldPos);
+      vec3 L = normalize(uLightDir);
+
+      float shadow = getShadow(vLightClip, N, L);
+      float houseAO = houseOcclusion(vWorldPos);
+
+      vec3 baseCol = vColor;
+      float specStrength = 0.08;
+      float shininess = 18.0;
+      float wrap = 0.25;
+
+      if (uMatType == 1) {
+        float strand = noise3(vLocalPos * 58.0) * 0.55 + noise3(vLocalPos * 118.0 + vec3(5.2, 2.7, 1.3)) * 0.45;
+        if (strand < mix(0.18, 0.78, uShellLayer)) {
+          discard;
+        }
+        baseCol *= mix(0.74, 1.08, uShellLayer) * (0.90 + 0.20 * strand);
+        wrap = 0.48;
+        specStrength = 0.05;
+      } else if (uMatType == 0) {
+        float furTex = noise3(vLocalPos * 62.0) * 0.5 + noise3(vLocalPos * 124.0) * 0.5;
+        baseCol *= (0.88 + 0.22 * furTex);
+        wrap = 0.42;
+        specStrength = 0.06;
+      } else if (uMatType == 2) {
+        float pd = puddleSDF(vWorldPos.xz);
+        float nLarge = noise2(vWorldPos.xz * 1.4);
+        float nMed   = noise2(vWorldPos.xz * 6.5);
+        float nFine  = noise2(vWorldPos.xz * 28.0);
+        float blades = noise2(vec2(vWorldPos.x * 42.0, vWorldPos.z * 24.0));
+
+        vec3 grassCol = mix(vec3(0.26, 0.47, 0.17), vec3(0.38, 0.56, 0.22), nLarge);
+        grassCol = mix(grassCol, vec3(0.20, 0.38, 0.14), smoothstep(0.55, 0.8, nMed) * 0.42);
+        grassCol *= (0.86 + 0.26 * blades);
+
+        float expectedZ = mix(0.36, -0.10, clamp((vWorldPos.x + 2.2) / 3.8, 0.0, 1.0));
+        float pathLine = abs(vWorldPos.z - expectedZ);
+        float pathMask = 1.0 - smoothstep(0.36, 0.92, pathLine + (nMed - 0.5) * 0.26);
+        pathMask *= smoothstep(-3.0, -1.9, vWorldPos.x) * (1.0 - smoothstep(1.9, 2.6, vWorldPos.x));
+
+        vec3 dryDirt = mix(vec3(0.56, 0.46, 0.35), vec3(0.48, 0.39, 0.29), nFine);
+        float peb = smoothstep(0.78, 0.86, noise2(vWorldPos.xz * 36.0));
+        dryDirt = mix(dryDirt, vec3(0.65, 0.61, 0.56), peb * 0.45);
+        baseCol = mix(grassCol, dryDirt, pathMask * 0.80);
+
+        float wetRim = 1.0 - smoothstep(-0.04, 0.20, pd);
+        vec3 wetMud = mix(vec3(0.23, 0.18, 0.13), vec3(0.17, 0.13, 0.09), nFine);
+        baseCol = mix(baseCol, wetMud, wetRim * 0.92);
+        specStrength = mix(0.03, 0.24, wetRim);
+        shininess = mix(10.0, 42.0, wetRim);
+      } else if (uMatType == 3) {
+        float grain = noise2(vec2(vLocalPos.x * 4.0 + vLocalPos.z * 4.0, vLocalPos.y * 26.0));
+        float seam = smoothstep(0.45, 0.50, abs(fract(vUV.y * 6.0) - 0.5));
+        baseCol *= (0.88 + 0.20 * grain) * (1.0 - 0.25 * seam);
+        specStrength = 0.10;
+      } else if (uMatType == 4) {
+        specStrength = 0.88;
+        shininess = 96.0;
+        wrap = 0.10;
+      } else if (uMatType == 7) {
+        float bTex = noise3(vLocalPos * 28.0);
+        baseCol *= (0.95 + 0.10 * bTex);
+        specStrength = 0.24;
+        shininess = 32.0;
+        wrap = 0.35;
+      } else if (uMatType == 8) {
+        float grain = noise2(vWorldPos.xz * 12.0);
+        baseCol *= (0.86 + 0.20 * grain);
+        specStrength = 0.03;
+      } else if (uMatType == 5) {
+        float pd = puddleSDF(vWorldPos.xz);
+        if (pd > 0.0) {
+          discard;
+        }
+        float edgeAlpha = smoothstep(0.0, -0.055, pd);
+        float shallow = smoothstep(-0.35, 0.0, pd);
+
+        vec2 ruv = vWorldPos.xz * 9.0;
+        float r1 = sin(ruv.x * 2.1 + ruv.y * 1.7 + uTime * 1.1) * 0.0014;
+        float r2 = cos(ruv.x * 1.5 - ruv.y * 2.3 - uTime * 0.85) * 0.0014;
+        vec2 screenUV = gl_FragCoord.xy / uScreenSize;
+        vec3 reflCol = texture2D(uReflTex, clamp(screenUV + vec2(r1, r2), vec2(0.002), vec2(0.998))).rgb;
+
+        vec3 waterNorm = normalize(vec3(r1 * 8.0, 1.0, r2 * 8.0));
+        float fresnel = 0.32 + 0.64 * pow(1.0 - clamp(dot(waterNorm, V), 0.0, 1.0), 2.6);
+
+        vec3 bedCol = mix(vec3(0.16, 0.13, 0.09), vec3(0.24, 0.20, 0.15), noise2(vWorldPos.xz * 22.0));
+        bedCol *= (0.48 + 0.52 * shadow);
+
+        vec3 waterCol = mix(bedCol, reflCol * vec3(0.95, 0.98, 1.02), clamp(fresnel + 0.35, 0.0, 0.95));
+        waterCol = mix(waterCol, bedCol * 1.12, shallow * 0.28);
+
+        vec3 H = normalize(L + V);
+        waterCol += vec3(1.0, 0.97, 0.90) * pow(max(dot(waterNorm, H), 0.0), 140.0) * shadow * 0.50;
+        float rimLine = smoothstep(-0.04, -0.012, pd) * (1.0 - smoothstep(-0.012, 0.0, pd));
+        waterCol += vec3(0.11, 0.13, 0.15) * rimLine;
+
+        gl_FragColor = vec4(waterCol, edgeAlpha);
+        return;
+      }
+
+      float diff = max((dot(N, L) + wrap) / (1.0 + wrap), 0.0);
+      vec3 sunCol = vec3(1.04, 0.97, 0.86);
+      vec3 ambient = mix(vec3(0.28, 0.26, 0.20), vec3(0.44, 0.52, 0.64), N.y * 0.5 + 0.5) * 0.68 * houseAO;
+      if (uMatType == 7) {
+        ambient += vec3(0.16, 0.15, 0.13);
+      }
+
+      float rim = 0.0;
+      if (uMatType == 0 || uMatType == 1) {
+        float fres = pow(1.0 - max(dot(N, V), 0.0), 2.6);
+        rim = fres * (0.16 + 0.20 * clamp(dot(-L, V) * 0.5 + 0.5, 0.0, 1.0)) * shadow;
+      }
+
+      vec3 H = normalize(L + V);
+      float spec = pow(max(dot(N, H), 0.0), shininess) * specStrength * shadow;
+
+      vec3 lit = baseCol * (ambient + sunCol * diff * shadow * 0.88) +
+                 vec3(1.0, 0.92, 0.78) * rim * baseCol +
+                 vec3(1.0, 0.98, 0.95) * spec;
+
+      float fog = smoothstep(14.0, 34.0, length(vWorldPos - uCamPos));
+      lit = mix(lit, vec3(0.77, 0.85, 0.91), fog * 0.65);
+      lit = lit / (1.0 + lit * 0.18);
+      lit = pow(clamp(lit, 0.0, 1.0), vec3(0.92));
+
+      gl_FragColor = vec4(lit, 1.0);
+    }
+  `;
+
+  const shadowProg = createProgram(shadowVS, shadowFS);
+  const mainProg = createProgram(mainVS, mainFS);
+
+  const shadowLoc = {
+    aPos: gl.getAttribLocation(shadowProg, "aPos"),
+    uLightVP: gl.getUniformLocation(shadowProg, "uLightVP"),
+    uModel: gl.getUniformLocation(shadowProg, "uModel")
+  };
+
+  const mainLoc = {
+    aPos: gl.getAttribLocation(mainProg, "aPos"),
+    aNorm: gl.getAttribLocation(mainProg, "aNorm"),
+    aColor: gl.getAttribLocation(mainProg, "aColor"),
+    aUV: gl.getAttribLocation(mainProg, "aUV"),
+    uVP: gl.getUniformLocation(mainProg, "uVP"),
+    uModel: gl.getUniformLocation(mainProg, "uModel"),
+    uLightVP: gl.getUniformLocation(mainProg, "uLightVP"),
+    uFlipY: gl.getUniformLocation(mainProg, "uFlipY"),
+    uShellOffset: gl.getUniformLocation(mainProg, "uShellOffset"),
+    uCamPos: gl.getUniformLocation(mainProg, "uCamPos"),
+    uLightDir: gl.getUniformLocation(mainProg, "uLightDir"),
+    uShadowMap: gl.getUniformLocation(mainProg, "uShadowMap"),
+    uMatType: gl.getUniformLocation(mainProg, "uMatType"),
+    uShellLayer: gl.getUniformLocation(mainProg, "uShellLayer"),
+    uClipRefl: gl.getUniformLocation(mainProg, "uClipRefl"),
+    uHouseInfo: gl.getUniformLocation(mainProg, "uHouseInfo"),
+    uPuddleData: gl.getUniformLocation(mainProg, "uPuddleData"),
+    uReflTex: gl.getUniformLocation(mainProg, "uReflTex"),
+    uScreenSize: gl.getUniformLocation(mainProg, "uScreenSize"),
+    uTime: gl.getUniformLocation(mainProg, "uTime")
+  };
+
+  function createFBO(w, h, nearest) {
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, nearest ? gl.NEAREST : gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, nearest ? gl.NEAREST : gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+    const rb = gl.createRenderbuffer();
+    gl.bindRenderbuffer(gl.RENDERBUFFER, rb);
+    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, w, h);
+
+    const fbo = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rb);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    return { fbo, tex, w, h };
+  }
+
+  const shadowFBO = createFBO(1024, 1024, true);
+  const reflFBO   = createFBO(960, 540, false);
+
+  // --- Mesh Builder ---
+  class MeshBuilder {
+    constructor() {
+      this.verts = [];
+      this.indices = [];
+    }
+    addVertex(p, n, c, uv) {
+      const idx = this.verts.length / 11;
+      this.verts.push(
+        p[0], p[1], p[2],
+        n[0], n[1], n[2],
+        c[0], c[1], c[2],
+        uv ? uv[0] : 0, uv ? uv[1] : 0
+      );
+      return idx;
+    }
+    addTri(i0, i1, i2) {
+      this.indices.push(i0, i1, i2);
+    }
+    addQuad(p0, p1, p2, p3, c0, c1, c2, c3, uvX = 1, uvY = 1) {
+      const n = vNorm(vCross(vSub(p1, p0), vSub(p3, p0)));
+      const i0 = this.addVertex(p0, n, c0, [0, 0]);
+      const i1 = this.addVertex(p1, n, c1 || c0, [uvX, 0]);
+      const i2 = this.addVertex(p2, n, c2 || c0, [uvX, uvY]);
+      const i3 = this.addVertex(p3, n, c3 || c0, [0, uvY]);
+      this.addTri(i0, i1, i2);
+      this.addTri(i0, i2, i3);
+    }
+    addBox(cx, cy, cz, sx, sy, sz, col, topCol) {
+      const x0 = cx - sx*0.5, x1 = cx + sx*0.5;
+      const y0 = cy - sy*0.5, y1 = cy + sy*0.5;
+      const z0 = cz - sz*0.5, z1 = cz + sz*0.5;
+      const tc = topCol || col;
+      this.addQuad([x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1], col, col, tc, tc, sx, sy);
+      this.addQuad([x1,y0,z0],[x0,y0,z0],[x0,y1,z0],[x1,y1,z0], col, col, tc, tc, sx, sy);
+      this.addQuad([x1,y0,z1],[x1,y0,z0],[x1,y1,z0],[x1,y1,z1], col, col, tc, tc, sz, sy);
+      this.addQuad([x0,y0,z0],[x0,y0,z1],[x0,y1,z1],[x0,y1,z0], col, col, tc, tc, sz, sy);
+      this.addQuad([x0,y1,z1],[x1,y1,z1],[x1,y1,z0],[x0,y1,z0], tc, tc, tc, tc, sx, sz);
+      this.addQuad([x0,y0,z0],[x1,y0,z0],[x1,y0,z1],[x0,y0,z1], col, col, col, col, sx, sz);
+    }
+    addEllipsoid(cx, cy, cz, rx, ry, rz, latSegs, lonSegs, colorFn, deformFn) {
+      const baseIdx = this.verts.length / 11;
+      const grid = [];
+      for (let i = 0; i <= latSegs; i++) {
+        const v = i / latSegs;
+        const th = v * Math.PI;
+        const st = Math.sin(th), ct = Math.cos(th);
+        for (let j = 0; j <= lonSegs; j++) {
+          const u = j / lonSegs;
+          const ph = u * Math.PI * 2;
+          const nx = st * Math.cos(ph), ny = ct, nz = st * Math.sin(ph);
+          let px = cx + nx * rx, py = cy + ny * ry, pz = cz + nz * rz;
+          if (deformFn) {
+            const d = deformFn(px, py, pz, nx, ny, nz, u, v);
+            px = d[0]; py = d[1]; pz = d[2];
+          }
+          grid.push([px, py, pz, nx, ny, nz, u, v]);
+        }
+      }
+      const stride = lonSegs + 1;
+      for (let i = 0; i <= latSegs; i++) {
+        for (let j = 0; j <= lonSegs; j++) {
+          const cur = grid[i * stride + j];
+          const jP = j > 0 ? j - 1 : lonSegs - 1;
+          const jN = j < lonSegs ? j + 1 : 1;
+          const iP = Math.max(0, i - 1);
+          const iN = Math.min(latSegs, i + 1);
+          let n = vCross(vSub(grid[iN * stride + j], grid[iP * stride + j]),
+                         vSub(grid[i * stride + jN], grid[i * stride + jP]));
+          if (vLen(n) < 1e-6) n = [cur[3]/rx, cur[4]/ry, cur[5]/rz];
+          n = vNorm(n);
+          const col = colorFn ? colorFn(cur[0], cur[1], cur[2], n[0], n[1], n[2], cur[6], cur[7]) : [1,1,1];
+          this.addVertex([cur[0], cur[1], cur[2]], n, col, [cur[6], cur[7]]);
+        }
+      }
+      for (let i = 0; i < latSegs; i++) {
+        for (let j = 0; j < lonSegs; j++) {
+          const a = baseIdx + i * stride + j;
+          const b = a + 1, c = a + stride, d = c + 1;
+          this.addTri(a, c, b);
+          this.addTri(b, c, d);
+        }
+      }
+    }
+    addTube(rings, segs, colorFn) {
+      const baseIdx = this.verts.length / 11;
+      const pts = [];
+      for (let i = 0; i < rings.length; i++) {
+        const r = rings[i];
+        const v = i / (rings.length - 1);
+        for (let j = 0; j <= segs; j++) {
+          const u = j / segs;
+          const ang = u * Math.PI * 2;
+          const ca = Math.cos(ang), sa = Math.sin(ang);
+          const p = vAdd(r.c, vAdd(vScale(r.right, ca * r.rx), vScale(r.up, sa * r.ry)));
+          const nGuess = vNorm(vAdd(vScale(r.right, ca / (r.rx || 1)), vScale(r.up, sa / (r.ry || 1))));
+          pts.push({ p, n: nGuess, u, v, rCol: r.col });
+        }
+      }
+      const stride = segs + 1;
+      for (let i = 0; i < rings.length; i++) {
+        for (let j = 0; j <= segs; j++) {
+          const it = pts[i * stride + j];
+          const jP = j > 0 ? j - 1 : segs - 1;
+          const jN = j < segs ? j + 1 : 1;
+          const iP = Math.max(0, i - 1);
+          const iN = Math.min(rings.length - 1, i + 1);
+          let n = vCross(vSub(pts[i * stride + jN].p, pts[i * stride + jP].p),
+                         vSub(pts[iN * stride + j].p, pts[iP * stride + j].p));
+          n = vLen(n) > 1e-6 ? vNorm(n) : it.n;
+          if (vDot(n, it.n) < 0) n = vScale(n, -1);
+          const col = colorFn ? colorFn(it.p, n, it.u, it.v) : (it.rCol || [1,1,1]);
+          this.addVertex(it.p, n, col, [it.u, it.v]);
+        }
+      }
+      for (let i = 0; i < rings.length - 1; i++) {
+        for (let j = 0; j < segs; j++) {
+          const a = baseIdx + i * stride + j;
+          const b = a + 1, c = a + stride, d = c + 1;
+          this.addTri(a, b, c);
+          this.addTri(b, d, c);
+        }
+      }
+    }
+    build() {
+      const vbo = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.verts), gl.STATIC_DRAW);
+      const ibo = gl.createBuffer();
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(this.indices), gl.STATIC_DRAW);
+      return { vbo, ibo, count: this.indices.length };
+    }
+  }
+
+  // --- Pomeranian Geometry & Coat Palette ---
+  const COL_ORANGE_DEEP  = [0.76, 0.36, 0.11];
+  const COL_ORANGE_MID   = [0.87, 0.49, 0.18];
+  const COL_ORANGE_LIGHT = [0.94, 0.65, 0.34];
+  const COL_CREAM        = [0.97, 0.89, 0.76];
+  const COL_CREAM_BRIGHT = [0.99, 0.94, 0.86];
+  const COL_SABLE_TIP    = [0.45, 0.22, 0.08];
+
+  function pomTorsoMesh() {
+    const mb = new MeshBuilder();
+    mb.addEllipsoid(0, 0, 0, 0.125, 0.12, 0.175, 20, 26,
+      (x, y, z) => {
+        const belly = clamp((-y + 0.03) * 5.0, 0, 1);
+        const saddle = clamp((y - 0.02) * 5.0, 0, 1);
+        const bib = clamp((z - 0.07) * 6.0, 0, 1) * clamp((-y + 0.07) * 4.0, 0, 1);
+        let c = vLerp(COL_ORANGE_MID, COL_ORANGE_DEEP, saddle * 0.65);
+        return vLerp(c, COL_CREAM, clamp(belly * 0.85 + bib * 0.75, 0, 1));
+      },
+      (x, y, z, nx, ny, nz, u, v) => {
+        const fluff = 1.0 + 0.045 * Math.sin(u * Math.PI * 14) * Math.sin(v * Math.PI * 9)
+                          + 0.028 * Math.cos(u * Math.PI * 22 + v * 12.0);
+        let sx = 1.0, sy = 1.0;
+        if (z < -0.04) { if (y < 0) sy *= 0.88; sx *= 1.04; }
+        if (z > 0.05)  { sx *= 1.08; sy *= 1.06; }
+        return [x * sx * fluff, y * sy * fluff, z * fluff];
+      }
+    );
+
+    mb.addEllipsoid(0, 0.045, 0.135, 0.152, 0.148, 0.115, 18, 26,
+      (x, y, z) => {
+        const bib = clamp((z - 0.14) * 5.5, 0, 1) * clamp((0.08 - y) * 5.5, 0, 1);
+        const side = clamp((Math.abs(x) - 0.07) * 6.0, 0, 1) * clamp((y + 0.02) * 4.0, 0, 1);
+        const mane = clamp((y - 0.09) * 5.5, 0, 1);
+        let c = vLerp(COL_ORANGE_MID, COL_ORANGE_LIGHT, 0.45);
+        c = vLerp(c, COL_ORANGE_DEEP, mane * 0.5);
+        return vLerp(c, COL_CREAM_BRIGHT, clamp(bib * 0.92 + side * 0.45, 0, 1));
+      },
+      (x, y, z, nx, ny, nz) => {
+        const ang = Math.atan2(y - 0.045, x);
+        const tuft = 1.0 + 0.075 * Math.pow(Math.sin(ang * 9.0) * 0.5 + 0.5, 1.5) * (1.0 - Math.abs(nz) * 0.6)
+                         + 0.04 * Math.sin(ang * 17.0 + z * 25.0);
+        const dropY = (y < 0.02 && z > 0.12) ? -0.035 * (1.0 - Math.min(1.0, Math.abs(x) / 0.12)) : 0;
+        return [x * tuft, (y - 0.045) * tuft + 0.045 + dropY, (z - 0.135) * tuft + 0.135];
+      }
+    );
+
+    for (const side of [-1, 1]) {
+      mb.addEllipsoid(side * 0.068, -0.02, -0.115, 0.068, 0.085, 0.075, 10, 14,
+        (x, y, z) => vLerp(COL_ORANGE_LIGHT, COL_CREAM, clamp((-z - 0.12) * 8.0, 0, 1) * 0.7 + clamp(-y * 4.0, 0, 0.4)),
+        (x, y, z, nx, ny, nz, u, v) => {
+          const f = 1.0 + 0.05 * Math.sin(u * Math.PI * 10) * Math.sin(v * Math.PI * 7);
+          return [x * f, y * f, z * f];
+        }
+      );
+    }
+    return mb.build();
+  }
+
+  function pomHeadMesh() {
+    const mb = new MeshBuilder();
+    mb.addEllipsoid(0, 0.015, 0.01, 0.102, 0.094, 0.095, 18, 24,
+      (x, y, z) => {
+        const cheek = clamp((z - 0.02) * 8.0, 0, 1) * clamp((0.035 - y) * 9.0, 0, 1);
+        const brow = Math.exp(-((Math.abs(x) - 0.034)**2 + (y - 0.045)**2 + (z - 0.08)**2) * 950.0);
+        let c = vLerp(COL_ORANGE_MID, COL_ORANGE_DEEP, clamp((y - 0.04) * 6.0, 0, 0.55));
+        return vLerp(c, COL_CREAM_BRIGHT, clamp(cheek * 0.88 + brow * 0.65, 0, 1));
+      },
+      (x, y, z, nx, ny, nz, u, v) => {
+        const cx = (y < 0.025 && Math.abs(x) > 0.045) ? x * 1.15 : x;
+        const fur = 1.0 + 0.04 * Math.sin(u * Math.PI * 16) * Math.sin(v * Math.PI * 10);
+        return [cx * fur, y * fur, z * fur];
+      }
+    );
+
+    mb.addEllipsoid(0, -0.012, 0.096, 0.040, 0.030, 0.052, 12, 16,
+      (x, y) => vLerp(COL_CREAM_BRIGHT, COL_ORANGE_LIGHT, clamp((y + 0.005) * 18.0, 0, 1) * 0.55),
+      (x, y, z) => {
+        const t = clamp((z - 0.055) / 0.09, 0, 1);
+        return [x * (1.0 - 0.46 * t), (y + 0.012) * (1.0 - 0.32 * t) - 0.012, z];
+      }
+    );
+
+    for (const side of [-1, 1]) {
+      const rings = [];
+      for (let i = 0; i <= 7; i++) {
+        const t = i / 7;
+        rings.push({
+          c: [side * (0.054 + t * 0.010), 0.072 + t * 0.068, -0.004 + t * 0.008],
+          right: vNorm([1, -side * 0.14, 0]),
+          up: [0, 0, 1],
+          rx: (1.0 - Math.pow(t, 0.88)) * 0.032 + 0.003,
+          ry: (1.0 - t * 0.82) * 0.018 + 0.0025
+        });
+      }
+      mb.addTube(rings, 12, (p, n, u, v) => {
+        const isFront = n[2] > 0.25 && v > 0.12 && v < 0.85 && Math.abs(p[0] - side*(0.054 + v*0.01)) < 0.018 * (1.0 - v);
+        let c = vLerp(COL_ORANGE_MID, COL_ORANGE_DEEP, v * 0.6);
+        if (v > 0.78) c = vLerp(c, COL_SABLE_TIP, (v - 0.78) / 0.22 * 0.5);
+        return isFront ? [0.93, 0.78, 0.72] : c;
+      });
+    }
+
+    mb.addEllipsoid(0, -0.030, 0.092, 0.024, 0.008, 0.034, 6, 10, () => [0.28, 0.10, 0.11]);
+    return mb.build();
+  }
+
+  function pomJawMesh() {
+    const mb = new MeshBuilder();
+    mb.addEllipsoid(0, -0.006, 0.034, 0.030, 0.017, 0.044, 10, 14,
+      (x, y, z) => (y > 0.002 && z > 0.015) ? [0.78, 0.38, 0.42] : COL_CREAM_BRIGHT,
+      (x, y, z) => {
+        const t = clamp(z / 0.075, 0, 1);
+        return [x * (1.0 - 0.48 * t), y * (1.0 - 0.25 * t), z];
+      }
+    );
+    return mb.build();
+  }
+
+  function pomEyesAndNoseMesh() {
+    const mb = new MeshBuilder();
+    for (const side of [-1, 1]) {
+      mb.addEllipsoid(side * 0.037, 0.020, 0.086, 0.0135, 0.014, 0.012, 10, 12,
+        (x, y, z, nx, ny, nz) => vLerp([0.03, 0.025, 0.025], [0.11, 0.06, 0.03], clamp(nz, 0, 1) * 0.6)
+      );
+      mb.addEllipsoid(side * 0.0365, 0.020, 0.082, 0.0155, 0.016, 0.011, 8, 10, () => [0.09, 0.07, 0.06]);
+    }
+    mb.addEllipsoid(0, -0.005, 0.146, 0.0135, 0.0105, 0.010, 10, 12, () => [0.07, 0.06, 0.06],
+      (x, y, z) => [x * (y < -0.006 ? 0.68 : 1.05), y, z]
+    );
+    return mb.build();
+  }
+
+  function buildLimbSegmentMesh(rTop, rBot, feather, colTop, colBot) {
+    const mb = new MeshBuilder();
+    const rings = [];
+    rings.push({ c: [0, rTop * 0.45, 0], right: [1,0,0], up: [0,0,1], rx: rTop*0.5, ry: rTop*0.5, col: colTop });
+    for (let i = 0; i <= 8; i++) {
+      const t = i / 8;
+      const r = lerp(rTop, rBot, t) * (1.0 + 0.10 * Math.sin(t * Math.PI));
+      const fb = feather * Math.sin(t * Math.PI) * (1.0 - 0.3 * t);
+      rings.push({
+        c: [0, -t, -fb * 0.45],
+        right: [1, 0, 0],
+        up: [0, 0, 1],
+        rx: r,
+        ry: r + fb * 0.55,
+        col: vLerp(colTop, colBot, t)
+      });
+    }
+    rings.push({ c: [0, -1.0 - rBot * 0.35, 0], right: [1,0,0], up: [0,0,1], rx: rBot*0.5, ry: rBot*0.5, col: colBot });
+    mb.addTube(rings, 12, (p, n, u, v) => vLerp(vLerp(colTop, colBot, clamp(v, 0, 1)), COL_CREAM, clamp(-n[2]*0.6 + 0.2, 0, 1)*0.45));
+    return mb.build();
+  }
+
+  function pomPawMesh() {
+    const mb = new MeshBuilder();
+    mb.addEllipsoid(0, 0.016, 0.010, 0.024, 0.017, 0.030, 8, 12,
+      (x, y) => (y < 0.007) ? [0.16, 0.13, 0.12] : COL_CREAM_BRIGHT,
+      (x, y, z) => [x, Math.max(0.001, y), z > 0.022 ? z + 0.0025 * Math.cos(x * 260.0) : z]
+    );
+    return mb.build();
+  }
+
+  function pomTailPlumeMesh() {
+    const mb = new MeshBuilder();
+    const rings = [];
+    for (let i = 0; i <= 16; i++) {
+      const t = i / 16;
+      const arch = -0.35 + t * 2.55;
+      const cy = Math.sin(arch * 0.72) * 0.145 + 0.03 * t;
+      const cz = (1.0 - Math.cos(arch * 0.85)) * 0.135 - 0.025;
+      const cx = Math.sin(t * Math.PI) * 0.012;
+      const env = Math.sin(Math.pow(t, 0.65) * Math.PI);
+      const ny2 = Math.sin((arch + 0.01) * 0.72) * 0.145 + 0.03 * (t + 0.01);
+      const nz2 = (1.0 - Math.cos((arch + 0.01) * 0.85)) * 0.135 - 0.025;
+      const tang = vNorm([0, ny2 - cy, nz2 - cz]);
+      rings.push({
+        c: [cx, cy, cz],
+        right: [1, 0, 0],
+        up: vNorm(vCross(tang, [1, 0, 0])),
+        rx: 0.024 + 0.092 * env,
+        ry: 0.024 + 0.072 * env
+      });
+    }
+    mb.addTube(rings, 18, (p, n, u, v) => {
+      const outer = Math.abs(Math.cos(u * Math.PI * 2));
+      let c = vLerp(COL_ORANGE_LIGHT, COL_CREAM_BRIGHT, clamp(v * 0.75 + outer * 0.45, 0, 1));
+      if (v > 0.72 && n[1] > 0.2) c = vLerp(c, COL_ORANGE_MID, 0.35);
+      return c;
+    });
+    return mb.build();
+  }
+
+  function buildBoneMesh() {
+    const mb = new MeshBuilder();
+    const ivory = [0.97, 0.94, 0.85];
+    const joint = [0.90, 0.84, 0.70];
+    const rings = [];
+    for (let i = 0; i <= 10; i++) {
+      const t = i / 10;
+      const flare = 1.0 + 0.48 * Math.pow(Math.abs(t - 0.5) * 2.0, 2.6);
+      rings.push({
+        c: [lerp(-0.088, 0.088, t), 0, 0],
+        right: [0, 1, 0],
+        up: [0, 0, 1],
+        rx: 0.016 * flare,
+        ry: 0.014 * flare,
+        col: ivory
+      });
+    }
+    mb.addTube(rings, 12, (p, n, u, v) => vLerp(ivory, joint, Math.pow(Math.abs(v - 0.5) * 2.0, 2.0) * 0.55));
+    for (const sx of [-1, 1]) {
+      for (const sz of [-1, 1]) {
+        mb.addEllipsoid(sx * 0.098, 0.001 * sz, sz * 0.016, 0.025, 0.020, 0.021, 8, 12,
+          (x, y, z) => vLerp(ivory, [0.85, 0.76, 0.61], clamp(1.0 - Math.abs(z) * 35.0, 0, 1) * 0.55)
+        );
+      }
+    }
+    return mb.build();
+  }
+
+  // --- Scene Constants & Coordinates ---
+  const SCENE_HOUSE_POS = [2.02, 0.0, -0.48];
+  const SCENE_HOUSE_ANG = 0.64;
+  const HOUSE_COS = Math.cos(SCENE_HOUSE_ANG);
+  const HOUSE_SIN = Math.sin(SCENE_HOUSE_ANG);
+
+  const PUDDLE_DATA = [-0.58, 0.30, 0.50, 0.36];
+  const CAM_POS     = [0.32, 1.16, 3.62];
+  const CAM_TARGET  = [-0.04, 0.33, 0.02];
+  const LIGHT_DIR   = vNorm([-0.46, 0.78, 0.42]);
+
+  function houseLocalToWorld(lx, ly, lz) {
+    return [
+      SCENE_HOUSE_POS[0] + lx * HOUSE_COS + lz * HOUSE_SIN,
+      SCENE_HOUSE_POS[1] + ly,
+      SCENE_HOUSE_POS[2] - lx * HOUSE_SIN + lz * HOUSE_COS
+    ];
+  }
+
+  function buildDoghouseMeshes() {
+    const ext = new MeshBuilder();
+    const interior = new MeshBuilder();
+
+    const wLen = 1.24, wWid = 1.06, wallH = 0.78, peakH = 1.18, th = 0.055;
+    const woodWarm = [0.68, 0.44, 0.25];
+    const woodTrim = [0.89, 0.85, 0.77];
+    const roofRed  = [0.54, 0.23, 0.19];
+    const roofDark = [0.42, 0.17, 0.14];
+    const floorCol = [0.34, 0.23, 0.14];
+    const innerWall= [0.32, 0.21, 0.13];
+
+    ext.addBox(0, 0.008, 0, wLen + 0.08, 0.016, wWid + 0.08, [0.48, 0.34, 0.22], [0.54, 0.39, 0.26]);
+    interior.addBox(0, 0.010, 0, wLen - th*1.8, 0.018, wWid - th*1.8, floorCol, floorCol);
+
+    for (const sz of [-1, 1]) {
+      const zc = sz * (wWid * 0.5 - th * 0.5);
+      ext.addBox(0, wallH * 0.5 + 0.016, zc, wLen, wallH, th, woodWarm);
+      interior.addBox(0, wallH * 0.5 + 0.016, zc - sz * 0.004, wLen - th*2, wallH - 0.02, th * 0.8, innerWall);
+      for (const sx of [-1, 1]) {
+        ext.addBox(sx * (wLen * 0.5 - 0.025), wallH * 0.5 + 0.016, sz * (wWid * 0.5 - 0.025), 0.065, wallH + 0.01, 0.065, woodTrim);
+      }
+    }
+
+    ext.addBox(wLen * 0.5 - th * 0.5, wallH * 0.5 + 0.016, 0, th, wallH, wWid - th, woodWarm);
+    interior.addBox(wLen * 0.5 - th * 0.9, wallH * 0.5 + 0.016, 0, th * 0.5, wallH, wWid - th*2, innerWall);
+    {
+      const xO = wLen * 0.5, xI = wLen * 0.5 - th;
+      const yB = wallH + 0.016, yT = peakH + 0.016;
+      ext.addTri(
+        ext.addVertex([xO, yB, wWid*0.5], [1,0,0], woodWarm, [0,0]),
+        ext.addVertex([xO, yB, -wWid*0.5], [1,0,0], woodWarm, [1,0]),
+        ext.addVertex([xO, yT, 0], [1,0,0], woodWarm, [0.5,1])
+      );
+      interior.addTri(
+        interior.addVertex([xI, yB, -wWid*0.5], [-1,0,0], innerWall, [0,0]),
+        interior.addVertex([xI, yB, wWid*0.5], [-1,0,0], innerWall, [1,0]),
+        interior.addVertex([xI, yT, 0], [-1,0,0], innerWall, [0.5,1])
+      );
+    }
+
+    const doorHalfW = 0.275, jambH = 0.46, archPeakY = 0.67;
+    const xFO = -wLen * 0.5, xFI = -wLen * 0.5 + th;
+    const sideW = wWid * 0.5 - doorHalfW;
+    for (const sz of [-1, 1]) {
+      const zc = sz * (doorHalfW + sideW * 0.5);
+      ext.addBox(-wLen * 0.5 + th * 0.5, wallH * 0.5 + 0.016, zc, th, wallH, sideW, woodWarm);
+      interior.addBox(-wLen * 0.5 + th * 0.9, wallH * 0.5 + 0.016, zc, th * 0.4, wallH, sideW, innerWall);
+      ext.addBox(-wLen * 0.5 - 0.008, jambH * 0.5 + 0.016, sz * (doorHalfW + 0.022), 0.022, jambH, 0.044, woodTrim);
+    }
+
+    const archSegs = 16;
+    for (let s = 0; s < archSegs; s++) {
+      const a0 = Math.PI * (s / archSegs), a1 = Math.PI * ((s + 1) / archSegs);
+      const z0 = Math.cos(a0) * doorHalfW, z1 = Math.cos(a1) * doorHalfW;
+      const yA0 = jambH + Math.sin(a0) * (archPeakY - jambH);
+      const yA1 = jambH + Math.sin(a1) * (archPeakY - jambH);
+      const rY0 = (wallH + 0.016) + (1.0 - Math.abs(z0) / (wWid * 0.5)) * (peakH - wallH);
+      const rY1 = (wallH + 0.016) + (1.0 - Math.abs(z1) / (wWid * 0.5)) * (peakH - wallH);
+
+      ext.addQuad([xFO, yA1, z1], [xFO, yA0, z0], [xFO, rY0, z0], [xFO, rY1, z1], woodWarm, woodWarm, woodWarm, woodWarm, 0.2, 0.8);
+      interior.addQuad([xFI, yA0, z0], [xFI, yA1, z1], [xFI, rY1, z1], [xFI, rY0, z0], innerWall, innerWall, innerWall, innerWall, 0.2, 0.8);
+      ext.addQuad([xFO, yA0, z0], [xFO, yA1, z1], [xFI, yA1, z1], [xFI, yA0, z0], woodTrim);
+
+      const tz0o = Math.cos(a0) * (doorHalfW + 0.042), tz1o = Math.cos(a1) * (doorHalfW + 0.042);
+      const ty0o = jambH + Math.sin(a0) * (archPeakY - jambH + 0.042);
+      const ty1o = jambH + Math.sin(a1) * (archPeakY - jambH + 0.042);
+      ext.addQuad([xFO - 0.012, yA1, z1], [xFO - 0.012, yA0, z0], [xFO - 0.012, ty0o, tz0o], [xFO - 0.012, ty1o, tz1o], woodTrim);
+    }
+
+    for (const sz of [-1, 1]) {
+      const zO = sz * wWid * 0.5, zD = sz * doorHalfW;
+      const yE = wallH + 0.016, yDR = yE + (1.0 - doorHalfW / (wWid * 0.5)) * (peakH - wallH);
+      if (sz > 0) {
+        ext.addTri(ext.addVertex([xFO, yE, zD], [-1,0,0], woodWarm), ext.addVertex([xFO, yE, zO], [-1,0,0], woodWarm), ext.addVertex([xFO, yDR, zD], [-1,0,0], woodWarm));
+        interior.addTri(interior.addVertex([xFI, yE, zO], [1,0,0], innerWall), interior.addVertex([xFI, yE, zD], [1,0,0], innerWall), interior.addVertex([xFI, yDR, zD], [1,0,0], innerWall));
+      } else {
+        ext.addTri(ext.addVertex([xFO, yE, zO], [-1,0,0], woodWarm), ext.addVertex([xFO, yE, zD], [-1,0,0], woodWarm), ext.addVertex([xFO, yDR, zD], [-1,0,0], woodWarm));
+        interior.addTri(interior.addVertex([xFI, yE, zD], [1,0,0], innerWall), interior.addVertex([xFI, yE, zO], [1,0,0], innerWall), interior.addVertex([xFI, yDR, zD], [1,0,0], innerWall));
+      }
+    }
+
+    const rOX = 0.11, rOZ = 0.10, slopeZ = wWid * 0.5 + rOZ;
+    const apexY = peakH + 0.036;
+    const eaveY = apexY - (peakH - wallH) * (slopeZ / (wWid * 0.5));
+    const rTh = 0.045;
+
+    for (const sz of [-1, 1]) {
+      const pTF = [-wLen*0.5 - rOX, apexY, 0], pTB = [wLen*0.5 + rOX, apexY, 0];
+      const pBF = [-wLen*0.5 - rOX, eaveY, sz*slopeZ], pBB = [wLen*0.5 + rOX, eaveY, sz*slopeZ];
+      const uTF = [-wLen*0.5 - rOX, apexY - rTh, 0], uTB = [wLen*0.5 + rOX, apexY - rTh, 0];
+      const uBF = [-wLen*0.5 - rOX, eaveY - rTh, sz*slopeZ], uBB = [wLen*0.5 + rOX, eaveY - rTh, sz*slopeZ];
+      if (sz > 0) {
+        ext.addQuad(pBF, pBB, pTB, pTF, roofRed, roofRed, roofDark, roofDark, 4, 3);
+        interior.addQuad(uTF, uTB, uBB, uBF, innerWall);
+        ext.addQuad(uBF, uBB, pBB, pBF, woodTrim);
+        ext.addQuad(uTF, uBF, pBF, pTF, woodTrim);
+        ext.addQuad(uBB, uTB, pTB, pBB, woodTrim);
+      } else {
+        ext.addQuad(pBB, pBF, pTF, pTB, roofRed, roofRed, roofDark, roofDark, 4, 3);
+        interior.addQuad(uTB, uTF, uBF, uBB, innerWall);
+        ext.addQuad(uBB, uBF, pBF, pBB, woodTrim);
+        ext.addQuad(uBF, uTF, pTF, pBF, woodTrim);
+        ext.addQuad(uTB, uBB, pBB, pTB, woodTrim);
+      }
+      for (let r = 0; r < 5; r++) {
+        const t0 = r / 5, t1 = (r + 0.92) / 5;
+        const y0 = lerp(eaveY, apexY, t0) + 0.008, y1 = lerp(eaveY, apexY, t1) + 0.002;
+        const z0 = sz * lerp(slopeZ, 0.01, t0), z1 = sz * lerp(slopeZ, 0.01, t1);
+        const sc = (r % 2 === 0) ? roofRed : [0.49, 0.20, 0.17];
+        const rx0 = -wLen*0.5 - rOX + 0.005, rx1 = wLen*0.5 + rOX - 0.005;
+        if (sz > 0) ext.addQuad([rx0, y0, z0], [rx1, y0, z0], [rx1, y1, z1], [rx0, y1, z1], sc, sc, roofDark, roofDark, 6, 1);
+        else        ext.addQuad([rx1, y0, z0], [rx0, y0, z0], [rx0, y1, z1], [rx1, y1, z1], sc, sc, roofDark, roofDark, 6, 1);
+      }
+    }
+    ext.addBox(0, apexY + 0.012, 0, wLen + rOX * 2.02, 0.036, 0.075, woodTrim);
+
+    return { extMesh: ext.build(), intMesh: interior.build() };
+  }
+
+  function buildYardMeshes() {
+    const rand = mulberry32(42071);
+    const gnd = new MeshBuilder();
+    const gxSegs = 76, gzSegs = 60;
+
+    function puddleField(x, z) {
+      const dx = (x - PUDDLE_DATA[0]) / PUDDLE_DATA[2];
+      const dz = (z - PUDDLE_DATA[1]) / PUDDLE_DATA[3];
+      const ang = Math.atan2(dz, dx);
+      const wob = 0.08 * Math.sin(ang * 3.0 + 0.7) + 0.05 * Math.cos(ang * 5.0 - 1.2) + 0.04 * Math.sin(ang * 2.0 + 2.1);
+      return Math.hypot(dx, dz) - (1.0 + wob);
+    }
+
+    function terrainY(x, z) {
+      const pd = puddleField(x, z);
+      if (pd < 0.12) {
+        return 0.006 - smoothstep(0.12, -0.35, pd) * 0.036;
+      }
+      const stageDist = Math.max(0, Math.hypot(x * 0.32, (z - 0.1) * 0.55) - 1.25);
+      return smoothstep(0, 2.5, stageDist) * (0.12 * Math.sin(x * 0.35 + 0.5) * Math.cos(z * 0.4) + Math.max(0, -z - 3.2) * 0.04);
+    }
+
+    const gGrid = [];
+    for (let iz = 0; iz <= gzSegs; iz++) {
+      const tz = iz / gzSegs, sz = tz * 2 - 1;
+      const z = lerp(-13.0, 8.0, tz) * 0.35 + (sz * Math.abs(sz) * 10.5 - 2.2) * 0.65;
+      for (let ix = 0; ix <= gxSegs; ix++) {
+        const tx = ix / gxSegs, sx = tx * 2 - 1;
+        const x = lerp(-14.0, 14.0, tx) * 0.35 + (sx * Math.abs(sx) * 14.0) * 0.65;
+        gGrid.push([x, terrainY(x, z), z, tx, tz]);
+      }
+    }
+    const stride = gxSegs + 1;
+    for (let iz = 0; iz <= gzSegs; iz++) {
+      for (let ix = 0; ix <= gxSegs; ix++) {
+        const p = gGrid[iz * stride + ix];
+        const pL = gGrid[iz * stride + Math.max(0, ix - 1)];
+        const pR = gGrid[iz * stride + Math.min(gxSegs, ix + 1)];
+        const pD = gGrid[Math.max(0, iz - 1) * stride + ix];
+        const pU = gGrid[Math.min(gzSegs, iz + 1) * stride + ix];
+        gnd.addVertex([p[0], p[1], p[2]], vNorm(vCross(vSub(pU, pD), vSub(pR, pL))), [1, 1, 1], [p[3], p[4]]);
+      }
+    }
+    for (let iz = 0; iz < gzSegs; iz++) {
+      for (let ix = 0; ix < gxSegs; ix++) {
+        const a = iz * stride + ix, b = a + 1, c = a + stride, d = c + 1;
+        gnd.addTri(a, c, b);
+        gnd.addTri(b, c, d);
+      }
+    }
+
+    const grassBuilder = new MeshBuilder();
+    for (let i = 0; i < 360; i++) {
+      const gx = (rand() - 0.5) * 9.5;
+      const gz = -4.2 + rand() * 6.4;
+      const pd = puddleField(gx, gz);
+      const inHouse = Math.hypot(gx - SCENE_HOUSE_POS[0], gz - SCENE_HOUSE_POS[2]) < 0.88;
+      const onRunPath = Math.abs(gz - 0.25) < 0.42 && gx > -2.6 && gx < 1.5 && pd > 0.18;
+      if (pd < 0.07 || inHouse || (onRunPath && rand() < 0.85) || gz > 2.5) continue;
+
+      const gy = terrainY(gx, gz);
+      const blades = 3 + Math.floor(rand() * 2);
+      for (let b = 0; b < blades; b++) {
+        const ang = rand() * Math.PI * 2;
+        const lean = 0.025 + rand() * 0.04;
+        const h = (0.042 + rand() * 0.06) * (pd < 0.28 ? 0.72 : 1.0);
+        const w = 0.009 + rand() * 0.005;
+        const dx = Math.cos(ang), dz = Math.sin(ang);
+        const px = -dz * w, pz = dx * w;
+        const baseCol = [0.22 + rand()*0.07, 0.39 + rand()*0.10, 0.14 + rand()*0.05];
+        const tipCol  = [0.40 + rand()*0.11, 0.58 + rand()*0.11, 0.22 + rand()*0.06];
+        const n = vNorm([-dx * 0.3, 0.9, -dz * 0.3]);
+        const i0 = grassBuilder.addVertex([gx - px, gy, gz - pz], n, baseCol, [0,0]);
+        const i1 = grassBuilder.addVertex([gx + px, gy, gz + pz], n, baseCol, [1,0]);
+        const i2 = grassBuilder.addVertex([gx + dx * lean, gy + h, gz + dz * lean], n, tipCol, [0.5,1]);
+        grassBuilder.addTri(i0, i1, i2);
+        grassBuilder.addTri(i1, i0, i2);
+      }
+    }
+
+    for (let i = 0; i < 24; i++) {
+      const ang = (i / 24) * Math.PI * 2 + rand() * 0.2;
+      if (Math.abs(Math.sin(ang)) < 0.45) continue;
+      const rScale = 1.07 + rand() * 0.20;
+      const wob = 1.0 + 0.08 * Math.sin(ang * 3.0 + 0.7) + 0.05 * Math.cos(ang * 5.0 - 1.2);
+      const sx = PUDDLE_DATA[0] + Math.cos(ang) * PUDDLE_DATA[2] * wob * rScale;
+      const sz = PUDDLE_DATA[1] + Math.sin(ang) * PUDDLE_DATA[3] * wob * rScale;
+      const gTone = 0.44 + rand() * 0.20;
+      grassBuilder.addEllipsoid(sx, terrainY(sx, sz) + 0.006, sz, 0.022 + rand()*0.015, 0.011 + rand()*0.006, 0.018 + rand()*0.014, 5, 7,
+        () => [gTone * 1.02, gTone * 0.98, gTone * 0.92]);
+    }
+
+    const woodProps = new MeshBuilder();
+    const fenceZ = -2.85;
+    const fColA = [0.63, 0.49, 0.35], fColB = [0.58, 0.44, 0.31];
+    woodProps.addBox(0, 0.32, fenceZ + 0.03, 15.0, 0.06, 0.04, fColB);
+    woodProps.addBox(0, 0.92, fenceZ + 0.03, 15.0, 0.06, 0.04, fColB);
+    for (let x = -7.2; x <= 7.2; x += 0.20) {
+      const h = 1.18 + (rand() - 0.5) * 0.025;
+      woodProps.addBox(x, h * 0.5, fenceZ, 0.175, h, 0.026, (Math.round(x * 5) % 2 === 0) ? fColA : fColB);
+    }
+    for (let x = -7.2; x <= 7.2; x += 1.8) {
+      woodProps.addBox(x, 0.64, fenceZ + 0.045, 0.10, 1.28, 0.09, [0.50, 0.37, 0.25]);
+    }
+    for (let z = -2.8; z <= 2.4; z += 0.21) {
+      woodProps.addBox(4.65, 0.59, z, 0.028, 1.18, 0.18, fColB);
+    }
+    woodProps.addBox(4.61, 0.32, -0.2, 0.04, 0.06, 5.4, fColA);
+    woodProps.addBox(4.61, 0.92, -0.2, 0.04, 0.06, 5.4, fColA);
+    woodProps.addEllipsoid(-3.65, 0.95, -2.35, 0.18, 1.15, 0.18, 7, 9, () => [0.36, 0.26, 0.18]);
+    woodProps.addEllipsoid( 3.55, 1.05, -2.40, 0.21, 1.25, 0.20, 7, 9, () => [0.36, 0.26, 0.18]);
+    woodProps.addEllipsoid(-1.95, 0.16, -2.15, 0.20, 0.18, 0.20, 7, 10, () => [0.68, 0.34, 0.21]);
+
+    const foliage = new MeshBuilder();
+    const bushes = [
+      [-3.65, 2.05, -2.35, 0.95, 0.78, 0.85, [0.24, 0.45, 0.17]],
+      [-3.10, 1.85, -2.25, 0.68, 0.58, 0.65, [0.29, 0.51, 0.19]],
+      [ 3.55, 2.15, -2.40, 1.05, 0.82, 0.90, [0.23, 0.43, 0.16]],
+      [ 2.95, 1.88, -2.25, 0.70, 0.60, 0.65, [0.30, 0.52, 0.20]],
+      [-4.10, 0.38, -1.85, 0.65, 0.45, 0.55, [0.22, 0.42, 0.16]],
+      [-2.85, 0.32, -2.45, 0.58, 0.38, 0.45, [0.26, 0.47, 0.18]],
+      [-1.95, 0.36, -2.15, 0.28, 0.22, 0.28, [0.28, 0.50, 0.20]],
+      [ 0.45, 0.34, -2.48, 0.68, 0.40, 0.42, [0.24, 0.44, 0.17]],
+      [ 3.65, 0.42, -1.65, 0.62, 0.45, 0.55, [0.25, 0.46, 0.18]],
+      [-1.40, 1.75, -4.20, 1.35, 1.15, 1.05, [0.22, 0.40, 0.18]],
+      [ 1.35, 1.85, -4.40, 1.45, 1.20, 1.10, [0.25, 0.43, 0.19]]
+    ];
+    for (const b of bushes) {
+      foliage.addEllipsoid(b[0], b[1], b[2], b[3], b[4], b[5], 9, 12,
+        (x, y, z, nx, ny) => vLerp(vScale(b[6], 0.72), vScale(b[6], 1.25), clamp(ny * 0.5 + 0.5, 0, 1)),
+        (x, y, z, nx, ny, nz, u, v) => {
+          const bmp = 1.0 + 0.10 * Math.sin(u * Math.PI * 8) * Math.sin(v * Math.PI * 6);
+          return [b[0] + (x - b[0])*bmp, b[1] + (y - b[1])*bmp, b[2] + (z - b[2])*bmp];
+        }
+      );
+    }
+
+    const water = new MeshBuilder();
+    const wx0 = PUDDLE_DATA[0] - PUDDLE_DATA[2] * 1.32, wx1 = PUDDLE_DATA[0] + PUDDLE_DATA[2] * 1.32;
+    const wz0 = PUDDLE_DATA[1] - PUDDLE_DATA[3] * 1.32, wz1 = PUDDLE_DATA[1] + PUDDLE_DATA[3] * 1.32;
+    water.addQuad([wx0, 0.005, wz1], [wx1, 0.005, wz1], [wx1, 0.005, wz0], [wx0, 0.005, wz0], [1,1,1]);
+
+    const sky = new MeshBuilder();
+    sky.addEllipsoid(0, -2.0, -2.0, 32.0, 22.0, 32.0, 14, 20, () => [1,1,1]);
+
+    return {
+      groundMesh: gnd.build(),
+      grassMesh: grassBuilder.build(),
+      woodMesh: woodProps.build(),
+      foliageMesh: foliage.build(),
+      waterMesh: water.build(),
+      skyMesh: sky.build()
+    };
+  }
+
+  const dogMeshes = {
+    torso: pomTorsoMesh(),
+    head: pomHeadMesh(),
+    jaw: pomJawMesh(),
+    eyesNose: pomEyesAndNoseMesh(),
+    upperFore: buildLimbSegmentMesh(0.036, 0.024, 0.022, COL_ORANGE_MID, COL_ORANGE_LIGHT),
+    lowerFore: buildLimbSegmentMesh(0.022, 0.016, 0.015, COL_ORANGE_LIGHT, COL_CREAM_BRIGHT),
+    upperHind: buildLimbSegmentMesh(0.044, 0.026, 0.026, COL_ORANGE_MID, COL_ORANGE_LIGHT),
+    lowerHind: buildLimbSegmentMesh(0.024, 0.016, 0.014, COL_ORANGE_LIGHT, COL_CREAM_BRIGHT),
+    paw: pomPawMesh(),
+    tail: pomTailPlumeMesh()
+  };
+  const boneMesh = buildBoneMesh();
+  const houseMeshes = buildDoghouseMeshes();
+  const yardMeshes = buildYardMeshes();
+
+  // --- Kinematics & Choreography ---
+  const POS_START     = [-2.22, 0.38];
+  const POS_TAKEOFF   = [-1.26, 0.33];
+  const POS_LAND      = [ 0.28, 0.24];
+  const POS_PRE_DOOR  = houseLocalToWorld(-0.98, 0, -0.03);
+  const POS_THRESHOLD = houseLocalToWorld(-0.62, 0, -0.04);
+  const POS_GRAB_BODY = houseLocalToWorld(-0.42, 0, -0.05);
+  const POS_BACK_OUT  = houseLocalToWorld(-1.26, 0, 0.06);
+  const POS_FINAL     = [0.56, 0.56];
+
+  const YAW_INTO_HOUSE = Math.atan2(HOUSE_COS, -HOUSE_SIN);
+  const YAW_TO_CAMERA  = Math.atan2(CAM_POS[0] - POS_FINAL[0], CAM_POS[2] - POS_FINAL[1]);
+
+  function evalDogState(rawT) {
+    const t = clamp(rawT, 0.0, 12.0);
+
+    let px = POS_START[0], pz = POS_START[1];
+    let bodyY = 0.215;
+    let yaw = Math.atan2(POS_TAKEOFF[0] - POS_START[0], POS_TAKEOFF[1] - POS_START[1]);
+    let pitch = 0.0;
+    let roll = 0.0;
+    let headYaw = 0.0, headPitch = 0.0, headRoll = 0.0;
+    let jawOpen = 0.03;
+    let tailWag = 0.0, tailLift = 0.0;
+
+    if (t < 1.0) {
+      const notice = smoothstep(0.25, 0.78, t);
+      const prepShift = smoothstep(0.72, 1.0, t);
+      px = POS_START[0] + 0.03 * prepShift;
+      pz = POS_START[1] - 0.005 * prepShift;
+      yaw = lerpAngle(yaw - 0.18, yaw, notice);
+      bodyY = 0.215 - 0.012 * Math.sin(notice * Math.PI) - 0.010 * prepShift;
+      pitch = 0.03 * prepShift;
+      headYaw = lerp(0.22, 0.0, notice);
+      headPitch = -0.10 * notice - 0.04 * Math.sin(t * 5.0);
+      headRoll = 0.08 * Math.sin(notice * Math.PI);
+      tailWag = Math.sin(t * 7.5) * (0.06 + 0.12 * notice);
+    } else if (t < 1.62) {
+      const u = (t - 1.0) / 0.62;
+      const s = clamp(u * 0.92 + 0.08 * smoothstep(0, 1, u), 0, 1);
+      px = lerp(POS_START[0] + 0.03, POS_TAKEOFF[0] - 0.10, s);
+      pz = lerp(POS_START[1] - 0.005, POS_TAKEOFF[1], s);
+      yaw = Math.atan2(POS_LAND[0] - POS_START[0], POS_LAND[1] - POS_START[1]);
+      const runPhase = (t - 1.0) * 4.2 * Math.PI * 2;
+      bodyY = 0.216 + 0.014 * Math.abs(Math.sin(runPhase * 0.5));
+      pitch = -0.04 * Math.cos(runPhase * 0.5);
+      headPitch = -pitch * 0.75 - 0.06;
+      tailWag = Math.sin(t * 11.0) * 0.10;
+      tailLift = -0.08;
+    } else if (t < 1.80) {
+      const u = (t - 1.62) / 0.18;
+      const crouch = Math.sin(u * Math.PI * 0.82);
+      px = lerp(POS_TAKEOFF[0] - 0.10, POS_TAKEOFF[0], smoothstep(0, 1, u));
+      pz = POS_TAKEOFF[1];
+      yaw = Math.atan2(POS_LAND[0] - POS_TAKEOFF[0], POS_LAND[1] - POS_TAKEOFF[1]);
+      bodyY = 0.215 - 0.048 * crouch;
+      pitch = 0.08 * (1.0 - u) - 0.26 * smoothstep(0.45, 1.0, u);
+      headPitch = -0.14 - pitch * 0.5;
+      tailLift = -0.14 * crouch;
+    } else if (t < 2.26) {
+      const u = (t - 1.80) / 0.46;
+      px = lerp(POS_TAKEOFF[0], POS_LAND[0], u);
+      pz = lerp(POS_TAKEOFF[1], POS_LAND[1], u);
+      yaw = Math.atan2(POS_LAND[0] - POS_TAKEOFF[0], POS_LAND[1] - POS_TAKEOFF[1]);
+      const arc = 4.0 * u * (1.0 - u);
+      bodyY = 0.215 + 0.235 * arc;
+      pitch = lerp(-0.34, 0.32, smoothstep(0.05, 0.95, u));
+      headPitch = -pitch * 0.45 - 0.06;
+      tailLift = -0.22 * Math.sin(u * Math.PI);
+      tailWag = Math.sin(t * 9.0) * 0.06;
+    } else if (t < 2.48) {
+      const u = (t - 2.26) / 0.22;
+      px = lerp(POS_LAND[0], POS_LAND[0] + 0.28, u);
+      pz = lerp(POS_LAND[1], POS_PRE_DOOR[2], u * 0.35);
+      const absorb = Math.sin(Math.pow(u, 0.65) * Math.PI);
+      bodyY = 0.215 - 0.046 * absorb;
+      pitch = lerp(0.24, -0.04, smoothstep(0.0, 0.75, u)) + 0.06 * absorb;
+      const nextYaw = Math.atan2(POS_PRE_DOOR[0] - POS_LAND[0], POS_PRE_DOOR[2] - POS_LAND[1]);
+      yaw = lerpAngle(Math.atan2(POS_LAND[0] - POS_TAKEOFF[0], POS_LAND[1] - POS_TAKEOFF[1]), nextYaw, smoothstep(0.2, 1.0, u));
+      headPitch = 0.10 * absorb - 0.05;
+      tailLift = 0.16 * absorb;
+    } else if (t < 3.05) {
+      const u = (t - 2.48) / 0.57;
+      const s = smoothstep(0.0, 0.15, u) * 0.15 + 0.85 * u;
+      px = lerp(POS_LAND[0] + 0.28, POS_PRE_DOOR[0], s);
+      pz = lerp(lerp(POS_LAND[1], POS_PRE_DOOR[2], 0.35), POS_PRE_DOOR[2], s);
+      const approachYaw = Math.atan2(POS_THRESHOLD[0] - POS_LAND[0], POS_THRESHOLD[2] - POS_LAND[1]);
+      yaw = lerpAngle(approachYaw, YAW_INTO_HOUSE, smoothstep(0.25, 1.0, u));
+      const runPhase = (t - 2.48) * 3.8 * Math.PI * 2;
+      bodyY = 0.215 + 0.011 * Math.abs(Math.sin(runPhase * 0.5));
+      pitch = -0.03 * Math.cos(runPhase * 0.5);
+      headPitch = -0.04;
+      tailWag = Math.sin(t * 11.0) * 0.10;
+    } else if (t < 4.50) {
+      const u = smootherstep(3.05, 4.45, t);
+      px = lerp(POS_PRE_DOOR[0], POS_GRAB_BODY[0], u);
+      pz = lerp(POS_PRE_DOOR[2], POS_GRAB_BODY[2], u);
+      yaw = YAW_INTO_HOUSE;
+      const walkBob = Math.sin((t - 3.05) * 3.0 * Math.PI * 2) * 0.006 * (1.0 - smoothstep(0.8, 1.0, u));
+      bodyY = 0.213 + walkBob - 0.008 * smoothstep(0.6, 1.0, u);
+      pitch = 0.04 * smoothstep(0.5, 1.0, u);
+      headPitch = 0.14 * smoothstep(0.4, 1.0, u);
+      tailWag = Math.sin(t * 9.5) * 0.14;
+    } else if (t < 6.00) {
+      px = POS_GRAB_BODY[0];
+      pz = POS_GRAB_BODY[2];
+      yaw = YAW_INTO_HOUSE;
+      const down = smootherstep(4.55, 5.24, t) * (1.0 - smootherstep(5.40, 5.95, t));
+      const reachFwd = 0.038 * down;
+      px += Math.sin(yaw) * reachFwd;
+      pz += Math.cos(yaw) * reachFwd;
+      bodyY = 0.205 - 0.052 * down;
+      pitch = 0.04 + 0.32 * down;
+      headPitch = 0.14 + 0.36 * down - 0.18 * smootherstep(5.45, 6.0, t);
+      if (t < 5.30) {
+        jawOpen = 0.03 + 0.44 * smootherstep(4.82, 5.18, t);
+      } else {
+        jawOpen = lerp(0.47, 0.22, smootherstep(5.30, 5.44, t));
+      }
+      tailWag = Math.sin(t * 12.5) * (0.14 + 0.10 * smootherstep(5.30, 5.8, t));
+    } else if (t < 8.00) {
+      const u = smootherstep(6.05, 7.95, t);
+      px = lerp(POS_GRAB_BODY[0], POS_BACK_OUT[0], u);
+      pz = lerp(POS_GRAB_BODY[2], POS_BACK_OUT[2], u);
+      yaw = lerpAngle(YAW_INTO_HOUSE, YAW_INTO_HOUSE - 0.18, smoothstep(0.65, 1.0, u));
+      const revBob = Math.sin((t - 6.0) * 2.8 * Math.PI * 2) * 0.006 * Math.sin(u * Math.PI);
+      bodyY = 0.213 + revBob;
+      pitch = -0.04 * Math.sin(u * Math.PI);
+      headPitch = -0.08;
+      jawOpen = 0.22;
+      tailWag = Math.sin(t * 10.0) * 0.14;
+    } else if (t < 10.00) {
+      const u = smootherstep(8.00, 9.95, t);
+      const midX = lerp(POS_BACK_OUT[0], POS_FINAL[0], 0.5) - 0.12;
+      const midZ = lerp(POS_BACK_OUT[2], POS_FINAL[1], 0.5) + 0.10;
+      px = (1-u)*(1-u)*POS_BACK_OUT[0] + 2*(1-u)*u*midX + u*u*POS_FINAL[0];
+      pz = (1-u)*(1-u)*POS_BACK_OUT[2] + 2*(1-u)*u*midZ + u*u*POS_FINAL[1];
+      yaw = lerp(YAW_INTO_HOUSE - 0.18, YAW_TO_CAMERA, u);
+      const stepBob = Math.sin((t - 8.0) * 3.0 * Math.PI * 2) * 0.005 * Math.sin(u * Math.PI);
+      bodyY = 0.215 + stepBob;
+      roll = -0.05 * Math.sin(u * Math.PI);
+      headYaw = -0.18 * Math.sin(u * Math.PI);
+      headPitch = lerp(-0.08, -0.14, u);
+      jawOpen = 0.22;
+      tailWag = Math.sin(t * 10.5) * 0.16;
+    } else {
+      const settle = smoothstep(10.0, 10.45, t);
+      px = POS_FINAL[0];
+      pz = POS_FINAL[1];
+      yaw = YAW_TO_CAMERA;
+      const breath = Math.sin((t - 10.0) * 2.6);
+      bodyY = 0.214 + 0.0035 * breath;
+      pitch = -0.05;
+      headPitch = -0.13 + 0.012 * breath;
+      headRoll = 0.045 * smoothstep(10.2, 10.8, t) * Math.cos((t - 10.2) * 1.2);
+      headYaw = 0.02 * Math.sin((t - 10.0) * 1.5);
+      jawOpen = 0.22;
+      tailWag = Math.sin(t * 7.5) * lerp(0.14, 0.08, settle);
+      tailLift = 0.03 * breath;
+    }
+
+    return { t, px, pz, bodyY, yaw, pitch, roll, headYaw, headPitch, headRoll, jawOpen, tailWag, tailLift };
+  }
+
+  function solveLimbIK(hipPos, pawPos, L1, L2, fwdDir, bendSign) {
+    const dVec = vSub(pawPos, hipPos);
+    const maxReach = (L1 + L2) * 0.992;
+    const minReach = Math.abs(L1 - L2) + 0.015;
+    let dist = vLen(dVec);
+    let target = pawPos;
+    if (dist > maxReach) {
+      target = vAdd(hipPos, vScale(dVec, maxReach / dist));
+      dist = maxReach;
+    } else if (dist < minReach) {
+      target = vAdd(hipPos, vScale(dVec, minReach / (dist || 1)));
+      dist = minReach;
+    }
+    const dir = vScale(vSub(target, hipPos), 1.0 / dist);
+    const cosA = clamp((L1*L1 + dist*dist - L2*L2) / (2.0 * L1 * dist), -1.0, 1.0);
+    const sinA = Math.sqrt(Math.max(0.0, 1.0 - cosA * cosA));
+
+    let perp = vSub(vScale(fwdDir, bendSign), vScale(dir, vDot(vScale(fwdDir, bendSign), dir)));
+    if (vLen(perp) < 1e-4) perp = [0, 0, bendSign];
+    perp = vNorm(perp);
+
+    const midJoint = vAdd(hipPos, vAdd(vScale(dir, L1 * cosA), vScale(perp, L1 * sinA)));
+    return { midJoint, endPos: target };
+  }
+
+  function segmentMatrix(topPos, botPos, dogRight) {
+    const segVec = vSub(topPos, botPos);
+    const len = vLen(segVec) || 0.001;
+    const up = vScale(segVec, 1.0 / len);
+    let right = vSub(dogRight, vScale(up, vDot(dogRight, up)));
+    if (vLen(right) < 1e-4) right = [1, 0, 0];
+    right = vNorm(right);
+    const fwd = vCross(right, up);
+    return mat4Mul(mat4FromBasisPos(right, up, fwd, topPos), mat4Scale(1, len, 1));
+  }
+
+  const LEG_SPECS = [
+    { id: 0, isFore: true,  side:  1, hipLocal: [ 0.062, -0.025,  0.105], restLocal: [ 0.066,  0.115], phase: 0.00 },
+    { id: 1, isFore: true,  side: -1, hipLocal: [-0.062, -0.025,  0.105], restLocal: [-0.066,  0.115], phase: 0.50 },
+    { id: 2, isFore: false, side:  1, hipLocal: [ 0.065, -0.015, -0.108], restLocal: [ 0.068, -0.112], phase: 0.50 },
+    { id: 3, isFore: false, side: -1, hipLocal: [-0.065, -0.015, -0.108], restLocal: [-0.068, -0.112], phase: 0.00 }
+  ];
+
+  function groundHeightAt(x, z) {
+    const relX = x - SCENE_HOUSE_POS[0], relZ = z - SCENE_HOUSE_POS[2];
+    const lx = relX * HOUSE_COS - relZ * HOUSE_SIN;
+    const lz = relX * HOUSE_SIN + relZ * HOUSE_COS;
+    if (lx > -0.66 && lx < 0.66 && Math.abs(lz) < 0.57) {
+      return 0.018;
+    }
+    return 0.002;
+  }
+
+  function neutralPawWorld(state, leg) {
+    const s = Math.sin(state.yaw), c = Math.cos(state.yaw);
+    const wx = state.px + c * leg.restLocal[0] + s * leg.restLocal[1];
+    const wz = state.pz - s * leg.restLocal[0] + c * leg.restLocal[1];
+    return [wx, groundHeightAt(wx, wz), wz];
+  }
+
+  function stepCyclePaw(t, tStart, tEnd, freq, stanceEnd, liftH, leg) {
+    const cyc = (t - tStart) * freq + leg.phase;
+    const k = Math.floor(cyc);
+    const f = cyc - k;
+    const tA = clamp(tStart + (k + stanceEnd * 0.5 - leg.phase) / freq, tStart, tEnd);
+    const tB = clamp(tStart + (k + 1 + stanceEnd * 0.5 - leg.phase) / freq, tStart, tEnd);
+    const pA = neutralPawWorld(evalDogState(tA), leg);
+    const pB = neutralPawWorld(evalDogState(tB), leg);
+    if (f < stanceEnd) {
+      return pA;
+    }
+    const su = (f - stanceEnd) / (1.0 - stanceEnd);
+    const ease = smoothstep(0, 1, su);
+    const dist = Math.hypot(pB[0] - pA[0], pB[2] - pA[2]);
+    const arc = Math.sin(su * Math.PI) * liftH * clamp(dist * 7.0, 0.2, 1.0);
+    return [lerp(pA[0], pB[0], ease), lerp(pA[1], pB[1], ease) + arc, lerp(pA[2], pB[2], ease)];
+  }
+
+  function computePawWorld(t, state, leg) {
+    const s = Math.sin(state.yaw), c = Math.cos(state.yaw);
+    const fwd = [s, 0, c];
+
+    if (t < 1.0) {
+      const p = neutralPawWorld(evalDogState(0.0), leg);
+      if (leg.id === 0 && t > 0.35) {
+        const lift = Math.sin(clamp((t - 0.35) / 0.25, 0, 1) * Math.PI);
+        const prog = smoothstep(0.35, 0.60, t);
+        return [p[0] + fwd[0]*0.025*prog, p[1] + 0.018*lift, p[2] + fwd[2]*0.025*prog];
+      }
+      return p;
+    }
+
+    if (t < 1.80) {
+      if (t >= 1.64) {
+        const gatherState = evalDogState(1.74);
+        const base = neutralPawWorld(gatherState, leg);
+        if (!leg.isFore) {
+          return [base[0] + fwd[0] * 0.045, base[1], base[2] + fwd[2] * 0.045];
+        }
+        const earlyLift = smoothstep(1.72, 1.80, t) * 0.045;
+        return [base[0] - fwd[0] * 0.02, base[1] + earlyLift, base[2] - fwd[2] * 0.02];
+      }
+      return stepCyclePaw(t, 1.0, 1.72, 3.9, 0.58, 0.052, leg);
+    }
+
+    if (t < 2.26) {
+      const u = (t - 1.80) / 0.46;
+      const tuck = Math.sin(u * Math.PI);
+      let localZ, localY;
+      if (leg.isFore) {
+        localZ = lerp(0.06, 0.19, smoothstep(0.25, 0.95, u)) - 0.05 * tuck;
+        localY = -0.185 + 0.088 * tuck - 0.03 * smoothstep(0.65, 1.0, u);
+      } else {
+        localZ = lerp(-0.22, -0.08, smoothstep(0.15, 0.95, u));
+        localY = -0.190 + 0.095 * tuck;
+      }
+      const wx = state.px + c * leg.restLocal[0] + s * localZ;
+      const wz = state.pz - s * leg.restLocal[0] + c * localZ;
+      const wy = Math.max(0.038, state.bodyY + localY);
+      return [wx, wy, wz];
+    }
+
+    if (t < 2.48) {
+      const landForePos = neutralPawWorld(evalDogState(2.30), leg);
+      const landHindPos = neutralPawWorld(evalDogState(2.38), leg);
+      if (leg.isFore) {
+        return [landForePos[0] + fwd[0] * 0.03, landForePos[1], landForePos[2] + fwd[2] * 0.03];
+      }
+      if (t < 2.34) {
+        const hu = (t - 2.26) / 0.08;
+        return [landHindPos[0] - fwd[0]*0.04*(1-hu), landHindPos[1] + 0.045*(1-hu), landHindPos[2] - fwd[2]*0.04*(1-hu)];
+      }
+      return landHindPos;
+    }
+
+    if (t < 4.50) {
+      return stepCyclePaw(t, 2.48, 4.48, 3.1, 0.62, 0.042, leg);
+    }
+
+    if (t < 6.00) {
+      const pStand = neutralPawWorld(evalDogState(4.50), leg);
+      if (leg.isFore) {
+        const spread = smootherstep(4.55, 5.20, t) * (1.0 - smootherstep(5.50, 5.95, t));
+        return [pStand[0] + fwd[0] * 0.022 * spread, pStand[1], pStand[2] + fwd[2] * 0.022 * spread];
+      }
+      return pStand;
+    }
+
+    if (t < 8.00) {
+      return stepCyclePaw(t, 6.00, 7.98, 2.7, 0.65, 0.034, leg);
+    }
+
+    if (t < 10.00) {
+      const turnPhase = [0.0, 0.50, 0.25, 0.75][leg.id];
+      const legTurn = { id: leg.id, isFore: leg.isFore, side: leg.side, hipLocal: leg.hipLocal, restLocal: leg.restLocal, phase: turnPhase };
+      return stepCyclePaw(t, 8.00, 9.98, 2.6, 0.66, 0.034, legTurn);
+    }
+
+    return neutralPawWorld(evalDogState(10.0), leg);
+  }
+
+  // Compute full hierarchical skeleton matrices for a given time t
+  function buildDogRigAt(rawT) {
+    const t = clamp(rawT, 0.0, 12.0);
+    const st = evalDogState(t);
+
+    const torsoM = mat4Mul(
+      mat4Translate(st.px, st.bodyY, st.pz),
+      mat4Mul(mat4RotY(st.yaw), mat4Mul(mat4RotX(st.pitch), mat4RotZ(st.roll)))
+    );
+
+    const neckPivot = mat4Mul(torsoM, mat4Translate(0, 0.095, 0.155));
+    const headM = mat4Mul(
+      neckPivot,
+      mat4Mul(mat4RotY(st.headYaw), mat4Mul(mat4RotX(st.headPitch), mat4RotZ(st.headRoll)))
+    );
+
+    const jawM = mat4Mul(
+      mat4Mul(headM, mat4Translate(0, -0.028, 0.062)),
+      mat4RotX(st.jawOpen)
+    );
+
+    // Bone grip socket right between upper & lower jaws in head space
+    const mouthGripM = mat4Mul(
+      mat4Mul(headM, mat4Translate(0, -0.031 - st.jawOpen * 0.024, 0.118)),
+      mat4RotY(0.06)
+    );
+
+    const tailM = mat4Mul(
+      mat4Mul(torsoM, mat4Translate(0, 0.068, -0.145)),
+      mat4Mul(mat4RotY(st.tailWag), mat4RotX(st.tailLift))
+    );
+
+    const dogFwd   = [Math.sin(st.yaw), 0, Math.cos(st.yaw)];
+    const dogRight = [Math.cos(st.yaw), 0, -Math.sin(st.yaw)];
+
+    const limbs = [];
+    for (let i = 0; i < 4; i++) {
+      const leg = LEG_SPECS[i];
+      const hipW = transformPoint(torsoM, leg.hipLocal);
+      const pawW = computePawWorld(t, st, leg);
+      const ankleTarget = [pawW[0], pawW[1] + 0.015, pawW[2] - dogFwd[2] * 0.006];
+      const L1 = leg.isFore ? 0.105 : 0.112;
+      const L2 = leg.isFore ? 0.102 : 0.108;
+      const bendSign = leg.isFore ? -1.0 : 0.85;
+      const ik = solveLimbIK(hipW, ankleTarget, L1, L2, dogFwd, bendSign);
+
+      const upperM = segmentMatrix(hipW, ik.midJoint, dogRight);
+      const lowerM = segmentMatrix(ik.midJoint, ik.endPos, dogRight);
+
+      // Paw orientation follows dog yaw (slightly pitched during flight)
+      let pawPitch = 0.0;
+      if (t >= 1.80 && t < 2.26) {
+        const u = (t - 1.80) / 0.46;
+        pawPitch = leg.isFore ? lerp(0.45, -0.20, u) : lerp(0.55, 0.10, u);
+      }
+      const pawM = mat4Mul(
+        mat4Translate(pawW[0], pawW[1], pawW[2]),
+        mat4Mul(mat4RotY(st.yaw), mat4RotX(pawPitch))
+      );
+
+      limbs.push({ isFore: leg.isFore, upperM, lowerM, pawM });
+    }
+
+    return { torsoM, headM, jawM, mouthGripM, tailM, limbs };
+  }
+
+  // Exact Bone Resting Matrix: computed from the exact jaw grip pose at t = 5.30s (projected onto floor y = 0.036)
+  // so that at t = 5.30s the dog's open jaws meet the resting bone seamlessly and lift it once with zero pop or teleport!
+  const GRAB_TIME = 5.30;
+  const grabRigRef = buildDogRigAt(GRAB_TIME);
+  const grabMouthPos = [grabRigRef.mouthGripM[12], grabRigRef.mouthGripM[13], grabRigRef.mouthGripM[14]];
+  const BONE_REST_POS = [grabMouthPos[0], 0.035, grabMouthPos[2]];
+  const BONE_REST_MAT = mat4Mul(
+    mat4Translate(BONE_REST_POS[0], BONE_REST_POS[1], BONE_REST_POS[2]),
+    mat4RotY(YAW_INTO_HOUSE + 0.06)
+  );
+
+  function computeBoneMatrix(rawT, currentRig) {
+    const t = clamp(rawT, 0.0, 12.0);
+    if (t < GRAB_TIME) {
+      return BONE_REST_MAT;
+    }
+    // Smoothly lock from floor rest height (0.035) to exact jaw grip over 0.06s right as jaws clamp shut, then 100% rigid with mouth!
+    if (t < GRAB_TIME + 0.08) {
+      const u = smoothstep(GRAB_TIME, GRAB_TIME + 0.08, t);
+      const m = new Float32Array(currentRig.mouthGripM);
+      m[13] = lerp(BONE_REST_POS[1], currentRig.mouthGripM[13], u);
+      m[12] = lerp(BONE_REST_POS[0], currentRig.mouthGripM[12], u);
+      m[14] = lerp(BONE_REST_POS[2], currentRig.mouthGripM[14], u);
+      return m;
+    }
+    return currentRig.mouthGripM;
+  }
+
+  // --- WebGL Draw Helpers ---
+  const IDENTITY_MAT = mat4Identity();
+  const HOUSE_MODEL_MAT = mat4Mul(
+    mat4Translate(SCENE_HOUSE_POS[0], SCENE_HOUSE_POS[1], SCENE_HOUSE_POS[2]),
+    mat4RotY(SCENE_HOUSE_ANG)
+  );
+
+  function bindMeshMain(mesh) {
+    gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vbo);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.ibo);
+    const stride = 44;
+    gl.enableVertexAttribArray(mainLoc.aPos);
+    gl.vertexAttribPointer(mainLoc.aPos, 3, gl.FLOAT, false, stride, 0);
+    gl.enableVertexAttribArray(mainLoc.aNorm);
+    gl.vertexAttribPointer(mainLoc.aNorm, 3, gl.FLOAT, false, stride, 12);
+    gl.enableVertexAttribArray(mainLoc.aColor);
+    gl.vertexAttribPointer(mainLoc.aColor, 3, gl.FLOAT, false, stride, 24);
+    gl.enableVertexAttribArray(mainLoc.aUV);
+    gl.vertexAttribPointer(mainLoc.aUV, 2, gl.FLOAT, false, stride, 36);
+  }
+
+  function bindMeshShadow(mesh) {
+    gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vbo);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.ibo);
+    gl.enableVertexAttribArray(shadowLoc.aPos);
+    gl.vertexAttribPointer(shadowLoc.aPos, 3, gl.FLOAT, false, 44, 0);
+  }
+
+  function drawMainItem(mesh, modelMat, matType, shellOffset, shellLayer) {
+    bindMeshMain(mesh);
+    gl.uniformMatrix4fv(mainLoc.uModel, false, modelMat);
+    gl.uniform1i(mainLoc.uMatType, matType);
+    gl.uniform1f(mainLoc.uShellOffset, shellOffset || 0.0);
+    gl.uniform1f(mainLoc.uShellLayer, shellLayer || 0.0);
+    gl.drawElements(gl.TRIANGLES, mesh.count, gl.UNSIGNED_SHORT, 0);
+  }
+
+  function drawShadowItem(mesh, modelMat) {
+    bindMeshShadow(mesh);
+    gl.uniformMatrix4fv(shadowLoc.uModel, false, modelMat);
+    gl.drawElements(gl.TRIANGLES, mesh.count, gl.UNSIGNED_SHORT, 0);
+  }
+
+  function drawDogMain(rig, boneMat, shellCount) {
+    // 1. Base fur solid core
+    drawMainItem(dogMeshes.torso, rig.torsoM, 0, 0, 0);
+    drawMainItem(dogMeshes.head,  rig.headM,  0, 0, 0);
+    drawMainItem(dogMeshes.jaw,   rig.jawM,   0, 0, 0);
+    drawMainItem(dogMeshes.tail,  rig.tailM,  0, 0, 0);
+    drawMainItem(dogMeshes.eyesNose, rig.headM, 4, 0, 0);
+
+    for (let i = 0; i < 4; i++) {
+      const l = rig.limbs[i];
+      drawMainItem(l.isFore ? dogMeshes.upperFore : dogMeshes.upperHind, l.upperM, 0, 0, 0);
+      drawMainItem(l.isFore ? dogMeshes.lowerFore : dogMeshes.lowerHind, l.lowerM, 0, 0, 0);
+      drawMainItem(dogMeshes.paw, l.pawM, 0, 0, 0);
+    }
+
+    // 2. Single Bone
+    drawMainItem(boneMesh, boneMat, 7, 0, 0);
+
+    // 3. Multi-shell volumetric Pomeranian double coat!
+    for (let s = 1; s <= shellCount; s++) {
+      const layerFrac = s / shellCount;
+      const bodyOff = layerFrac * 0.022;
+      const headOff = layerFrac * 0.013;
+      const tailOff = layerFrac * 0.026;
+      const limbOff = layerFrac * 0.008;
+
+      drawMainItem(dogMeshes.torso, rig.torsoM, 1, bodyOff, layerFrac);
+      drawMainItem(dogMeshes.head,  rig.headM,  1, headOff, layerFrac);
+      drawMainItem(dogMeshes.tail,  rig.tailM,  1, tailOff, layerFrac);
+      if (s <= 2) {
+        for (let i = 0; i < 4; i++) {
+          const l = rig.limbs[i];
+          drawMainItem(l.isFore ? dogMeshes.upperFore : dogMeshes.upperHind, l.upperM, 1, limbOff, layerFrac);
+        }
+      }
+    }
+  }
+
+  function drawStaticEnvironmentMain(includeSkyAndGround) {
+    if (includeSkyAndGround) {
+      gl.disable(gl.CULL_FACE);
+      drawMainItem(yardMeshes.skyMesh, IDENTITY_MAT, 6, 0, 0);
+      drawMainItem(yardMeshes.groundMesh, IDENTITY_MAT, 2, 0, 0);
+      drawMainItem(yardMeshes.grassMesh, IDENTITY_MAT, 8, 0, 0);
+    } else {
+      gl.disable(gl.CULL_FACE);
+      drawMainItem(yardMeshes.skyMesh, IDENTITY_MAT, 6, 0, 0);
+    }
+    drawMainItem(yardMeshes.woodMesh, IDENTITY_MAT, 3, 0, 0);
+    drawMainItem(yardMeshes.foliageMesh, IDENTITY_MAT, 8, 0, 0);
+    drawMainItem(houseMeshes.intMesh, HOUSE_MODEL_MAT, 3, 0, 0);
+    drawMainItem(houseMeshes.extMesh, HOUSE_MODEL_MAT, 3, 0, 0);
+  }
+
+  // Fixed camera & directional sun light matrices
+  const projMat = mat4Perspective(38.0 * Math.PI / 180.0, 960 / 540, 0.12, 60.0);
+  const viewMat = mat4LookAt(CAM_POS, CAM_TARGET, [0, 1, 0]);
+  const vpMat   = mat4Mul(projMat, viewMat);
+
+  const lightFocus = [0.05, 0.20, 0.05];
+  const lightEye   = vAdd(lightFocus, vScale(LIGHT_DIR, 8.5));
+  const lightView  = mat4LookAt(lightEye, lightFocus, [0, 1, 0]);
+  const lightProj  = mat4Ortho(-3.3, 3.3, -2.4, 2.4, 1.5, 16.0);
+  const lightVP    = mat4Mul(lightProj, lightView);
+
+  gl.enable(gl.DEPTH_TEST);
+
+  // --- Synchronous Deterministic Frame Renderer ---
+  window.renderFrame = function(timeSeconds) {
+    const t = clamp(typeof timeSeconds === "number" && isFinite(timeSeconds) ? timeSeconds : 0.0, 0.0, 12.0);
+
+    // Subtle organic handheld/cinematic micro-stabilisation? Keep camera continuous & stable as required!
+    const rig = buildDogRigAt(t);
+    const boneMat = computeBoneMatrix(t, rig);
+
+    // PASS 1: Directional Shadow Map (1024x1024) for real contact shadows under paws, body, jump & house
+    gl.bindFramebuffer(gl.FRAMEBUFFER, shadowFBO.fbo);
+    gl.viewport(0, 0, shadowFBO.w, shadowFBO.h);
+    gl.clearColor(1, 1, 1, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.disable(gl.BLEND);
+    gl.disable(gl.CULL_FACE);
+
+    gl.useProgram(shadowProg);
+    gl.uniformMatrix4fv(shadowLoc.uLightVP, false, lightVP);
+
+    drawShadowItem(houseMeshes.extMesh, HOUSE_MODEL_MAT);
+    drawShadowItem(houseMeshes.intMesh, HOUSE_MODEL_MAT);
+    drawShadowItem(yardMeshes.woodMesh, IDENTITY_MAT);
+    drawShadowItem(yardMeshes.foliageMesh, IDENTITY_MAT);
+
+    drawShadowItem(dogMeshes.torso, rig.torsoM);
+    drawShadowItem(dogMeshes.head,  rig.headM);
+    drawShadowItem(dogMeshes.jaw,   rig.jawM);
+    drawShadowItem(dogMeshes.tail,  rig.tailM);
+    for (let i = 0; i < 4; i++) {
+      const l = rig.limbs[i];
+      drawShadowItem(l.isFore ? dogMeshes.upperFore : dogMeshes.upperHind, l.upperM);
+      drawShadowItem(l.isFore ? dogMeshes.lowerFore : dogMeshes.lowerHind, l.lowerM);
+      drawShadowItem(dogMeshes.paw, l.pawM);
+    }
+    drawShadowItem(boneMesh, boneMat);
+
+    // Prepare Main Shader Common Uniforms
+    gl.useProgram(mainProg);
+    gl.uniformMatrix4fv(mainLoc.uVP, false, vpMat);
+    gl.uniformMatrix4fv(mainLoc.uLightVP, false, lightVP);
+    gl.uniform3fv(mainLoc.uCamPos, CAM_POS);
+    gl.uniform3fv(mainLoc.uLightDir, LIGHT_DIR);
+    gl.uniform4f(mainLoc.uHouseInfo, SCENE_HOUSE_POS[0], SCENE_HOUSE_POS[2], HOUSE_COS, HOUSE_SIN);
+    gl.uniform4fv(mainLoc.uPuddleData, PUDDLE_DATA);
+    gl.uniform2f(mainLoc.uScreenSize, 960.0, 540.0);
+    gl.uniform1f(mainLoc.uTime, t);
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, shadowFBO.tex);
+    gl.uniform1i(mainLoc.uShadowMap, 0);
+
+    // PASS 2: Planar Reflection FBO across Puddle Water Plane (y = 0.005)
+    // Renders the actual 3D Pomeranian (flipped across y = 0.005) + sky/trees/house so the puddle water
+    // displays a 100% physically accurate, pose-matched reflection masked strictly to the puddle!
+    gl.bindFramebuffer(gl.FRAMEBUFFER, reflFBO.fbo);
+    gl.viewport(0, 0, reflFBO.w, reflFBO.h);
+    gl.clearColor(0.55, 0.72, 0.88, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    gl.uniform1f(mainLoc.uFlipY, 1.0);
+    gl.uniform1f(mainLoc.uClipRefl, 0.0);
+    drawMainItem(yardMeshes.skyMesh, IDENTITY_MAT, 6, 0, 0);
+
+    gl.uniform1f(mainLoc.uClipRefl, 1.0);
+    drawMainItem(yardMeshes.woodMesh, IDENTITY_MAT, 3, 0, 0);
+    drawMainItem(yardMeshes.foliageMesh, IDENTITY_MAT, 8, 0, 0);
+    drawMainItem(houseMeshes.intMesh, HOUSE_MODEL_MAT, 3, 0, 0);
+    drawMainItem(houseMeshes.extMesh, HOUSE_MODEL_MAT, 3, 0, 0);
+    drawDogMain(rig, boneMat, 3);
+
+    // PASS 3: Main Camera Render to 960x540 Canvas
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, 960, 540);
+    gl.clearColor(0.65, 0.78, 0.90, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    gl.uniform1f(mainLoc.uFlipY, 0.0);
+    gl.uniform1f(mainLoc.uClipRefl, 0.0);
+
+    drawStaticEnvironmentMain(true);
+    drawDogMain(rig, boneMat, 5);
+
+    // Render Shallow Puddle Water Surface with masked reflection & wet rim blending
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, reflFBO.tex);
+    gl.uniform1i(mainLoc.uReflTex, 1);
+
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.depthMask(false);
+    drawMainItem(yardMeshes.waterMesh, IDENTITY_MAT, 5, 0, 0);
+    gl.depthMask(true);
+    gl.disable(gl.BLEND);
+
+    gl.flush();
+  };
+
+  window.renderFrame(0);
+})();
+</script>
+</body>
+</html>

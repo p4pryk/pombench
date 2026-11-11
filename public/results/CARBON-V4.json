@@ -1,0 +1,10 @@
+{
+  "model": "gemini-4-carbon",
+  "models": [
+    "gemini-4-carbon"
+  ],
+  "promptHash": "54d07f07f23e45a2db1f12eb794321393552937df6123790a16b81efa5d65dbb",
+  "protocolHash": "ef8b6d80c1038255181e60d9856157bffb1318239c4073f5668e09696981c68b",
+  "provider": "Google Vertex AI",
+  "policy": "Same initial prompt; two technical repairs after truncated output; the last response includes two consecutive provider continuation segments. No manual source edits."
+}

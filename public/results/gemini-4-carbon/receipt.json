@@ -1,0 +1,63 @@
+{
+  "modelId": "gemini-4-carbon",
+  "modelVersion": "gemini-4-carbon",
+  "source": "Actual Vertex AI API usage",
+  "promptHash": "12931d9c94836fb00da7e03c298b5d1c395c19bcbd27c03282712be1822c7f98",
+  "sourceHash": "588914b2a14a8fc791ac6528e736701ae60c91c054383f72b11ebf1469fa386f",
+  "requestHash": "b6fab1c7fae0a393889c90c0e356c2c0c4edad51907ef37d0b1391f1a92f5eb1",
+  "responseHash": "882185f5519d5d1f6773d1928d00495b151ccd0f337ef99144848833bbe0332b",
+  "streamHash": null,
+  "sourceExtraction": "Concatenate the two consecutive provider response segments; trim whitespace and unwrap a single enclosing HTML fence only; no code edits.",
+  "tools": [],
+  "usageComplete": true,
+  "submission": 3,
+  "rawUsage": [
+    {
+      "promptTokenCount": 35020,
+      "candidatesTokenCount": 32768,
+      "totalTokenCount": 67788,
+      "trafficType": "ON_DEMAND",
+      "promptTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 35020
+        }
+      ],
+      "candidatesTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 32768
+        }
+      ]
+    },
+    {
+      "promptTokenCount": 67788,
+      "candidatesTokenCount": 2420,
+      "totalTokenCount": 70208,
+      "trafficType": "ON_DEMAND",
+      "promptTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 67788
+        }
+      ],
+      "candidatesTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 2420
+        }
+      ]
+    }
+  ],
+  "usage": {
+    "input_tokens": 102808,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 35188,
+    "reasoning_output_tokens": 0,
+    "visible_output_tokens": 35188,
+    "total_tokens": 137996
+  },
+  "visualScore": null,
+  "visualReview": "Inspect the recorded film; technical capture does not grade visual quality or task success."
+}

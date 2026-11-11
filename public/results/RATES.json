@@ -505,6 +505,16 @@
       "context": "flat",
       "checkedAt": "2026-11-09",
       "note": "Standard provider rates; actual Azure invoice may differ due to discounts and taxes."
+    },
+    "gemini-4-carbon": {
+      "input": 2,
+      "output": 10,
+      "cached": 0.1,
+      "write": 0,
+      "source": "https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing",
+      "context": "flat",
+      "checkedAt": "2026-11-11",
+      "note": "Introductory Global rates assume eligibility for promotional credits; actual Google Cloud invoice may differ."
     }
   },
   "unverified": {

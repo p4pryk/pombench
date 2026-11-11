@@ -89,3 +89,7 @@ test('GPT-6.1 Terra plays in the shared gallery and comparison',async({page})=>{
 test('Claude Fable 5.2 has a playable model page and appears in the gallery',async({page})=>{
  await page.goto('/');await page.getByRole('searchbox').fill('Claude Fable 5.2');await expect(page.locator('.model-card')).toHaveCount(1);await page.locator('.model-card[data-model="claude-fable-5-2"] a.card-image').click();await expect(page.getByRole('heading',{name:'Claude Fable 5.2 coding benchmark',exact:true})).toBeVisible();await page.locator('#animation').evaluate((v:HTMLVideoElement)=>v.play());await expect.poll(()=>page.locator('#animation').evaluate((v:HTMLVideoElement)=>v.currentTime)).toBeGreaterThan(.1);
 });
+
+test('Gemini 4 Carbon has a playable model page and appears in the gallery',async({page})=>{
+ await page.goto('/');await page.getByRole('searchbox').fill('Gemini 4 Carbon');await expect(page.locator('.model-card')).toHaveCount(1);await page.locator('.model-card[data-model="gemini-4-carbon"] a.card-image').click();await expect(page.getByRole('heading',{name:'Gemini 4 Carbon coding benchmark',exact:true})).toBeVisible();await page.locator('#animation').evaluate((v:HTMLVideoElement)=>v.play());await expect.poll(()=>page.locator('#animation').evaluate((v:HTMLVideoElement)=>v.currentTime)).toBeGreaterThan(.1);
+});
