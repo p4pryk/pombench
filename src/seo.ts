@@ -22,7 +22,7 @@ const SLUG_OVERRIDES: Record<string, string> = {
 const HAND_RIVALS: Record<string, string[]> = {
   'Gemini 4 Carbon': ['Gemini 4 Argon', 'Claude Fable 5.2', 'GPT-6.1 Terra'],
   'Claude Fable 5.1': ['Claude Fable 5.2', 'Claude Opus 5.5', 'Claude Sonnet 5.5'],
-  'Claude Fable 5.2': ['Claude Fable 5.1', 'Claude Opus 5.5', 'GPT-6.1 Terra'],
+  'Claude Fable 5.2': ['Claude Fable 5.1', 'Claude Opus 5.5', 'Gemini 4 Carbon'],
   'Claude Haiku 4.5': ['Claude Opus 4.8', 'Claude Sonnet 5', 'Mistral Large 3'],
   'Claude Haiku 5.5': ['Claude Sonnet 5.5', 'Claude Opus 5.5', 'Muse Wonder'],
   'Claude Opus 4.8': ['Claude Sonnet 5', 'Claude Opus 5', 'Mistral Medium 3.5'],
@@ -50,12 +50,12 @@ const HAND_RIVALS: Record<string, string[]> = {
   'GPT-6 Luna': ['GPT-6 Sol', 'GPT-6.1 Sol', 'GPT-6.1 Terra'],
   'GPT-6 Sol': ['GPT-6 Luna', 'GPT-6.1 Sol', 'GPT-6.1 Terra'],
   'GPT-6.1 Sol': ['GPT-6.1 Terra', 'GPT-6 Sol', 'Claude Opus 5.5'],
-  'GPT-6.1 Terra': ['GPT-6.1 Sol', 'GPT-5.6 Terra', 'Claude Opus 5.5'],
+  'GPT-6.1 Terra': ['GPT-6.1 Sol', 'GPT-5.6 Terra', 'Gemini 4 Carbon'],
   'GPT-OSS 120B': ['GPT-5 Mini', 'GPT-5 Nano', 'Claude Haiku 4.5'],
   'Gemini 3.1 Pro Preview': ['Gemini 3.5 Flash-Lite', 'Gemini 3.8 Flash', 'GPT-5.3 Codex'],
   'Gemini 3.5 Flash-Lite': ['Gemini 3.8 Flash', 'Gemini 4 Argon', 'Claude Opus 5'],
-  'Gemini 3.8 Flash': ['Gemini 4 Argon', 'Gemini 3.5 Flash-Lite', 'GPT-6 Astra'],
-  'Gemini 4 Argon': ['Gemini 3.8 Flash', 'Claude Opus 5.5', 'GPT-6.1 Sol'],
+  'Gemini 3.8 Flash': ['Gemini 4 Argon', 'Gemini 4 Carbon', 'Gemini 3.5 Flash-Lite'],
+  'Gemini 4 Argon': ['Gemini 4 Carbon', 'Gemini 3.8 Flash', 'Claude Fable 5.2'],
   'GLM 5.3': ['GLM 5.3 Flash', 'MAI-Thinking-1', 'Claude Fable 5.1'],
   'GLM 5.3 Flash': ['GLM 5.3', 'DeepSeek V4.1 Flash', 'Gemini 3.8 Flash'],
   'Grok 4.7': ['GPT-6.1 Sol', 'Claude Opus 5.5', 'Gemini 4 Argon'],
@@ -87,6 +87,8 @@ export function modelSlug(id: string) {
   if (/^(?:openai-)?gpt-6-1-terra$/.test(normalized)) return 'gpt-6-1-terra';
   // Published id is claude-fable-5-2. Also accept an anthropic- prefixed alias.
   if (/^(?:anthropic-)?claude-fable-5-2$/.test(normalized)) return 'claude-fable-5-2';
+  // Published id is gemini-4-carbon. Also accept a google- prefixed alias.
+  if (/^(?:google-)?gemini-4-carbon$/.test(normalized)) return 'gemini-4-carbon';
   return normalized;
 }
 
